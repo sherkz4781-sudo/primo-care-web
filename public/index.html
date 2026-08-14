@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primo Care - Service Proposal Form</title>
+<style>
+  :root {
+    color-scheme: light;
+    --teal: #0e7c86;
+    --teal-dark: #0a5c64;
+    --teal-light: #e6f4f5;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --bg: #ffffff;
+    --amber: #f59e0b;
+    --green: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #f7f9fa;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 24px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border-radius: 14px;
+    color: white;
+    margin-bottom: 24px;
+  }
+  header.brand .logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  header.brand h1 { margin: 0; font-size: 22px; letter-spacing: 0.2px; }
+  header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 22px 24px;
+    margin-bottom: 18px;
+  }
+  .card h2 {
+    font-size: 15px;
+    margin: 0 0 14px;
+    color: var(--teal-dark);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card h2 .num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--teal-light); color: var(--teal-dark);
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+  }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+
+  label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
+  .field { margin-bottom: 14px; }
+  input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=time], select, textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; color: var(--ink); background: #fff; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+
+  .choice-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .choice {
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px;
+    font-size: 13.5px; cursor: pointer; display: flex; align-items: center; gap: 7px;
+    background: #fff; user-select: none;
+  }
+  .choice input { margin: 0; }
+  .area-qty { width: 42px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; margin-left: 2px; }
+  .choice.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); font-weight: 600; }
+
+  .toggle-group { display: flex; gap: 10px; margin-bottom: 4px; }
+  .toggle-btn {
+    flex: 1; text-align: center; padding: 12px; border-radius: 10px; border: 1.5px solid var(--border);
+    cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); background: #fff;
+  }
+  .toggle-btn.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); }
+
+  .hidden { display: none !important; }
+
+  .estimate-box {
+    background: var(--teal-light); border: 1px solid #bfe3e6; border-radius: 10px;
+    padding: 14px 16px; margin-top: 4px;
+  }
+  .estimate-box .row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 3px 0; }
+  .estimate-box .total { font-size: 17px; font-weight: 700; color: var(--teal-dark); border-top: 1px dashed #a8d6da; margin-top: 6px; padding-top: 8px; }
+  .estimate-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
+  button.primary {
+    background: var(--teal); color: #fff; border: none; border-radius: 9px;
+    padding: 13px 20px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%;
+  }
+  button.primary:hover { background: var(--teal-dark); }
+  button.secondary {
+    background: #fff; color: var(--teal-dark); border: 1.5px solid var(--teal);
+    border-radius: 9px; padding: 11px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  button.secondary:hover { background: var(--teal-light); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .req { color: #dc2626; }
+
+  table.rate-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  table.rate-table th, table.rate-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  table.rate-table th { color: var(--muted); font-weight: 600; }
+
+  #proposalSection { display: none; }
+  .proposal-header { text-align: center; margin-bottom: 18px; }
+  .proposal-header .title { font-size: 20px; font-weight: 800; color: var(--teal-dark); }
+  .proposal-header .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .summary-line { background: var(--teal-light); border-radius: 8px; padding: 12px 14px; font-size: 14px; margin-bottom: 16px; }
+  .price-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+  .price-table td { padding: 8px 4px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .price-table tr.total td { font-weight: 800; font-size: 16px; color: var(--teal-dark); border-bottom: none; padding-top: 12px; }
+  .cta-box {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: #fff;
+    border-radius: 10px; padding: 16px 18px; margin: 18px 0; font-size: 14px; text-align: center;
+  }
+  .cta-box b { display: block; font-size: 15.5px; margin-bottom: 4px; }
+
+  .booking-box { border: 1px dashed var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 6px; }
+  .status-pill {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+    background: #fef3c7; color: #92400e; margin-bottom: 8px;
+  }
+  .status-pill.ok { background: #dcfce7; color: #166534; }
+  .slot-btn {
+    display: inline-block; padding: 8px 12px; margin: 4px 6px 0 0; border-radius: 7px;
+    border: 1.5px solid var(--teal); background: #fff; color: var(--teal-dark);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .slot-btn:hover { background: var(--teal-light); }
+  .slot-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .slot-btn.selected { background: var(--teal); color: #fff; }
+  .booking-ok { background: #ecfdf3; color: #166534; padding: 10px 12px; border-radius: 8px; }
+  .booking-err { background: #fef2f2; color: #991b1b; padding: 10px 12px; border-radius: 8px; }
+  .booking-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  @media (max-width: 560px) { .booking-row { grid-template-columns: 1fr; } }
+
+  .draft-status { margin-top: 12px; font-size: 13.5px; padding: 10px 12px; border-radius: 8px; display: none; }
+  .draft-status.ok { background: #ecfdf3; color: #166534; display: block; }
+  .draft-status.err { background: #fef2f2; color: #991b1b; display: block; }
+
+  .footer-note { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 20px; }
+  .edit-link { text-align: center; margin-top: 10px; }
+  .edit-link a { color: var(--teal-dark); font-size: 13px; cursor: pointer; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="brand">
+    <div class="logo">&#10003;</div>
+    <div>
+      <h1>Primo Care</h1>
+      <p>Professional Cleaning Services &mdash; Service Request &amp; Proposal</p>
+    </div>
+  </header>
+
+  <div id="formSection">
+
+    <div class="card">
+      <h2><span class="num">1</span> Your Information</h2>
+      <div class="grid2">
+        <div class="field">
+          <label>First Name <span class="req">*</span></label>
+          <input type="text" id="firstName" placeholder="Jane">
+        </div>
+        <div class="field">
+          <label>Last Name <span class="req">*</span></label>
+          <input type="text" id="lastName" placeholder="Doe">
+        </div>
+      </div>
+      <div class="field">
+        <label>Address <span class="req">*</span></label>
+        <input type="text" id="address" placeholder="123 Main St, City, State ZIP">
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Property Size (sq. ft.) <span class="req">*</span></label>
+          <input type="number" id="sqft" min="1" placeholder="1500">
+        </div>
+        <div class="field">
+          <label>Phone Number <span class="req">*</span></label>
+          <input type="tel" id="phone" placeholder="(555) 123-4567">
+        </div>
+      </div>
+      <div class="field">
+        <label>Email <span class="req">*</span></label>
+        <input type="email" id="email" placeholder="jane@example.com">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">2</span> Property Type</h2>
+      <div class="toggle-group">
+        <div class="toggle-btn active" id="btnResidential" data-type="residential">Residential</div>
+        <div class="toggle-btn" id="btnCommercial" data-type="commercial">Commercial</div>
+      </div>
+
+      <div id="residentialFields">
+        <div class="field" style="margin-top:16px;">
+          <label>Areas to Clean (select all that apply, and how many)</label>
+          <div class="choice-row" id="areaChoices">
+            <label class="choice"><input type="checkbox" value="Bedroom"> Bedroom <input type="number" class="area-qty hidden" data-area="Bedroom" min="1" max="20" value="1"></label>
+            <label class="choice"><input type="checkbox" value="Kitchen"> Kitchen <input type="number" class="area-qty hidden" data-area="Kitchen" min="1" max="20" value="1"></label>
+            <label class="choice"><input type="checkbox" value="Common Area"> Common Area <input type="number" class="area-qty hidden" data-area="Common Area" min="1" max="20" value="1"></label>
+            <label class="choice"><input type="checkbox" value="Balcony"> Balcony <input type="number" class="area-qty hidden" data-area="Balcony" min="1" max="20" value="1"></label>
+            <label class="choice"><input type="checkbox" value="Lanai"> Lanai <input type="number" class="area-qty hidden" data-area="Lanai" min="1" max="20" value="1"></label>
+          </div>
+        </div>
+        <div class="field hidden" id="balconySqftField">
+          <label>Balcony / Lanai Size (sq. ft.)</label>
+          <input type="number" id="balconySqft" min="0" placeholder="e.g. 120">
+          <div class="estimate-note" style="margin-top:4px;">Used to calculate the balcony/lanai add-on ($0.15&ndash;$0.50/sq ft) separately from the main property size.</div>
+        </div>
+        <div class="field">
+          <label>Service Offered</label>
+          <div class="choice-row" id="resServiceChoices">
+            <label class="choice active"><input type="radio" name="resService" value="Standard Cleaning" checked> Standard Cleaning</label>
+            <label class="choice"><input type="radio" name="resService" value="Deep Cleaning"> Deep Cleaning</label>
+          </div>
+          <div class="estimate-note" style="margin-top:6px;">Standard: routine upkeep (dusting, vacuuming, surface wiping). Deep: intensive work (baseboards, heavy grime, hard-to-reach areas).</div>
+        </div>
+      </div>
+
+      <div id="commercialFields" class="hidden">
+        <div class="field" style="margin-top:16px;">
+          <label>Facility Type</label>
+          <select id="facilityType">
+            <option value="General Office">General Office</option>
+            <option value="Industrial/Warehouse">Industrial / Warehouse</option>
+            <option value="Medical and Healthcare Facility">Medical and Healthcare Facility</option>
+            <option value="School">School</option>
+            <option value="Retail">Retail</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">3</span> Subscription</h2>
+      <label class="choice" style="width:fit-content;">
+        <input type="checkbox" id="recurringToggle"> Sign up for a subscription (recurring cleaning schedule)
+      </label>
+      <div id="recurringOptions" class="hidden" style="margin-top:14px;">
+        <label>How often? (choose one)</label>
+        <div class="choice-row" id="frequencyChoices">
+          <label class="choice"><input type="radio" name="frequency" value="Weekly"> Weekly</label>
+          <label class="choice"><input type="radio" name="frequency" value="Every 2 Weeks"> Every 2 Weeks</label>
+          <label class="choice"><input type="radio" name="frequency" value="Monthly"> Monthly</label>
+          <label class="choice"><input type="radio" name="frequency" value="Quarterly"> Quarterly</label>
+          <label class="choice"><input type="radio" name="frequency" value="Semi-Annual"> Semi-Annual</label>
+          <label class="choice"><input type="radio" name="frequency" value="Annually"> Annually</label>
+        </div>
+        <div class="field" style="margin-top:14px;margin-bottom:0;">
+          <label>Duration (number of months)</label>
+          <input type="number" id="subscriptionDuration" min="1" placeholder="e.g. 6">
+          <div class="estimate-note" style="margin-top:4px;">How many months should this subscription run? Once you book a start date/time below, we'll automatically place the full schedule on the calendar for you.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">4</span> Estimated Price</h2>
+      <div class="estimate-box">
+        <div class="row"><span id="estLabel">Standard Cleaning &times; 0 sq ft</span><span id="estRate">$0.20/sq ft</span></div>
+        <div class="row" id="addonRow" style="display:none;"><span id="addonLabel">Balcony/Lanai add-on</span><span id="addonAmount">$0.00&ndash;$0.00</span></div>
+        <div class="row total"><span>Estimated total per visit</span><span id="estTotal">$0.00</span></div>
+        <div class="estimate-note">Final quote confirmed after walkthrough. Rates per visit, not per month.</div>
+      </div>
+      <table class="rate-table">
+        <tr><th colspan="2">Residential</th></tr>
+        <tr><td>Standard Cleaning</td><td>$0.20 / sq ft</td></tr>
+        <tr><td>Deep Cleaning</td><td>$0.25 / sq ft</td></tr>
+        <tr><td>Balcony / Lanai add-on</td><td>$0.15&ndash;$0.50 / sq ft</td></tr>
+        <tr><td>Move-out / Move-in Cleaning</td><td>$0.30 / sq ft</td></tr>
+        <tr><th colspan="2">Commercial</th></tr>
+        <tr><td>General Office</td><td>$0.25 / sq ft</td></tr>
+        <tr><td>Industrial / Warehouse</td><td>$0.20 / sq ft</td></tr>
+        <tr><td>Medical &amp; Healthcare Facility</td><td>$0.45 / sq ft</td></tr>
+        <tr><td>Retail &amp; Schools</td><td>$0.15 / sq ft</td></tr>
+      </table>
+    </div>
+
+    <button class="primary" id="submitBtn">Generate My Proposal</button>
+    <div class="footer-note">By submitting, you'll see a proposal summary you can review before anything is sent.</div>
+  </div>
+
+  <div id="proposalSection">
+    <div class="card">
+      <div class="proposal-header">
+        <div class="title">Your Primo Care Proposal</div>
+        <div class="sub" id="proposalDate"></div>
+      </div>
+
+      <div id="refIdsBox" style="background:#f7f9fa;border:1px dashed var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;">
+        <b style="color:var(--teal-dark);">Save these reference numbers</b> — you'll need your Order ID to cancel or reschedule.
+        <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div><span style="color:var(--muted);">Client ID</span><br><b id="refClientId"></b></div>
+          <div><span style="color:var(--muted);">Order ID</span><br><b id="refOrderId"></b></div>
+          <div><span style="color:var(--muted);">Transaction ID</span><br><b id="refTransactionId"></b></div>
+        </div>
+      </div>
+
+      <div class="summary-line" id="summaryLine"></div>
+
+      <table class="price-table" id="priceTable"></table>
+
+      <div class="cta-box">
+        <b>Ready to get that space sparkling?</b>
+        Reply to confirm your preferred date, or book a quick call below and we'll lock in your first cleaning.
+      </div>
+
+      <h2 style="font-size:15px;color:var(--teal-dark);margin:18px 0 8px;" id="bookingHeading">Book a Schedule</h2>
+      <div class="booking-box">
+        <span class="status-pill ok" id="bookingStatus">Live &mdash; synced to Primo Care's calendar</span>
+        <div style="font-size:13px;color:var(--muted);" id="bookingDesc">Pick a day, find open 30-minute slots, select one, then click Submit Booking to add it to the calendar &mdash; nothing changes until you submit.</div>
+        <div class="booking-row">
+          <div class="field" style="margin-bottom:0;">
+            <label id="bookingDateLabel">Preferred Date</label>
+            <input type="date" id="callDate">
+          </div>
+          <div class="field" style="margin-bottom:0; display:flex; align-items:flex-end;">
+            <button class="secondary" id="findTimesBtn" style="width:100%;">Find Available Times</button>
+          </div>
+        </div>
+        <div id="slotsWrap" style="margin-top:12px;"></div>
+        <button class="primary hidden" id="submitBookingBtn" style="margin-top:10px;">Submit Booking</button>
+        <div id="bookingResult" style="margin-top:10px; font-size:13.5px;"></div>
+      </div>
+
+      <button class="primary" id="draftBtn" style="margin-top:18px;">Submit Form</button>
+      <div class="draft-status" id="draftStatus"></div>
+      <div class="estimate-note" style="text-align:center;margin-top:8px;">Note: this creates a draft in Primo Care's Gmail for a quick review before it goes out &mdash; it isn't sent the instant you click.</div>
+
+      <div class="edit-link"><a id="editLink">&larr; Edit my information</a></div>
+    </div>
+  </div>
+
+  <div class="footer-note">Primo Care Cleaning Services</div>
+</div>
+
+<script>
+(function(){
+  var RATES = {
+    residential: {
+      "Standard Cleaning": 0.20,
+      "Deep Cleaning": 0.25
+    },
+    commercial: {
+      "General Office": 0.25,
+      "Industrial/Warehouse": 0.20,
+      "Medical and Healthcare Facility": 0.45,
+      "School": 0.15,
+      "Retail": 0.15
+    }
+  };
+
+  var RES_SERVICE_DESC = {
+    "Standard Cleaning": "Routine upkeep to keep your home fresh between deep cleans: dusting reachable surfaces, vacuuming and mopping floors, wiping counters and tables, emptying trash, and tidying common touchpoints.",
+    "Deep Cleaning": "A thorough, detail-oriented clean covering baseboards, vents, and hard-to-reach corners, tackling built-up grime, and addressing areas not typically covered in a standard visit."
+  };
+  var AREA_CHECKLIST = {
+    "Bedroom": ["Dust furniture, shelves & décor", "Vacuum carpets or mop floors", "Wipe down mirrors & surfaces", "Empty trash bins"],
+    "Kitchen": ["Wipe counters, backsplash & cabinet fronts", "Clean exterior of appliances & stovetop", "Sanitize sink", "Sweep & mop floors", "Empty trash & reline bins"],
+    "Common Area": ["Dust furniture & surfaces", "Vacuum upholstery, rugs & floors", "Wipe down tables, switches & handles", "Straighten & tidy living spaces"],
+    "Balcony": ["Sweep & wipe down flooring", "Clean railings & surfaces", "Remove cobwebs & debris"],
+    "Lanai": ["Sweep & wipe down flooring", "Clean screens & railings", "Remove cobwebs & debris"]
+  };
+  var COM_DESC = {
+    "General Office": "Full office upkeep covering desks, common areas, restrooms, and break rooms, plus floor care, trash removal, and high-touch point sanitizing to keep your workspace client-ready.",
+    "Industrial/Warehouse": "Heavy-duty floor care, high-touch surface sanitizing, break room & restroom servicing, and debris/trash removal suited to industrial environments.",
+    "Medical and Healthcare Facility": "Hospital-grade sanitizing and disinfecting for patient areas, waiting rooms, exam rooms, and restrooms, following healthcare cleanliness standards.",
+    "School": "Classroom, hallway, restroom, and common-area cleaning with an emphasis on sanitizing desks, door handles, and shared surfaces.",
+    "Retail": "Storefront, sales floor, fitting room, restroom, and back-of-house cleaning to keep your retail space presentable and sanitary."
+  };
+  var COM_CHECKLIST = ["Floors vacuumed, swept & mopped", "Restrooms cleaned & sanitized", "Trash removal & reline bins", "High-touch surfaces disinfected (door handles, switches, counters)", "Common/break areas tidied & wiped down"];
+
+  function buildServiceDetails(){
+    var descText = '', items = [];
+    if(state.propertyType === 'residential'){
+      descText = RES_SERVICE_DESC[state.service] || '';
+      var areaList = (state.areas && state.areas.length) ? state.areas : ['Common Area'];
+      areaList.forEach(function(a){
+        var qty = (state.areaQuantities && state.areaQuantities[a]) || 1;
+        var label = a + (qty > 1 ? ' (x' + qty + ')' : '');
+        (AREA_CHECKLIST[a] || []).forEach(function(i){ items.push(label + ': ' + i); });
+      });
+    } else {
+      descText = COM_DESC[state.service] || '';
+      items = COM_CHECKLIST.slice();
+    }
+    return { descText: descText, items: items };
+  }
+
+  var propertyType = "residential";
+  var state = {};
+
+  var btnRes = document.getElementById('btnResidential');
+  var btnCom = document.getElementById('btnCommercial');
+  var resFields = document.getElementById('residentialFields');
+  var comFields = document.getElementById('commercialFields');
+
+  function setType(t){
+    propertyType = t;
+    btnRes.classList.toggle('active', t==='residential');
+    btnCom.classList.toggle('active', t==='commercial');
+    resFields.classList.toggle('hidden', t!=='residential');
+    comFields.classList.toggle('hidden', t!=='commercial');
+    updateEstimate();
+  }
+  btnRes.addEventListener('click', function(){ setType('residential'); });
+  btnCom.addEventListener('click', function(){ setType('commercial'); });
+
+  var recurringToggle = document.getElementById('recurringToggle');
+  var recurringOptions = document.getElementById('recurringOptions');
+  recurringToggle.addEventListener('change', function(){
+    recurringOptions.classList.toggle('hidden', !recurringToggle.checked);
+    if(!recurringToggle.checked){
+      document.querySelectorAll('#frequencyChoices input:checked').forEach(function(c){
+        c.checked = false;
+        c.closest('.choice').classList.remove('active');
+      });
+    }
+  });
+
+  // choice pill active styling (scoped to checkbox/radio only, so the area quantity
+  // number inputs added alongside them don't get treated as toggle controls)
+  document.querySelectorAll('.choice input[type=checkbox], .choice input[type=radio]').forEach(function(inp){
+    inp.addEventListener('change', function(){
+      inp.closest('.choice').classList.toggle('active', inp.checked);
+      if(inp.type === 'radio'){
+        document.querySelectorAll('input[name="'+inp.name+'"]').forEach(function(r){
+          r.closest('.choice').classList.toggle('active', r.checked);
+        });
+      }
+      // Show/hide this area's quantity input alongside its checkbox.
+      if(inp.closest('#areaChoices')){
+        var qtyInput = inp.closest('.choice').querySelector('.area-qty');
+        if(qtyInput) qtyInput.classList.toggle('hidden', !inp.checked);
+      }
+      updateEstimate();
+    });
+  });
+
+  document.getElementById('sqft').addEventListener('input', updateEstimate);
+  document.getElementById('facilityType').addEventListener('change', updateEstimate);
+  document.getElementById('balconySqft').addEventListener('input', updateEstimate);
+
+  var ADDON_MIN = 0.15, ADDON_MAX = 0.50;
+
+  function getSelectedAreas(){
+    return Array.prototype.slice.call(document.querySelectorAll('#areaChoices input:checked')).map(function(c){return c.value;});
+  }
+  // Reads the quantity number input for each checked area (defaults to 1 if empty/invalid).
+  function getAreaQuantities(){
+    var out = {};
+    document.querySelectorAll('#areaChoices input[type=checkbox]:checked').forEach(function(c){
+      var qtyInput = c.closest('.choice').querySelector('.area-qty');
+      var qty = qtyInput ? parseInt(qtyInput.value, 10) : 1;
+      out[c.value] = (qty && qty > 0) ? qty : 1;
+    });
+    return out;
+  }
+  function formatAreasWithQty(areas, quantities){
+    return areas.map(function(a){
+      var q = (quantities && quantities[a]) || 1;
+      return q > 1 ? (a + ' x' + q) : a;
+    }).join(', ');
+  }
+  function getResService(){
+    var r = document.querySelector('input[name="resService"]:checked');
+    return r ? r.value : "Standard Cleaning";
+  }
+  function hasBalconyOrLanai(areas){
+    return areas.indexOf('Balcony') > -1 || areas.indexOf('Lanai') > -1;
+  }
+  function getBalconySqft(){
+    return parseFloat(document.getElementById('balconySqft').value) || 0;
+  }
+  function getSelectedFrequencies(){
+    if(!document.getElementById('recurringToggle').checked) return [];
+    return Array.prototype.slice.call(document.querySelectorAll('#frequencyChoices input:checked')).map(function(c){return c.value;});
+  }
+  function getSubscriptionDuration(){
+    if(!document.getElementById('recurringToggle').checked) return 0;
+    return parseInt(document.getElementById('subscriptionDuration').value, 10) || 0;
+  }
+
+  function fmt(n){ return '$' + n.toFixed(2); }
+
+  function updateEstimate(){
+    var sqft = parseFloat(document.getElementById('sqft').value) || 0;
+    var estLabel = document.getElementById('estLabel');
+    var estRate = document.getElementById('estRate');
+    var estTotal = document.getElementById('estTotal');
+    var addonRow = document.getElementById('addonRow');
+    var addonLabel = document.getElementById('addonLabel');
+    var addonAmount = document.getElementById('addonAmount');
+    var balconyField = document.getElementById('balconySqftField');
+
+    var rate, label, total, showAddon = false, addonMinTotal = 0, addonMaxTotal = 0, balconySqft = 0;
+
+    if(propertyType === 'residential'){
+      var service = getResService();
+      rate = RATES.residential[service];
+      label = service + ' × ' + sqft + ' sq ft';
+      total = rate * sqft;
+      var areas = getSelectedAreas();
+      showAddon = hasBalconyOrLanai(areas);
+      balconyField.classList.toggle('hidden', !showAddon);
+      if(showAddon){
+        balconySqft = getBalconySqft();
+        addonMinTotal = balconySqft * ADDON_MIN;
+        addonMaxTotal = balconySqft * ADDON_MAX;
+        total += (addonMinTotal + addonMaxTotal) / 2;
+      }
+    } else {
+      var facility = document.getElementById('facilityType').value;
+      rate = RATES.commercial[facility];
+      label = facility + ' × ' + sqft + ' sq ft';
+      total = rate * sqft;
+      balconyField.classList.add('hidden');
+    }
+
+    estLabel.textContent = label;
+    estRate.textContent = fmt(rate) + '/sq ft';
+    estTotal.textContent = fmt(total);
+    addonRow.style.display = showAddon ? 'flex' : 'none';
+    if(showAddon){
+      addonLabel.textContent = 'Balcony/Lanai add-on (' + balconySqft + ' sq ft)';
+      addonAmount.textContent = fmt(addonMinTotal) + '–' + fmt(addonMaxTotal);
+    }
+  }
+
+  updateEstimate();
+
+  // ---- Submit: build proposal ----
+  document.getElementById('submitBtn').addEventListener('click', function(){
+    var btn = this;
+    var firstName = document.getElementById('firstName').value.trim();
+    var lastName = document.getElementById('lastName').value.trim();
+    var address = document.getElementById('address').value.trim();
+    var sqft = parseFloat(document.getElementById('sqft').value) || 0;
+    var phone = document.getElementById('phone').value.trim();
+    var email = document.getElementById('email').value.trim();
+
+    if(!firstName || !lastName || !address || !sqft || !phone || !email){
+      alert('Please fill in all required fields (name, address, size, phone, email) before generating a proposal.');
+      return;
+    }
+    if(!/^\S+@\S+\.\S+$/.test(email)){
+      alert('Please enter a valid email address.');
+      return;
+    }
+
+    var areas = [], service = '', rate = 0, total = 0, addonNote = '';
+    var balconySqft = 0, addonMin = 0, addonMax = 0, hasAddon = false, areaQuantities = {};
+
+    if(propertyType === 'residential'){
+      areas = getSelectedAreas();
+      areaQuantities = getAreaQuantities();
+      service = getResService();
+      rate = RATES.residential[service];
+      total = rate * sqft;
+      hasAddon = hasBalconyOrLanai(areas);
+      if(hasAddon){
+        balconySqft = getBalconySqft();
+        addonMin = balconySqft * ADDON_MIN;
+        addonMax = balconySqft * ADDON_MAX;
+        total += (addonMin + addonMax) / 2;
+        addonNote = 'Balcony/Lanai add-on: ' + balconySqft + ' sq ft × $0.15–$0.50/sq ft = ' + fmt(addonMin) + '–' + fmt(addonMax) + ' (final rate confirmed at walkthrough).';
+      }
+    } else {
+      var facility = document.getElementById('facilityType').value;
+      service = facility;
+      rate = RATES.commercial[facility];
+      total = rate * sqft;
+    }
+
+    var frequencies = getSelectedFrequencies();
+    var subscriptionDuration = getSubscriptionDuration();
+
+    if(frequencies.length && !subscriptionDuration){
+      alert('Please enter a subscription duration (number of months).');
+      return;
+    }
+
+    state = { firstName: firstName, lastName: lastName, address: address, sqft: sqft, phone: phone, email: email,
+      propertyType: propertyType, areas: areas, areaQuantities: areaQuantities, service: service, rate: rate, total: total, addonNote: addonNote,
+      balconySqft: balconySqft, addonMin: addonMin, addonMax: addonMax, hasAddon: hasAddon, frequencies: frequencies,
+      subscriptionDuration: subscriptionDuration };
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    fetch('/api/submit', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        firstName: firstName, lastName: lastName, email: email, phone: phone, address: address,
+        propertyType: propertyType, sqft: sqft, areas: areas, areasFormatted: formatAreasWithQty(areas, areaQuantities), service: service, total: total,
+        balconySqft: hasAddon ? balconySqft : 0, addonNote: addonNote,
+        frequency: frequencies[0] || '', subscriptionDuration: subscriptionDuration
+      })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      btn.disabled = false;
+      btn.textContent = 'Generate My Proposal';
+      if(data.error){
+        alert('Something went wrong submitting your info: ' + data.error + '. Please try again.');
+        return;
+      }
+      state.clientId = data.clientId;
+      state.orderId = data.orderId;
+      state.transactionId = data.transactionId;
+
+      renderProposal();
+      updateBookingCopy();
+      document.getElementById('formSection').style.display = 'none';
+      document.getElementById('proposalSection').style.display = 'block';
+      window.scrollTo({top:0, behavior:'smooth'});
+    }).catch(function(err){
+      btn.disabled = false;
+      btn.textContent = 'Generate My Proposal';
+      alert('Something went wrong submitting your info: ' + err.message + '. Please try again.');
+    });
+  });
+
+  function updateBookingCopy(){
+    var heading = document.getElementById('bookingHeading');
+    var desc = document.getElementById('bookingDesc');
+    var dateLabel = document.getElementById('bookingDateLabel');
+    if(state.frequencies && state.frequencies.length && state.subscriptionDuration){
+      heading.textContent = 'Schedule Your Subscription';
+      desc.textContent = 'Pick a start day, find an open 30-minute slot, select it, then click Submit Booking — we\'ll automatically place the full ' + state.frequencies[0] + ' schedule on the calendar for the next ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '. Nothing changes until you submit.';
+      dateLabel.textContent = 'Start Date';
+    } else {
+      heading.textContent = 'Book a Schedule';
+      desc.textContent = 'Pick a day, find open 30-minute slots, select one, then click Submit Booking to add it to the calendar — nothing changes until you submit.';
+      dateLabel.textContent = 'Preferred Date';
+    }
+  }
+
+  function renderProposal(){
+    document.getElementById('proposalDate').textContent = 'Prepared ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    document.getElementById('refClientId').textContent = state.clientId;
+    document.getElementById('refOrderId').textContent = state.orderId;
+    document.getElementById('refTransactionId').textContent = state.transactionId;
+
+    var wantsText;
+    if(state.propertyType === 'residential'){
+      var areaText = state.areas.length ? formatAreasWithQty(state.areas, state.areaQuantities) : 'general living areas';
+      wantsText = state.firstName + ' ' + state.lastName + ' is requesting <b>' + state.service + '</b> for a ' + state.sqft + ' sq ft residential property at ' + state.address + ', covering: ' + areaText + '.';
+    } else {
+      wantsText = state.firstName + ' ' + state.lastName + ' is requesting recurring cleaning for a ' + state.sqft + ' sq ft <b>' + state.service + '</b> facility at ' + state.address + '.';
+    }
+    if(state.frequencies && state.frequencies.length){
+      wantsText += ' Requested subscription: <b>' + state.frequencies.join(', ') + '</b> for <b>' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '</b>.';
+    }
+    document.getElementById('summaryLine').innerHTML = wantsText;
+
+    var rows = '';
+    rows += '<tr><td>' + state.service + '</td><td style="text-align:right;">' + fmt(state.rate) + ' &times; ' + state.sqft + ' sq ft</td></tr>';
+    if(state.addonNote){
+      rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">' + state.addonNote + '</td></tr>';
+    }
+    if(state.frequencies && state.frequencies.length){
+      rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">Subscription requested: ' + state.frequencies.join(', ') + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '</td></tr>';
+    }
+    rows += '<tr class="total"><td>Estimated total per visit</td><td style="text-align:right;">' + fmt(state.total) + '</td></tr>';
+    document.getElementById('priceTable').innerHTML = rows;
+  }
+
+  document.getElementById('editLink').addEventListener('click', function(){
+    document.getElementById('proposalSection').style.display = 'none';
+    document.getElementById('formSection').style.display = 'block';
+  });
+
+  // ---- Live Google Calendar booking (via our own backend, not window.cowork) ----
+  var CAL_TIMEZONE = 'Asia/Manila';
+
+  function fmtSlotTime(iso){
+    return new Date(iso).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit', timeZone: CAL_TIMEZONE });
+  }
+
+  var pendingSlot = null;
+
+  document.getElementById('findTimesBtn').addEventListener('click', function(){
+    var btn = this;
+    var dateVal = document.getElementById('callDate').value;
+    var wrap = document.getElementById('slotsWrap');
+    var resultEl = document.getElementById('bookingResult');
+    var submitBookingBtn = document.getElementById('submitBookingBtn');
+    resultEl.innerHTML = '';
+    submitBookingBtn.classList.add('hidden');
+    pendingSlot = null;
+    if(!dateVal){
+      wrap.innerHTML = '<div class="booking-err">Pick a date first.</div>';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Checking calendar...';
+    wrap.innerHTML = '';
+
+    fetch('/api/find-times', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ date: dateVal })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      btn.disabled = false;
+      btn.textContent = 'Find Available Times';
+      if(data.error){
+        wrap.innerHTML = '<div class="booking-err">Could not check calendar: ' + data.error + '</div>';
+        return;
+      }
+      var slots = data.slots || [];
+      if(!slots.length){
+        wrap.innerHTML = '<div class="booking-err">No open 30-minute slots that day during business hours (9am&ndash;5pm). Try another date.</div>';
+        return;
+      }
+      wrap.innerHTML = slots.map(function(s, i){
+        return '<button type="button" class="slot-btn" data-i="'+i+'">' + fmtSlotTime(s.start) + '</button>';
+      }).join('');
+      // Clicking a slot only selects/highlights it — nothing is booked until
+      // "Submit Booking" is explicitly clicked below.
+      wrap.querySelectorAll('.slot-btn').forEach(function(b, i){
+        b.addEventListener('click', function(){
+          wrap.querySelectorAll('.slot-btn').forEach(function(x){ x.classList.remove('selected'); });
+          b.classList.add('selected');
+          pendingSlot = slots[i];
+          submitBookingBtn.classList.remove('hidden');
+          resultEl.innerHTML = '<div style="color:var(--muted);">Selected ' + fmtSlotTime(slots[i].start) + ' — click Submit Booking to confirm.</div>';
+        });
+      });
+    }).catch(function(err){
+      btn.disabled = false;
+      btn.textContent = 'Find Available Times';
+      wrap.innerHTML = '<div class="booking-err">Could not check calendar: ' + err.message + '</div>';
+    });
+  });
+
+  document.getElementById('submitBookingBtn').addEventListener('click', function(){
+    if(!pendingSlot) return;
+    var wrap = document.getElementById('slotsWrap');
+    bookSlot(pendingSlot, this, wrap);
+  });
+
+  function bookSlot(slot, clickedBtn, wrap){
+    var resultEl = document.getElementById('bookingResult');
+    wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = true; });
+    clickedBtn.disabled = true;
+    clickedBtn.textContent = 'Booking...';
+    resultEl.innerHTML = '';
+
+    var isSubscription = !!(state.frequencies && state.frequencies.length && state.subscriptionDuration);
+
+    fetch('/api/book', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        orderId: state.orderId, slot: slot,
+        firstName: state.firstName, lastName: state.lastName, phone: state.phone, email: state.email,
+        address: state.address, sqft: state.sqft, service: state.service,
+        isSubscription: isSubscription, freqName: state.frequencies && state.frequencies[0],
+        durationMonths: state.subscriptionDuration
+      })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if(data.error){
+        resultEl.innerHTML = '<div class="booking-err">Could not book: ' + data.error + '</div>';
+        wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
+        clickedBtn.disabled = false;
+        clickedBtn.textContent = 'Submit Booking';
+        return;
+      }
+      state.bookedSlot = slot;
+      if(isSubscription){
+        var untilStr = new Date(new Date(slot.start).setMonth(new Date(slot.start).getMonth() + state.subscriptionDuration)).toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric', timeZone: CAL_TIMEZONE});
+        resultEl.innerHTML = '<div class="booking-ok">Booked! Recurring ' + state.frequencies[0] + ' starting ' + data.startFormatted + ', through ' + untilStr + ' — automatically on the calendar.</div>';
+      } else {
+        resultEl.innerHTML = '<div class="booking-ok">Booked! Added to the calendar for ' + data.startFormatted + '.</div>';
+      }
+      wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.style.display = 'none'; });
+      clickedBtn.classList.add('hidden');
+    }).catch(function(err){
+      resultEl.innerHTML = '<div class="booking-err">Could not book: ' + err.message + '</div>';
+      wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
+      clickedBtn.disabled = false;
+      clickedBtn.textContent = 'Submit Booking';
+    });
+  }
+
+  // ---- Proposal email (via our own backend's Gmail draft creation) ----
+  document.getElementById('draftBtn').addEventListener('click', function(){
+    var btn = this;
+    var statusEl = document.getElementById('draftStatus');
+
+    var details = buildServiceDetails();
+
+    var bookedDateStr = state.bookedSlot ? new Date(state.bookedSlot.start).toLocaleString(undefined, {weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'numeric', minute:'2-digit', timeZone: CAL_TIMEZONE}) : '';
+
+    var addonHtml = state.addonNote ? '<p style="font-size:13px;color:#6b7280;margin-top:8px;">' + state.addonNote + '</p>' : '';
+
+    var checklistHtml = details.items.length
+      ? '<ul style="margin:8px 0 0;padding-left:20px;">' + details.items.map(function(i){ return '<li style="margin-bottom:5px;">' + i + '</li>'; }).join('') + '</ul>'
+      : '';
+
+    var isSubscriptionEmail = !!(state.frequencies && state.frequencies.length && state.subscriptionDuration);
+    var bookingHtml;
+    if(state.bookedSlot && isSubscriptionEmail){
+      bookingHtml = '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;margin:18px 0;"><p style="margin:0;color:#166534;"><b>Confirmed subscription:</b> starting ' + bookedDateStr + ', recurring ' + state.frequencies[0] + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + ' &mdash; the full schedule is already on our calendar.</p></div>';
+    } else if(state.bookedSlot){
+      bookingHtml = '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;margin:18px 0;"><p style="margin:0;color:#166534;"><b>Confirmed booking:</b> ' + bookedDateStr + ' (30 min call) &mdash; already on our calendar.</p></div>';
+    } else {
+      bookingHtml = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin:18px 0;"><p style="margin:0;color:#92400e;">No call time booked yet &mdash; reply to this email with a day/time that works and we\'ll get it on the calendar.</p></div>';
+    }
+
+    var scheduleHtml = (state.frequencies && state.frequencies.length)
+      ? '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">Subscription</h3><p style="margin:0;color:#374151;">' + state.frequencies.join(', ') + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '</p>'
+      : '';
+
+    var html = ''
+      + '<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">'
+      + '<h2 style="color:#0a5c64;margin-bottom:4px;">Primo Care &mdash; Your Cleaning Proposal</h2>'
+      + '<p style="color:#6b7280;font-size:13px;margin-top:0;">Prepared for ' + state.firstName + ' ' + state.lastName + ' &middot; ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'}) + '</p>'
+      + '<p>Hi ' + state.firstName + ',</p>'
+      + '<p>Thank you for reaching out to Primo Care! We\'re glad to put together a proposal for <b>' + state.address + '</b> (' + state.sqft + ' sq ft). Below is a full rundown of the service we recommend, exactly what\'s included, your estimated pricing, and your booked call &mdash; all in one place so there\'s nothing left to guess.</p>'
+
+      + '<div style="background:#f7f9fa;border:1px dashed #d1d5db;border-radius:8px;padding:10px 14px;margin:14px 0;font-size:12.5px;">'
+      + '<b style="color:#0a5c64;">Save these reference numbers</b> &mdash; you\'ll need your Order ID if you ever need to cancel or reschedule.'
+      + '<div style="margin-top:6px;">Client ID: <b>' + state.clientId + '</b> &nbsp;&middot;&nbsp; Order ID: <b>' + state.orderId + '</b> &nbsp;&middot;&nbsp; Transaction ID: <b>' + state.transactionId + '</b></div>'
+      + '</div>'
+
+      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">Recommended Service</h3>'
+      + '<p style="margin:0 0 4px;"><b>' + state.service + '</b></p>'
+      + '<p style="margin:0;color:#374151;">' + details.descText + '</p>'
+
+      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">What\'s Included (Checklist)</h3>'
+      + checklistHtml
+
+      + scheduleHtml
+
+      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">Estimated Pricing</h3>'
+      + '<table style="width:100%;border-collapse:collapse;margin:6px 0 0;">'
+      + '<tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;">' + state.service + '</td>'
+      + '<td style="padding:8px 0;border-bottom:1px solid #e2e8f0;text-align:right;">' + fmt(state.rate) + ' &times; ' + state.sqft + ' sq ft</td></tr>'
+      + '<tr><td style="padding:10px 0;font-weight:bold;color:#0a5c64;">Estimated total per visit</td>'
+      + '<td style="padding:10px 0;font-weight:bold;color:#0a5c64;text-align:right;">' + fmt(state.total) + '</td></tr>'
+      + '</table>'
+      + addonHtml
+      + '<p style="font-size:12px;color:#6b7280;">This is a per-visit estimate; final pricing is confirmed at walkthrough.</p>'
+
+      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">' + (isSubscriptionEmail ? 'Your Schedule' : 'Your Call') + '</h3>'
+      + bookingHtml
+
+      + '<p style="background:#0e7c86;color:#fff;padding:14px 16px;border-radius:8px;">Ready to get that space sparkling? Reply to this email any time with questions, and we\'ll take it from there.</p>'
+      + '<p>Best,<br>Primo Care Team</p>'
+      + '</div>';
+
+    var plainBookingLine;
+    if(state.bookedSlot && isSubscriptionEmail){
+      plainBookingLine = 'Confirmed subscription: starting ' + bookedDateStr + ', recurring ' + state.frequencies[0] + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + ' — already on our calendar.';
+    } else if(state.bookedSlot){
+      plainBookingLine = 'Confirmed: ' + bookedDateStr + ' (30 min) — already on our calendar.';
+    } else {
+      plainBookingLine = 'Not booked yet — reply with a day/time that works.';
+    }
+
+    var plain = 'Hi ' + state.firstName + ',\n\n'
+      + 'Thank you for reaching out to Primo Care! Here is your full proposal for ' + state.address + ' (' + state.sqft + ' sq ft):\n\n'
+      + 'REFERENCE NUMBERS (save these — needed to cancel or reschedule)\n' + 'Client ID: ' + state.clientId + '  |  Order ID: ' + state.orderId + '  |  Transaction ID: ' + state.transactionId + '\n\n'
+      + 'RECOMMENDED SERVICE\n' + state.service + '\n' + details.descText + '\n\n'
+      + 'WHAT\'S INCLUDED (CHECKLIST)\n' + (details.items.length ? details.items.map(function(i){ return '- ' + i; }).join('\n') : '(details confirmed at walkthrough)') + '\n\n'
+      + ((state.frequencies && state.frequencies.length) ? 'SUBSCRIPTION\n' + state.frequencies.join(', ') + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '\n\n' : '')
+      + 'ESTIMATED PRICING\n' + state.service + ': ' + fmt(state.rate) + ' x ' + state.sqft + ' sq ft = ' + fmt(state.total) + ' per visit\n'
+      + (state.addonNote ? state.addonNote + '\n' : '')
+      + 'This is a per-visit estimate; final pricing is confirmed at walkthrough.\n\n'
+      + (isSubscriptionEmail ? 'YOUR SCHEDULE\n' : 'YOUR CALL\n') + plainBookingLine + '\n\n'
+      + 'Ready to get that space sparkling? Reply any time with questions.\n\nBest,\nPrimo Care Team';
+
+    btn.disabled = true;
+    btn.textContent = 'Preparing...';
+
+    fetch('/api/create-draft', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ orderId: state.orderId, to: state.email, subject: 'Your Primo Care Cleaning Proposal', body: plain, htmlBody: html })
+    }).then(function(r){ return r.json(); }).then(function(data){
+      btn.disabled = false;
+      btn.textContent = 'Submit Form';
+      if(data.error){
+        statusEl.className = 'draft-status err';
+        statusEl.textContent = 'Could not prepare your proposal email: ' + data.error;
+      } else {
+        statusEl.className = 'draft-status ok';
+        statusEl.textContent = 'Your proposal is queued up and will be reviewed and sent to ' + state.email + ' shortly.';
+      }
+    }).catch(function(err){
+      btn.disabled = false;
+      btn.textContent = 'Submit Form';
+      statusEl.className = 'draft-status err';
+      statusEl.textContent = 'Could not prepare your proposal email: ' + err.message + '. Please try again.';
+    });
+  });
+
+  function fmt(n){ return '$' + n.toFixed(2); }
+})();
+</script>
+</body>
+</html>

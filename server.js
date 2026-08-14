@@ -1,0 +1,327 @@
+require('dotenv').config();
+const express = require('express');
+const path = require('path');
+const gcal = require('./lib/google');
+const airtable = require('./lib/airtable');
+
+const app = express();
+app.use(express.json({ limit: '1mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+const CAL_TIMEZONE = gcal.CAL_TIMEZONE;
+
+// ---- ID generation (moved server-side so a client can't forge/replay reference numbers) ----
+function genRefId(prefix) {
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `PC-${prefix}-${ts}${rand}`;
+}
+
+// Verifies the supplied identity against an Airtable record fetched by Order ID. Returns the
+// record if every field matches (case-insensitive), otherwise null. Never reveals *which*
+// field mismatched, so a client can't use this to fish for valid Order IDs.
+async function findVerifiedRecord({ firstName, lastName, email, orderId }) {
+  const rec = await airtable.findByField('Order ID', orderId);
+  if (!rec) return null;
+  const f = rec.fields || {};
+  const norm = v => (v || '').toString().trim().toLowerCase();
+  if (norm(f['First Name']) !== norm(firstName)) return null;
+  if (norm(f['Last Name']) !== norm(lastName)) return null;
+  if (norm(f['Email']) !== norm(email)) return null;
+  return rec;
+}
+
+// Deletes the calendar event tied to a booking. Prefers the stored Calendar Event ID
+// (deleting a recurring series' master event cancels the whole series); falls back to a
+// full-text search on the Order ID for records saved before that field existed.
+async function deleteBookingEvent(rec, orderId) {
+  const eventId = rec.fields && rec.fields['Calendar Event ID'];
+  if (eventId) {
+    await gcal.deleteEvent(eventId);
+    return;
+  }
+  const now = new Date();
+  const farFuture = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 365 * 2);
+  const events = await gcal.searchEventsByText(orderId, now.toISOString(), farFuture.toISOString());
+  for (const ev of events) {
+    await gcal.deleteEvent(ev.id).catch(() => null);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Intake form endpoints
+// ---------------------------------------------------------------------------
+
+app.post('/api/submit', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const clientId = genRefId('CLI');
+    const orderId = genRefId('ORD');
+    const transactionId = genRefId('TXN');
+
+    const fields = {
+      'Client Name': `${b.firstName} ${b.lastName}`,
+      'Submitted At': new Date().toISOString(),
+      'First Name': b.firstName,
+      'Last Name': b.lastName,
+      'Email': b.email,
+      'Phone': b.phone,
+      'Address': b.address,
+      'Property Type': b.propertyType === 'residential' ? 'Residential' : 'Commercial',
+      'Property Size (sq ft)': b.sqft,
+      'Areas / Facility Type': b.propertyType === 'residential' ? (b.areasFormatted || (b.areas || []).join(', ')) : b.service,
+      'Service': b.service,
+      'Estimated Total per Visit': b.total,
+      'Draft Email Created': false,
+      'Client ID': clientId,
+      'Order ID': orderId,
+      'Transaction ID': transactionId,
+      'Status': 'Scheduled'
+    };
+    if (b.balconySqft) fields['Balcony-Lanai Size (sq ft)'] = b.balconySqft;
+    if (b.addonNote) fields['Balcony-Lanai Add-on'] = b.addonNote;
+    if (b.frequency) fields['Subscription Frequency'] = b.frequency;
+    if (b.subscriptionDuration) fields['Subscription Duration (months)'] = b.subscriptionDuration;
+
+    await airtable.createRecord(fields);
+    res.json({ clientId, orderId, transactionId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/find-times', async (req, res) => {
+  try {
+    const { date } = req.body || {};
+    if (!date) return res.status(400).json({ error: 'Missing date.' });
+    const slots = await gcal.findAvailableSlots(date);
+    res.json({ slots });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/book', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const rec = await airtable.findByField('Order ID', b.orderId);
+    if (!rec) return res.status(404).json({ error: 'Booking not found.' });
+
+    const summary = b.isSubscription
+      ? `Primo Care Cleaning (${b.freqName}) — ${b.firstName} ${b.lastName}`
+      : `Primo Care Call — ${b.firstName} ${b.lastName}`;
+    const description = [
+      `Primo Care ${b.isSubscription ? 'subscription cleaning' : 'service call'}.`,
+      `Client: ${b.firstName} ${b.lastName} — ${b.phone} — ${b.email}`,
+      `Order ID: ${b.orderId}`,
+      `Property: ${b.address} (${b.sqft} sq ft)`,
+      `Service: ${b.service}`,
+      b.isSubscription ? `Schedule: ${b.freqName} for ${b.durationMonths} month(s)` : ''
+    ].filter(Boolean).join('<br>');
+
+    let recurrence = null;
+    if (b.isSubscription) {
+      const untilDate = new Date(b.slot.start);
+      untilDate.setMonth(untilDate.getMonth() + Number(b.durationMonths));
+      recurrence = { freqName: b.freqName, untilDate };
+    }
+
+    const event = await gcal.createEvent({
+      summary, description, location: b.address,
+      startIso: b.slot.start, endIso: b.slot.end, recurrence
+    });
+
+    const startStr = new Date(b.slot.start).toLocaleString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: CAL_TIMEZONE
+    });
+
+    await airtable.updateRecord(rec.id, {
+      'Booked Date/Time': startStr + (b.isSubscription ? ` (recurring ${b.freqName})` : ''),
+      'Booked Start (ISO)': new Date(b.slot.start).toISOString(),
+      'Calendar Event ID': event.id
+    });
+
+    res.json({ eventId: event.id, startFormatted: startStr });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/create-draft', async (req, res) => {
+  try {
+    const { orderId, to, subject, body, htmlBody } = req.body || {};
+    const rec = await airtable.findByField('Order ID', orderId);
+    if (!rec) return res.status(404).json({ error: 'Booking not found.' });
+
+    await gcal.createGmailDraft({ to, subject, body, htmlBody });
+    await airtable.updateRecord(rec.id, { 'Draft Email Created': true });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Cancel / reschedule endpoints
+// ---------------------------------------------------------------------------
+
+// Explains whether the 48-hour/20% TCP late fee applies, based on how far out the ORIGINAL
+// booked time was from right now (not the new time, for a reschedule).
+function feeApplicabilityNote(originalBookedStartIso) {
+  if (!originalBookedStartIso) return '';
+  const hoursUntil = (new Date(originalBookedStartIso).getTime() - Date.now()) / 3600000;
+  return hoursUntil < 48
+    ? 'Since this request was made less than 48 hours before your originally scheduled time, a fee of 20% of the Total Contract Price (TCP) applies per our Cancellation & Reschedule Policy.'
+    : 'Since this request was made 48 hours or more in advance, no fee applies.';
+}
+
+// Sends a short confirmation email immediately (real send, not a draft — these are low-risk
+// transactional receipts, unlike the full proposal email which stays draft-only for review).
+// Failure here is logged but never fails the cancel/reschedule request itself — the
+// calendar/Airtable changes already succeeded by the time this runs.
+async function sendConfirmationEmail({ to, subject, body, htmlBody }) {
+  try {
+    await gcal.sendGmailMessage({ to, subject, body, htmlBody });
+  } catch (err) {
+    console.error('Confirmation email failed to send:', err.message);
+  }
+}
+
+app.post('/api/cancel', async (req, res) => {
+  try {
+    const { firstName, lastName, email, orderId, note } = req.body || {};
+    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+
+    const f = rec.fields || {};
+    const originalBookedDisplay = f['Booked Date/Time'] || '';
+    const feeNote = feeApplicabilityNote(f['Booked Start (ISO)']);
+
+    await deleteBookingEvent(rec, orderId);
+    await airtable.updateRecord(rec.id, {
+      'Status': 'Cancelled',
+      'Cancel/Reschedule Note': `[${new Date().toLocaleString()}] Cancelled${note ? ': ' + note : ' (no note provided)'}`
+    });
+
+    const subject = 'Your Primo Care Booking Has Been Cancelled';
+    const body = `Hi ${firstName},\n\nThis confirms your Primo Care booking (Order ID: ${orderId})${originalBookedDisplay ? ', originally scheduled for ' + originalBookedDisplay : ''} has been cancelled.\n\n${feeNote}\n\nIf this wasn't you or you'd like to book again, just reply to this email.\n\nBest,\nPrimo Care Team`;
+    const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+      <h2 style="color:#0a5c64;">Booking Cancelled</h2>
+      <p>Hi ${firstName},</p>
+      <p>This confirms your Primo Care booking (Order ID: <b>${orderId}</b>)${originalBookedDisplay ? ', originally scheduled for <b>' + originalBookedDisplay + '</b>,' : ''} has been cancelled.</p>
+      <p style="background:#f7f9fa;border:1px dashed #d1d5db;border-radius:8px;padding:10px 14px;">${feeNote}</p>
+      <p>If this wasn't you or you'd like to book again, just reply to this email.</p>
+      <p>Best,<br>Primo Care Team</p>
+    </div>`;
+    await sendConfirmationEmail({ to: email, subject, body, htmlBody });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/reschedule/find-times', async (req, res) => {
+  try {
+    const { firstName, lastName, email, orderId, date } = req.body || {};
+    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+    if (!date) return res.status(400).json({ error: 'Missing date.' });
+
+    const slots = await gcal.findAvailableSlots(date);
+    res.json({ slots });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/reschedule/submit', async (req, res) => {
+  try {
+    const { firstName, lastName, email, orderId, slot, note } = req.body || {};
+    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+
+    const f = rec.fields || {};
+    const freqName = f['Subscription Frequency'];
+    const duration = f['Subscription Duration (months)'];
+    const isSubscription = !!(freqName && duration);
+    const originalBookedDisplay = f['Booked Date/Time'] || '';
+    const feeNote = feeApplicabilityNote(f['Booked Start (ISO)']);
+
+    await deleteBookingEvent(rec, orderId);
+
+    const clientLine = `${firstName} ${lastName} — ${f['Phone'] || ''} — ${email}`;
+    const summary = isSubscription
+      ? `Primo Care Cleaning (${freqName}) — ${firstName} ${lastName}`
+      : `Primo Care Call — ${firstName} ${lastName}`;
+    const description = [
+      `Primo Care ${isSubscription ? 'subscription cleaning' : 'service call'} (rescheduled).`,
+      `Client: ${clientLine}`,
+      `Order ID: ${orderId}`,
+      `Property: ${f['Address'] || ''} (${f['Property Size (sq ft)'] || ''} sq ft)`,
+      `Service: ${f['Service'] || ''}`,
+      isSubscription ? `Schedule: ${freqName} for ${duration} month(s)` : ''
+    ].filter(Boolean).join('<br>');
+
+    let recurrence = null;
+    if (isSubscription) {
+      const untilDate = new Date(slot.start);
+      untilDate.setMonth(untilDate.getMonth() + Number(duration));
+      recurrence = { freqName, untilDate };
+    }
+
+    const event = await gcal.createEvent({
+      summary, description, location: f['Address'] || '',
+      startIso: slot.start, endIso: slot.end, recurrence
+    });
+
+    const startStr = new Date(slot.start).toLocaleString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: CAL_TIMEZONE
+    });
+
+    await airtable.updateRecord(rec.id, {
+      'Status': 'Rescheduled',
+      'Booked Date/Time': startStr + (isSubscription ? ` (recurring ${freqName})` : ''),
+      'Booked Start (ISO)': new Date(slot.start).toISOString(),
+      'Calendar Event ID': event.id,
+      'Cancel/Reschedule Note': `[${new Date().toLocaleString()}] Rescheduled to ${startStr}${note ? ': ' + note : ''}`
+    });
+
+    const subject = 'Your Primo Care Booking Has Been Rescheduled';
+    const scheduleLine = isSubscription ? `${startStr} (recurring ${freqName})` : startStr;
+    const body = `Hi ${firstName},\n\nThis confirms your Primo Care booking (Order ID: ${orderId}) has been rescheduled.\n\n${originalBookedDisplay ? 'Previous time: ' + originalBookedDisplay + '\n' : ''}New time: ${scheduleLine}\n\n${feeNote}\n\nIf anything looks off, just reply to this email.\n\nBest,\nPrimo Care Team`;
+    const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+      <h2 style="color:#0a5c64;">Booking Rescheduled</h2>
+      <p>Hi ${firstName},</p>
+      <p>This confirms your Primo Care booking (Order ID: <b>${orderId}</b>) has been rescheduled.</p>
+      <table style="margin:10px 0;">
+        ${originalBookedDisplay ? `<tr><td style="color:#6b7280;padding:2px 10px 2px 0;">Previous time</td><td>${originalBookedDisplay}</td></tr>` : ''}
+        <tr><td style="color:#6b7280;padding:2px 10px 2px 0;">New time</td><td><b>${scheduleLine}</b></td></tr>
+      </table>
+      <p style="background:#f7f9fa;border:1px dashed #d1d5db;border-radius:8px;padding:10px 14px;">${feeNote}</p>
+      <p>If anything looks off, just reply to this email.</p>
+      <p>Best,<br>Primo Care Team</p>
+    </div>`;
+    await sendConfirmationEmail({ to: email, subject, body, htmlBody });
+
+    res.json({ ok: true, isSubscription, freqName, startFormatted: startStr });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/cancel-reschedule', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'cancel-reschedule.html'));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Primo Care web app listening on port ${PORT}`);
+});
