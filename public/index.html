@@ -65,6 +65,8 @@
     font-size: 12px; display: flex; align-items: center; justify-content: center;
     font-weight: 700;
   }
+  .property-card { border: 1.5px solid #bfe3e6; position: relative; }
+  .property-card h2 .num { background: var(--teal); color: #fff; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
@@ -84,7 +86,8 @@
     background: #fff; user-select: none;
   }
   .choice input { margin: 0; }
-  .area-qty { width: 42px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; margin-left: 2px; }
+  .area-qty { width: 46px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; margin-left: 2px; }
+  .others-specify { width: 180px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; margin-left: 4px; }
   .choice.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); font-weight: 600; }
 
   .toggle-group { display: flex; gap: 10px; margin-bottom: 4px; }
@@ -114,6 +117,12 @@
     border-radius: 9px; padding: 11px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
   }
   button.secondary:hover { background: var(--teal-light); }
+  button.add-property {
+    background: #fff; color: var(--teal-dark); border: 1.5px dashed var(--teal);
+    border-radius: 9px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+    width: 100%; margin-bottom: 14px;
+  }
+  button.add-property:hover { background: var(--teal-light); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .req { color: #dc2626; }
@@ -135,6 +144,23 @@
     border-radius: 10px; padding: 16px 18px; margin: 18px 0; font-size: 14px; text-align: center;
   }
   .cta-box b { display: block; font-size: 15.5px; margin-bottom: 4px; }
+
+  .disclaimer-box {
+    background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: 8px;
+    padding: 12px 14px; font-size: 12.5px; margin: 14px 0;
+  }
+  .disclaimer-box b { display: block; margin-bottom: 3px; color: #9a3412; }
+
+  .grand-total-box {
+    background: var(--teal-dark); color: #fff; border-radius: 10px; padding: 14px 16px;
+    margin: 16px 0; font-size: 16px; font-weight: 800; display: flex; justify-content: space-between; align-items: center;
+  }
+  .grand-total-box span.label { font-size: 13px; font-weight: 600; opacity: 0.9; }
+
+  .property-proposal-block { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .property-proposal-block h3 { font-size: 14px; color: var(--teal-dark); margin: 0 0 8px; }
+  .ref-mini { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .ref-mini b { color: var(--ink); }
 
   .booking-box { border: 1px dashed var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 6px; }
   .status-pill {
@@ -178,130 +204,52 @@
   <div id="formSection">
 
     <div class="card">
-      <h2><span class="num">1</span> Your Information</h2>
+      <h2><span class="num">1</span> Client Information</h2>
       <div class="grid2">
+        <div class="field">
+          <label>Prefix</label>
+          <select id="prefix">
+            <option value="">&mdash;</option>
+            <option value="Mr.">Mr.</option>
+            <option value="Ms.">Ms.</option>
+            <option value="Mrs.">Mrs.</option>
+            <option value="Dr.">Dr.</option>
+            <option value="Engr.">Engr.</option>
+          </select>
+        </div>
         <div class="field">
           <label>First Name <span class="req">*</span></label>
           <input type="text" id="firstName" placeholder="Jane">
         </div>
+      </div>
+      <div class="grid2">
         <div class="field">
           <label>Last Name <span class="req">*</span></label>
           <input type="text" id="lastName" placeholder="Doe">
         </div>
-      </div>
-      <div class="field">
-        <label>Address <span class="req">*</span></label>
-        <input type="text" id="address" placeholder="123 Main St, City, State ZIP">
+        <div class="field">
+          <label>Suffix</label>
+          <input type="text" id="suffix" placeholder="Jr., Sr., III">
+        </div>
       </div>
       <div class="grid2">
-        <div class="field">
-          <label>Property Size (sq. ft.) <span class="req">*</span></label>
-          <input type="number" id="sqft" min="1" placeholder="1500">
-        </div>
         <div class="field">
           <label>Phone Number <span class="req">*</span></label>
           <input type="tel" id="phone" placeholder="(555) 123-4567">
         </div>
-      </div>
-      <div class="field">
-        <label>Email <span class="req">*</span></label>
-        <input type="email" id="email" placeholder="jane@example.com">
-      </div>
-    </div>
-
-    <div class="card">
-      <h2><span class="num">2</span> Property Type</h2>
-      <div class="toggle-group">
-        <div class="toggle-btn active" id="btnResidential" data-type="residential">Residential</div>
-        <div class="toggle-btn" id="btnCommercial" data-type="commercial">Commercial</div>
-      </div>
-
-      <div id="residentialFields">
-        <div class="field" style="margin-top:16px;">
-          <label>Areas to Clean (select all that apply, and how many)</label>
-          <div class="choice-row" id="areaChoices">
-            <label class="choice"><input type="checkbox" value="Bedroom"> Bedroom <input type="number" class="area-qty hidden" data-area="Bedroom" min="1" max="20" value="1"></label>
-            <label class="choice"><input type="checkbox" value="Kitchen"> Kitchen <input type="number" class="area-qty hidden" data-area="Kitchen" min="1" max="20" value="1"></label>
-            <label class="choice"><input type="checkbox" value="Common Area"> Common Area <input type="number" class="area-qty hidden" data-area="Common Area" min="1" max="20" value="1"></label>
-            <label class="choice"><input type="checkbox" value="Balcony"> Balcony <input type="number" class="area-qty hidden" data-area="Balcony" min="1" max="20" value="1"></label>
-            <label class="choice"><input type="checkbox" value="Lanai"> Lanai <input type="number" class="area-qty hidden" data-area="Lanai" min="1" max="20" value="1"></label>
-          </div>
-        </div>
-        <div class="field hidden" id="balconySqftField">
-          <label>Balcony / Lanai Size (sq. ft.)</label>
-          <input type="number" id="balconySqft" min="0" placeholder="e.g. 120">
-          <div class="estimate-note" style="margin-top:4px;">Used to calculate the balcony/lanai add-on ($0.15&ndash;$0.50/sq ft) separately from the main property size.</div>
-        </div>
         <div class="field">
-          <label>Service Offered</label>
-          <div class="choice-row" id="resServiceChoices">
-            <label class="choice active"><input type="radio" name="resService" value="Standard Cleaning" checked> Standard Cleaning</label>
-            <label class="choice"><input type="radio" name="resService" value="Deep Cleaning"> Deep Cleaning</label>
-          </div>
-          <div class="estimate-note" style="margin-top:6px;">Standard: routine upkeep (dusting, vacuuming, surface wiping). Deep: intensive work (baseboards, heavy grime, hard-to-reach areas).</div>
+          <label>Email <span class="req">*</span></label>
+          <input type="email" id="email" placeholder="jane@example.com">
         </div>
       </div>
-
-      <div id="commercialFields" class="hidden">
-        <div class="field" style="margin-top:16px;">
-          <label>Facility Type</label>
-          <select id="facilityType">
-            <option value="General Office">General Office</option>
-            <option value="Industrial/Warehouse">Industrial / Warehouse</option>
-            <option value="Medical and Healthcare Facility">Medical and Healthcare Facility</option>
-            <option value="School">School</option>
-            <option value="Retail">Retail</option>
-          </select>
-        </div>
-      </div>
+      <div class="estimate-note">Your Client ID is issued once and reused every time you book with us &mdash; it always matches this name on our records.</div>
     </div>
 
-    <div class="card">
-      <h2><span class="num">3</span> Subscription</h2>
-      <label class="choice" style="width:fit-content;">
-        <input type="checkbox" id="recurringToggle"> Sign up for a subscription (recurring cleaning schedule)
-      </label>
-      <div id="recurringOptions" class="hidden" style="margin-top:14px;">
-        <label>How often? (choose one)</label>
-        <div class="choice-row" id="frequencyChoices">
-          <label class="choice"><input type="radio" name="frequency" value="Weekly"> Weekly</label>
-          <label class="choice"><input type="radio" name="frequency" value="Every 2 Weeks"> Every 2 Weeks</label>
-          <label class="choice"><input type="radio" name="frequency" value="Monthly"> Monthly</label>
-          <label class="choice"><input type="radio" name="frequency" value="Quarterly"> Quarterly</label>
-          <label class="choice"><input type="radio" name="frequency" value="Semi-Annual"> Semi-Annual</label>
-          <label class="choice"><input type="radio" name="frequency" value="Annually"> Annually</label>
-        </div>
-        <div class="field" style="margin-top:14px;margin-bottom:0;">
-          <label>Duration (number of months)</label>
-          <input type="number" id="subscriptionDuration" min="1" placeholder="e.g. 6">
-          <div class="estimate-note" style="margin-top:4px;">How many months should this subscription run? Once you book a start date/time below, we'll automatically place the full schedule on the calendar for you.</div>
-        </div>
-      </div>
-    </div>
+    <div id="propertiesContainer"></div>
 
-    <div class="card">
-      <h2><span class="num">4</span> Estimated Price</h2>
-      <div class="estimate-box">
-        <div class="row"><span id="estLabel">Standard Cleaning &times; 0 sq ft</span><span id="estRate">$0.20/sq ft</span></div>
-        <div class="row" id="addonRow" style="display:none;"><span id="addonLabel">Balcony/Lanai add-on</span><span id="addonAmount">$0.00&ndash;$0.00</span></div>
-        <div class="row total"><span>Estimated total per visit</span><span id="estTotal">$0.00</span></div>
-        <div class="estimate-note">Final quote confirmed after walkthrough. Rates per visit, not per month.</div>
-      </div>
-      <table class="rate-table">
-        <tr><th colspan="2">Residential</th></tr>
-        <tr><td>Standard Cleaning</td><td>$0.20 / sq ft</td></tr>
-        <tr><td>Deep Cleaning</td><td>$0.25 / sq ft</td></tr>
-        <tr><td>Balcony / Lanai add-on</td><td>$0.15&ndash;$0.50 / sq ft</td></tr>
-        <tr><td>Move-out / Move-in Cleaning</td><td>$0.30 / sq ft</td></tr>
-        <tr><th colspan="2">Commercial</th></tr>
-        <tr><td>General Office</td><td>$0.25 / sq ft</td></tr>
-        <tr><td>Industrial / Warehouse</td><td>$0.20 / sq ft</td></tr>
-        <tr><td>Medical &amp; Healthcare Facility</td><td>$0.45 / sq ft</td></tr>
-        <tr><td>Retail &amp; Schools</td><td>$0.15 / sq ft</td></tr>
-      </table>
-    </div>
+    <button type="button" class="add-property" id="addPropertyBtnForm">+ Add Another Property</button>
 
-    <button class="primary" id="submitBtn">Generate My Proposal</button>
+    <button class="primary" id="submitBtn">Generate Proposal</button>
     <div class="footer-note">By submitting, you'll see a proposal summary you can review before anything is sent.</div>
   </div>
 
@@ -313,39 +261,22 @@
       </div>
 
       <div id="refIdsBox" style="background:#f7f9fa;border:1px dashed var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;">
-        <b style="color:var(--teal-dark);">Save these reference numbers</b> — you'll need your Order ID to cancel or reschedule.
-        <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-          <div><span style="color:var(--muted);">Client ID</span><br><b id="refClientId"></b></div>
-          <div><span style="color:var(--muted);">Order ID</span><br><b id="refOrderId"></b></div>
-          <div><span style="color:var(--muted);">Transaction ID</span><br><b id="refTransactionId"></b></div>
-        </div>
+        <b style="color:var(--teal-dark);">Save these reference numbers</b> — you'll need your Client ID and each property's Order ID / Transaction ID to cancel or reschedule.
+        <div style="margin-top:6px;">Client ID (shared across all your properties): <b id="refClientId"></b></div>
       </div>
 
-      <div class="summary-line" id="summaryLine"></div>
+      <div id="propertyProposals"></div>
 
-      <table class="price-table" id="priceTable"></table>
+      <div class="grand-total-box"><span class="label">Grand Total (all properties, per visit)</span><span id="grandTotal">$0.00</span></div>
+
+      <div class="disclaimer-box" id="disclaimerBox">
+        <b>Please note</b>
+        For everyone's peace of mind, please safely secure your precious/valuable belongings before our visit. Primo Care Cleaning Services is not liable for any loss or damage to personal items.
+      </div>
 
       <div class="cta-box">
         <b>Ready to get that space sparkling?</b>
-        Reply to confirm your preferred date, or book a quick call below and we'll lock in your first cleaning.
-      </div>
-
-      <h2 style="font-size:15px;color:var(--teal-dark);margin:18px 0 8px;" id="bookingHeading">Book a Schedule</h2>
-      <div class="booking-box">
-        <span class="status-pill ok" id="bookingStatus">Live &mdash; synced to Primo Care's calendar</span>
-        <div style="font-size:13px;color:var(--muted);" id="bookingDesc">Pick a day, find open 30-minute slots, select one, then click Submit Booking to add it to the calendar &mdash; nothing changes until you submit.</div>
-        <div class="booking-row">
-          <div class="field" style="margin-bottom:0;">
-            <label id="bookingDateLabel">Preferred Date</label>
-            <input type="date" id="callDate">
-          </div>
-          <div class="field" style="margin-bottom:0; display:flex; align-items:flex-end;">
-            <button class="secondary" id="findTimesBtn" style="width:100%;">Find Available Times</button>
-          </div>
-        </div>
-        <div id="slotsWrap" style="margin-top:12px;"></div>
-        <button class="primary hidden" id="submitBookingBtn" style="margin-top:10px;">Submit Booking</button>
-        <div id="bookingResult" style="margin-top:10px; font-size:13.5px;"></div>
+        Click Submit Form below to send this proposal for review &mdash; it'll include how to book a schedule for each property.
       </div>
 
       <button class="primary" id="draftBtn" style="margin-top:18px;">Submit Form</button>
@@ -361,6 +292,10 @@
 
 <script>
 (function(){
+  var SQM_TO_SQFT = 10.7639;
+  function toSqFt(size, unit){ return unit === 'sqm' ? size * SQM_TO_SQFT : size; }
+  function unitLabel(unit){ return unit === 'sqm' ? 'sq. m.' : 'sq. ft.'; }
+
   var RATES = {
     residential: {
       "Standard Cleaning": 0.20,
@@ -383,9 +318,25 @@
     "Bedroom": ["Dust furniture, shelves & décor", "Vacuum carpets or mop floors", "Wipe down mirrors & surfaces", "Empty trash bins"],
     "Kitchen": ["Wipe counters, backsplash & cabinet fronts", "Clean exterior of appliances & stovetop", "Sanitize sink", "Sweep & mop floors", "Empty trash & reline bins"],
     "Common Area": ["Dust furniture & surfaces", "Vacuum upholstery, rugs & floors", "Wipe down tables, switches & handles", "Straighten & tidy living spaces"],
+    "Dining Room": ["Dust table, chairs & light fixtures", "Wipe down surfaces", "Sweep & mop floors", "Straighten & tidy"],
+    "Bathroom": ["Scrub & sanitize toilet, tub/shower & sink", "Wipe mirrors & countertops", "Sweep & mop floors", "Empty trash & reline bins"],
+    "Hallway": ["Dust surfaces, ledges & light fixtures", "Vacuum or mop flooring", "Wipe down doors & switches"],
     "Balcony": ["Sweep & wipe down flooring", "Clean railings & surfaces", "Remove cobwebs & debris"],
-    "Lanai": ["Sweep & wipe down flooring", "Clean screens & railings", "Remove cobwebs & debris"]
+    "Lanai": ["Sweep & wipe down flooring", "Clean screens & railings", "Remove cobwebs & debris"],
+    "Garage": ["Sweep floor & clear loose debris", "Wipe down accessible surfaces & shelving", "Tidy visible clutter (heavy-duty/organizing work quoted separately)"]
   };
+  var AREA_LIST = [
+    { value: "Bedroom", label: "Bedroom", qty: true },
+    { value: "Kitchen", label: "Kitchen", qty: true },
+    { value: "Common Area", label: "Common Area", qty: true },
+    { value: "Dining Room", label: "Dining Room", qty: true },
+    { value: "Bathroom", label: "Bathroom", qty: true },
+    { value: "Hallway", label: "Hallway", qty: true },
+    { value: "Balcony", label: "Balcony", qty: true },
+    { value: "Lanai", label: "Lanai", qty: true },
+    { value: "Garage", label: "Garage (Vehicle Capacity)", qty: true },
+    { value: "Others", label: "Others (please specify)", qty: false, text: true }
+  ];
   var COM_DESC = {
     "General Office": "Full office upkeep covering desks, common areas, restrooms, and break rooms, plus floor care, trash removal, and high-touch point sanitizing to keep your workspace client-ready.",
     "Industrial/Warehouse": "Heavy-duty floor care, high-touch surface sanitizing, break room & restroom servicing, and debris/trash removal suited to industrial environments.",
@@ -395,86 +346,214 @@
   };
   var COM_CHECKLIST = ["Floors vacuumed, swept & mopped", "Restrooms cleaned & sanitized", "Trash removal & reline bins", "High-touch surfaces disinfected (door handles, switches, counters)", "Common/break areas tidied & wiped down"];
 
-  function buildServiceDetails(){
+  function buildServiceDetails(p){
     var descText = '', items = [];
-    if(state.propertyType === 'residential'){
-      descText = RES_SERVICE_DESC[state.service] || '';
-      var areaList = (state.areas && state.areas.length) ? state.areas : ['Common Area'];
+    if(p.propertyType === 'residential'){
+      descText = RES_SERVICE_DESC[p.service] || '';
+      var areaList = (p.areas && p.areas.length) ? p.areas : ['Common Area'];
       areaList.forEach(function(a){
-        var qty = (state.areaQuantities && state.areaQuantities[a]) || 1;
+        if(a === 'Others') return;
+        var qty = (p.areaQuantities && p.areaQuantities[a]) || 1;
         var label = a + (qty > 1 ? ' (x' + qty + ')' : '');
         (AREA_CHECKLIST[a] || []).forEach(function(i){ items.push(label + ': ' + i); });
       });
+      if(p.othersSpecify) items.push('Others: ' + p.othersSpecify);
     } else {
-      descText = COM_DESC[state.service] || '';
+      descText = COM_DESC[p.service] || '';
       items = COM_CHECKLIST.slice();
     }
     return { descText: descText, items: items };
   }
 
-  var propertyType = "residential";
-  var state = {};
+  var state = { client: {}, properties: [] };
+  var propertyCount = 0;
 
-  var btnRes = document.getElementById('btnResidential');
-  var btnCom = document.getElementById('btnCommercial');
-  var resFields = document.getElementById('residentialFields');
-  var comFields = document.getElementById('commercialFields');
+  function $(id){ return document.getElementById(id); }
 
-  function setType(t){
-    propertyType = t;
-    btnRes.classList.toggle('active', t==='residential');
-    btnCom.classList.toggle('active', t==='commercial');
-    resFields.classList.toggle('hidden', t!=='residential');
-    comFields.classList.toggle('hidden', t!=='commercial');
-    updateEstimate();
-  }
-  btnRes.addEventListener('click', function(){ setType('residential'); });
-  btnCom.addEventListener('click', function(){ setType('commercial'); });
-
-  var recurringToggle = document.getElementById('recurringToggle');
-  var recurringOptions = document.getElementById('recurringOptions');
-  recurringToggle.addEventListener('change', function(){
-    recurringOptions.classList.toggle('hidden', !recurringToggle.checked);
-    if(!recurringToggle.checked){
-      document.querySelectorAll('#frequencyChoices input:checked').forEach(function(c){
-        c.checked = false;
-        c.closest('.choice').classList.remove('active');
-      });
-    }
-  });
-
-  // choice pill active styling (scoped to checkbox/radio only, so the area quantity
-  // number inputs added alongside them don't get treated as toggle controls)
-  document.querySelectorAll('.choice input[type=checkbox], .choice input[type=radio]').forEach(function(inp){
-    inp.addEventListener('change', function(){
-      inp.closest('.choice').classList.toggle('active', inp.checked);
-      if(inp.type === 'radio'){
-        document.querySelectorAll('input[name="'+inp.name+'"]').forEach(function(r){
-          r.closest('.choice').classList.toggle('active', r.checked);
-        });
+  function areaChoicesHtml(idx){
+    var out = '';
+    AREA_LIST.forEach(function(a){
+      out += '<label class="choice"><input type="checkbox" value="' + a.value + '" data-idx="' + idx + '"> ' + a.label;
+      if(a.qty){
+        out += ' <input type="number" class="area-qty hidden" data-area="' + a.value + '" data-idx="' + idx + '" min="1" max="20" value="1">';
       }
-      // Show/hide this area's quantity input alongside its checkbox.
-      if(inp.closest('#areaChoices')){
-        var qtyInput = inp.closest('.choice').querySelector('.area-qty');
-        if(qtyInput) qtyInput.classList.toggle('hidden', !inp.checked);
+      if(a.text){
+        out += ' <input type="text" class="others-specify hidden" id="othersSpecify_' + idx + '" placeholder="describe area">';
       }
-      updateEstimate();
+      out += '</label>';
     });
-  });
-
-  document.getElementById('sqft').addEventListener('input', updateEstimate);
-  document.getElementById('facilityType').addEventListener('change', updateEstimate);
-  document.getElementById('balconySqft').addEventListener('input', updateEstimate);
-
-  var ADDON_MIN = 0.15, ADDON_MAX = 0.50;
-
-  function getSelectedAreas(){
-    return Array.prototype.slice.call(document.querySelectorAll('#areaChoices input:checked')).map(function(c){return c.value;});
+    return out;
   }
-  // Reads the quantity number input for each checked area (defaults to 1 if empty/invalid).
-  function getAreaQuantities(){
+
+  function propertyCardHtml(idx){
+    var n = idx + 1;
+    var removeBtn = idx > 0
+      ? '<span class="remove-property" id="removeProperty_' + idx + '" title="Remove this property" style="margin-left:auto;color:#991b1b;font-size:12.5px;font-weight:600;cursor:pointer;">&#10005; Remove</span>'
+      : '';
+    return ''
+      + '<div class="card property-card" data-idx="' + idx + '">'
+      + '<h2><span class="num">' + n + '</span> Property ' + n + removeBtn + '</h2>'
+      + '<div class="toggle-group">'
+      + '<div class="toggle-btn active" id="btnResidential_' + idx + '" data-idx="' + idx + '" data-type="residential">Residential</div>'
+      + '<div class="toggle-btn" id="btnCommercial_' + idx + '" data-idx="' + idx + '" data-type="commercial">Commercial</div>'
+      + '</div>'
+
+      + '<div class="field" style="margin-top:14px;">'
+      + '<label>Address <span class="req">*</span></label>'
+      + '<input type="text" id="address_' + idx + '" placeholder="123 Main St, City, State">'
+      + '</div>'
+      + '<div class="grid2">'
+      + '<div class="field">'
+      + '<label>Zip Code <span class="req">*</span></label>'
+      + '<input type="text" id="zip_' + idx + '" placeholder="94102">'
+      + '</div>'
+      + '<div class="field">'
+      + '<label>Property Size (floor area) <span class="req">*</span></label>'
+      + '<div style="display:flex; gap:6px;">'
+      + '<input type="number" id="sqft_' + idx + '" min="1" placeholder="1500" style="flex:1;">'
+      + '<select id="sizeUnit_' + idx + '" style="flex:0 0 100px;" required>'
+      + '<option value="">Unit</option>'
+      + '<option value="sqft">sq. ft.</option>'
+      + '<option value="sqm">sq. m.</option>'
+      + '</select>'
+      + '</div>'
+      + '</div>'
+      + '</div>'
+
+      + '<div id="residentialFields_' + idx + '">'
+      + '<div class="field" style="margin-top:8px;">'
+      + '<label>Areas to Clean (select all that apply, and how many)</label>'
+      + '<div class="choice-row" id="areaChoices_' + idx + '">' + areaChoicesHtml(idx) + '</div>'
+      + '</div>'
+      + '<div class="field hidden" id="balconySizeField_' + idx + '">'
+      + '<label id="balconySizeLabel_' + idx + '">Balcony Size (sq. ft.)</label>'
+      + '<input type="number" id="balconySize_' + idx + '" min="0" placeholder="e.g. 60">'
+      + '<div class="estimate-note" id="balconySizeNote_' + idx + '" style="margin-top:4px;">Used to calculate the balcony add-on ($0.15/sq ft) separately from the main property size.</div>'
+      + '</div>'
+      + '<div class="field hidden" id="lanaiSizeField_' + idx + '">'
+      + '<label id="lanaiSizeLabel_' + idx + '">Lanai Size (sq. ft.)</label>'
+      + '<input type="number" id="lanaiSize_' + idx + '" min="0" placeholder="e.g. 60">'
+      + '<div class="estimate-note" id="lanaiSizeNote_' + idx + '" style="margin-top:4px;">Used to calculate the lanai add-on ($0.50/sq ft) separately from the main property size.</div>'
+      + '</div>'
+      + '<div class="field">'
+      + '<label>Service Offered</label>'
+      + '<div class="choice-row">'
+      + '<label class="choice active"><input type="radio" name="resService_' + idx + '" value="Standard Cleaning" checked> Standard Cleaning</label>'
+      + '<label class="choice"><input type="radio" name="resService_' + idx + '" value="Deep Cleaning"> Deep Cleaning</label>'
+      + '</div>'
+      + '<div class="estimate-note" style="margin-top:6px;">Standard: routine upkeep (dusting, vacuuming, surface wiping). Deep: intensive work (baseboards, heavy grime, hard-to-reach areas).</div>'
+      + '</div>'
+      + '</div>'
+
+      + '<div id="commercialFields_' + idx + '" class="hidden">'
+      + '<div class="field" style="margin-top:8px;">'
+      + '<label>Facility Type</label>'
+      + '<select id="facilityType_' + idx + '">'
+      + '<option value="General Office">General Office</option>'
+      + '<option value="Industrial/Warehouse">Industrial / Warehouse</option>'
+      + '<option value="Medical and Healthcare Facility">Medical and Healthcare Facility</option>'
+      + '<option value="School">School</option>'
+      + '<option value="Retail">Retail</option>'
+      + '</select>'
+      + '</div>'
+      + '</div>'
+
+      + '<div class="field" style="margin-top:16px;margin-bottom:0;">'
+      + '<label class="choice" style="width:fit-content;">'
+      + '<input type="checkbox" id="recurringToggle_' + idx + '"> Sign up for a subscription (recurring cleaning schedule)'
+      + '</label>'
+      + '<div id="recurringOptions_' + idx + '" class="hidden" style="margin-top:14px;">'
+      + '<label>How often? (choose one)</label>'
+      + '<div class="choice-row">'
+      + ['Weekly','Every 2 Weeks','Monthly','Quarterly','Semi-Annual','Annually'].map(function(f){
+          return '<label class="choice"><input type="radio" name="frequency_' + idx + '" value="' + f + '"> ' + f + '</label>';
+        }).join('')
+      + '</div>'
+      + '<div class="field" style="margin-top:14px;margin-bottom:0;">'
+      + '<label>Duration (number of months)</label>'
+      + '<input type="number" id="subscriptionDuration_' + idx + '" min="1" placeholder="e.g. 6">'
+      + '</div>'
+      + '</div>'
+      + '</div>'
+
+      + '</div>';
+  }
+
+  var RATE_CARD_ROWS = {
+    residential: [
+      { label: 'Standard Cleaning', rate: 0.20 },
+      { label: 'Deep Cleaning', rate: 0.25 },
+      { label: 'Balcony add-on', rate: 0.15 },
+      { label: 'Lanai add-on', rate: 0.50 },
+      { label: 'Move-out / Move-in Cleaning', rate: 0.30 }
+    ],
+    commercial: [
+      { label: 'General Office', rate: 0.25 },
+      { label: 'Industrial / Warehouse', rate: 0.20 },
+      { label: 'Medical &amp; Healthcare Facility', rate: 0.45 },
+      { label: 'Retail &amp; Schools', rate: 0.15 }
+    ]
+  };
+
+  // Converts a per-sq-ft rate into a per-sq-m rate (1 sq m = 10.7639 sq ft, so the cost of one
+  // sq m of area is the sq-ft rate multiplied by that factor — not divided).
+  function rateForUnit(rate, unit){
+    return unit === 'sqm' ? rate * SQM_TO_SQFT : rate;
+  }
+
+  // The actual rate used for pricing math, rounded to the cent — identical to what the Rate
+  // Card displays for that unit. Using this (instead of the raw unrounded conversion) means a
+  // sq. m. property is priced and displayed entirely in sq. m. — size × this rate = the total,
+  // with no sq. ft. equivalent involved anywhere in the math or the breakdown. A sq. ft. property
+  // just gets its rate back unchanged (already exact to the cent).
+  function nativeRate(rate, unit){
+    return unit === 'sqm' ? Math.round(rate * SQM_TO_SQFT * 100) / 100 : rate;
+  }
+
+  function rateTableBodyHtml(unit){
+    var unitLbl = unit === 'sqm' ? 'sq m' : 'sq ft';
+    var html = '<tr><th colspan="2">Residential</th></tr>';
+    RATE_CARD_ROWS.residential.forEach(function(r){
+      if(r.rateMin !== undefined){
+        html += '<tr><td>' + r.label + '</td><td>' + fmt(nativeRate(r.rateMin, unit)) + '&ndash;' + fmt(nativeRate(r.rateMax, unit)) + ' / ' + unitLbl + '</td></tr>';
+      } else {
+        html += '<tr><td>' + r.label + '</td><td>' + fmt(nativeRate(r.rate, unit)) + ' / ' + unitLbl + '</td></tr>';
+      }
+    });
+    html += '<tr><th colspan="2">Commercial</th></tr>';
+    RATE_CARD_ROWS.commercial.forEach(function(r){
+      html += '<tr><td>' + r.label + '</td><td>' + fmt(nativeRate(r.rate, unit)) + ' / ' + unitLbl + '</td></tr>';
+    });
+    return html;
+  }
+
+  function rateTableHtml(){
+    return '<div class="card" id="rateCardWrap"><h2><span class="num">$</span> Rate Card</h2>'
+      + '<table class="rate-table" id="rateTableBody">' + rateTableBodyHtml('sqft') + '</table>'
+      + '<div class="estimate-note" id="rateTableNote">All rates quoted per sq. ft. Pick sq. m. as a property\'s size unit above and these convert automatically (1 sq. m. = 10.7639 sq. ft.).</div></div>';
+  }
+
+  // Driven by whichever property's size-unit dropdown the client last changed — the Rate Card
+  // has no controls of its own, it just mirrors that selection.
+  function setRateCardUnit(unit){
+    var body = document.getElementById('rateTableBody');
+    var note = document.getElementById('rateTableNote');
+    if(!body || !note) return;
+    body.innerHTML = rateTableBodyHtml(unit);
+    note.textContent = unit === 'sqm'
+      ? 'Rates shown per sq. m., converted from our base sq. ft. rates (1 sq. m. = 10.7639 sq. ft.).'
+      : 'All rates quoted per sq. ft. Pick sq. m. as a property\'s size unit above and these convert automatically (1 sq. m. = 10.7639 sq. ft.).';
+  }
+
+  var BALCONY_RATE = 0.15, LANAI_RATE = 0.50;
+
+  function getSelectedAreas(idx){
+    return Array.prototype.slice.call(document.querySelectorAll('#areaChoices_' + idx + ' input[type=checkbox]:checked')).map(function(c){return c.value;});
+  }
+  function getAreaQuantities(idx){
     var out = {};
-    document.querySelectorAll('#areaChoices input[type=checkbox]:checked').forEach(function(c){
+    document.querySelectorAll('#areaChoices_' + idx + ' input[type=checkbox]:checked').forEach(function(c){
+      if(c.value === 'Others') return;
       var qtyInput = c.closest('.choice').querySelector('.area-qty');
       var qty = qtyInput ? parseInt(qtyInput.value, 10) : 1;
       out[c.value] = (qty && qty > 0) ? qty : 1;
@@ -483,423 +562,560 @@
   }
   function formatAreasWithQty(areas, quantities){
     return areas.map(function(a){
+      if(a === 'Others') return 'Others';
       var q = (quantities && quantities[a]) || 1;
       return q > 1 ? (a + ' x' + q) : a;
     }).join(', ');
   }
-  function getResService(){
-    var r = document.querySelector('input[name="resService"]:checked');
+  function getResService(idx){
+    var r = document.querySelector('input[name="resService_' + idx + '"]:checked');
     return r ? r.value : "Standard Cleaning";
   }
-  function hasBalconyOrLanai(areas){
-    return areas.indexOf('Balcony') > -1 || areas.indexOf('Lanai') > -1;
+  function hasBalcony(areas){
+    return areas.indexOf('Balcony') > -1;
   }
-  function getBalconySqft(){
-    return parseFloat(document.getElementById('balconySqft').value) || 0;
+  function hasLanai(areas){
+    return areas.indexOf('Lanai') > -1;
   }
-  function getSelectedFrequencies(){
-    if(!document.getElementById('recurringToggle').checked) return [];
-    return Array.prototype.slice.call(document.querySelectorAll('#frequencyChoices input:checked')).map(function(c){return c.value;});
+  function getBalconySize(idx){
+    return parseFloat($('balconySize_' + idx).value) || 0;
   }
-  function getSubscriptionDuration(){
-    if(!document.getElementById('recurringToggle').checked) return 0;
-    return parseInt(document.getElementById('subscriptionDuration').value, 10) || 0;
+  function getLanaiSize(idx){
+    return parseFloat($('lanaiSize_' + idx).value) || 0;
+  }
+  function getSelectedFrequencies(idx){
+    if(!$('recurringToggle_' + idx).checked) return [];
+    return Array.prototype.slice.call(document.querySelectorAll('input[name="frequency_' + idx + '"]:checked')).map(function(c){return c.value;});
+  }
+  function getSubscriptionDuration(idx){
+    if(!$('recurringToggle_' + idx).checked) return 0;
+    return parseInt($('subscriptionDuration_' + idx).value, 10) || 0;
   }
 
   function fmt(n){ return '$' + n.toFixed(2); }
 
-  function updateEstimate(){
-    var sqft = parseFloat(document.getElementById('sqft').value) || 0;
-    var estLabel = document.getElementById('estLabel');
-    var estRate = document.getElementById('estRate');
-    var estTotal = document.getElementById('estTotal');
-    var addonRow = document.getElementById('addonRow');
-    var addonLabel = document.getElementById('addonLabel');
-    var addonAmount = document.getElementById('addonAmount');
-    var balconyField = document.getElementById('balconySqftField');
-
-    var rate, label, total, showAddon = false, addonMinTotal = 0, addonMaxTotal = 0, balconySqft = 0;
-
-    if(propertyType === 'residential'){
-      var service = getResService();
-      rate = RATES.residential[service];
-      label = service + ' × ' + sqft + ' sq ft';
-      total = rate * sqft;
-      var areas = getSelectedAreas();
-      showAddon = hasBalconyOrLanai(areas);
-      balconyField.classList.toggle('hidden', !showAddon);
-      if(showAddon){
-        balconySqft = getBalconySqft();
-        addonMinTotal = balconySqft * ADDON_MIN;
-        addonMaxTotal = balconySqft * ADDON_MAX;
-        total += (addonMinTotal + addonMaxTotal) / 2;
-      }
-    } else {
-      var facility = document.getElementById('facilityType').value;
-      rate = RATES.commercial[facility];
-      label = facility + ' × ' + sqft + ' sq ft';
-      total = rate * sqft;
-      balconyField.classList.add('hidden');
+  // Keeps the Balcony/Lanai Size field's label + helper note in whatever unit the property's
+  // own size dropdown is set to, so a client working entirely in sq. m. isn't silently asked
+  // to enter this one field in sq. ft. — that mismatch was causing the add-on to be priced
+  // against the wrong area.
+  function updateAddonUnitLabels(idx){
+    var unit = $('sizeUnit_' + idx).value || 'sqft';
+    var unitTxt = unit === 'sqm' ? 'sq. m.' : 'sq. ft.';
+    var unitLbl = unit === 'sqm' ? 'sq m' : 'sq ft';
+    var bLabel = $('balconySizeLabel_' + idx), bNote = $('balconySizeNote_' + idx);
+    var lLabel = $('lanaiSizeLabel_' + idx), lNote = $('lanaiSizeNote_' + idx);
+    if(bLabel && bNote){
+      bLabel.textContent = 'Balcony Size (' + unitTxt + ')';
+      bNote.innerHTML = 'Used to calculate the balcony add-on (' + fmt(nativeRate(BALCONY_RATE, unit)) + '/' + unitLbl + ') separately from the main property size.';
     }
-
-    estLabel.textContent = label;
-    estRate.textContent = fmt(rate) + '/sq ft';
-    estTotal.textContent = fmt(total);
-    addonRow.style.display = showAddon ? 'flex' : 'none';
-    if(showAddon){
-      addonLabel.textContent = 'Balcony/Lanai add-on (' + balconySqft + ' sq ft)';
-      addonAmount.textContent = fmt(addonMinTotal) + '–' + fmt(addonMaxTotal);
+    if(lLabel && lNote){
+      lLabel.textContent = 'Lanai Size (' + unitTxt + ')';
+      lNote.innerHTML = 'Used to calculate the lanai add-on (' + fmt(nativeRate(LANAI_RATE, unit)) + '/' + unitLbl + ') separately from the main property size.';
     }
   }
 
-  updateEstimate();
+  // Pure calculation for one property — also toggles that property's balcony/lanai field
+  // visibility as a side effect. Used to drive the combined Estimated Price card. Computed and
+  // displayed entirely in whichever unit the client chose — sq. ft. properties use the Rate
+  // Card's sq. ft. rate directly; sq. m. properties use the Rate Card's sq. m. rate directly
+  // (nativeRate). No sq. ft./sq. m. conversion ever mixes into the math or the breakdown.
+  function computePropertyEstimate(idx){
+    var sizeVal = parseFloat($('sqft_' + idx).value) || 0;
+    var unit = $('sizeUnit_' + idx).value || 'sqft';
+    var unitLbl = unit === 'sqm' ? 'sq m' : 'sq ft';
+    var balconyField = $('balconySizeField_' + idx);
+    var lanaiField = $('lanaiSizeField_' + idx);
+    var sizeDisplay = sizeVal + ' ' + unitLabel(unit);
 
-  // ---- Submit: build proposal ----
-  document.getElementById('submitBtn').addEventListener('click', function(){
-    var btn = this;
-    var firstName = document.getElementById('firstName').value.trim();
-    var lastName = document.getElementById('lastName').value.trim();
-    var address = document.getElementById('address').value.trim();
-    var sqft = parseFloat(document.getElementById('sqft').value) || 0;
-    var phone = document.getElementById('phone').value.trim();
-    var email = document.getElementById('email').value.trim();
+    var rate, effRate, label, baseTotal, total, showAddon = false, addonTotal = 0, addonRows = [];
 
-    if(!firstName || !lastName || !address || !sqft || !phone || !email){
-      alert('Please fill in all required fields (name, address, size, phone, email) before generating a proposal.');
-      return;
+    if(propertyTypes[idx] === 'residential'){
+      var service = getResService(idx);
+      rate = RATES.residential[service];
+      effRate = nativeRate(rate, unit);
+      label = service + ' — ' + sizeDisplay + ' × ' + fmt(effRate) + '/' + unitLbl;
+      baseTotal = effRate * sizeVal;
+      total = baseTotal;
+      var areas = getSelectedAreas(idx);
+      var showBalcony = hasBalcony(areas);
+      var showLanai = hasLanai(areas);
+      if(balconyField) balconyField.classList.toggle('hidden', !showBalcony);
+      if(lanaiField) lanaiField.classList.toggle('hidden', !showLanai);
+      showAddon = showBalcony || showLanai;
+      if(showBalcony){
+        var balconySize = getBalconySize(idx);
+        var effBalconyRate = nativeRate(BALCONY_RATE, unit);
+        var balconyAddon = effBalconyRate * balconySize;
+        addonTotal += balconyAddon;
+        addonRows.push({ label: 'Balcony add-on', display: balconySize + ' ' + unitLabel(unit) + ' × ' + fmt(effBalconyRate) + '/' + unitLbl, amount: balconyAddon });
+      }
+      if(showLanai){
+        var lanaiSize = getLanaiSize(idx);
+        var effLanaiRate = nativeRate(LANAI_RATE, unit);
+        var lanaiAddon = effLanaiRate * lanaiSize;
+        addonTotal += lanaiAddon;
+        addonRows.push({ label: 'Lanai add-on', display: lanaiSize + ' ' + unitLabel(unit) + ' × ' + fmt(effLanaiRate) + '/' + unitLbl, amount: lanaiAddon });
+      }
+      total += addonTotal;
+    } else {
+      var facility = $('facilityType_' + idx).value;
+      rate = RATES.commercial[facility];
+      effRate = nativeRate(rate, unit);
+      label = facility + ' — ' + sizeDisplay + ' × ' + fmt(effRate) + '/' + unitLbl;
+      baseTotal = effRate * sizeVal;
+      total = baseTotal;
+      if(balconyField) balconyField.classList.add('hidden');
+      if(lanaiField) lanaiField.classList.add('hidden');
     }
-    if(!/^\S+@\S+\.\S+$/.test(email)){
-      alert('Please enter a valid email address.');
-      return;
+
+    return { idx: idx, unit: unit, rate: effRate, label: label, baseTotal: baseTotal, total: total, showAddon: showAddon, addonTotal: addonTotal, addonRows: addonRows };
+  }
+
+  // Rebuilds the single combined "Estimated Price" card (below the Rate Card, above Generate
+  // Proposal) from every property currently on the form.
+  function refreshCombinedEstimate(){
+    var rowsEl = document.getElementById('combinedEstimateRows');
+    var totalEl = document.getElementById('combinedEstimateTotal');
+    if(!rowsEl || !totalEl) return;
+
+    var rowsHtml = '';
+    var grand = 0;
+    document.querySelectorAll('.property-card').forEach(function(card){
+      var idx = parseInt(card.getAttribute('data-idx'), 10);
+      var est = computePropertyEstimate(idx);
+      grand += est.total;
+      rowsHtml += '<div class="row"><span>Property ' + (idx+1) + ': ' + est.label + '</span><span>' + fmt(est.baseTotal) + '</span></div>';
+      est.addonRows.forEach(function(row){
+        rowsHtml += '<div class="row" style="font-size:11.5px;color:var(--muted);padding-left:12px;"><span>' + row.label + ' — ' + row.display + '</span><span>' + fmt(row.amount) + '</span></div>';
+      });
+    });
+    rowsEl.innerHTML = rowsHtml;
+    totalEl.textContent = fmt(grand);
+  }
+
+  function updateEstimate(idx){
+    updateAddonUnitLabels(idx);
+    refreshCombinedEstimate();
+  }
+
+  var propertyTypes = {};
+
+  function wireProperty(idx){
+    propertyTypes[idx] = 'residential';
+    var removeBtn = $('removeProperty_' + idx);
+    if(removeBtn){
+      removeBtn.addEventListener('click', function(){ removeProperty(idx); });
+    }
+    var btnRes = $('btnResidential_' + idx);
+    var btnCom = $('btnCommercial_' + idx);
+    var resFields = $('residentialFields_' + idx);
+    var comFields = $('commercialFields_' + idx);
+
+    function setType(t){
+      propertyTypes[idx] = t;
+      btnRes.classList.toggle('active', t==='residential');
+      btnCom.classList.toggle('active', t==='commercial');
+      resFields.classList.toggle('hidden', t!=='residential');
+      comFields.classList.toggle('hidden', t!=='commercial');
+      updateEstimate(idx);
+    }
+    btnRes.addEventListener('click', function(){ setType('residential'); });
+    btnCom.addEventListener('click', function(){ setType('commercial'); });
+
+    var recurringToggle = $('recurringToggle_' + idx);
+    var recurringOptions = $('recurringOptions_' + idx);
+    recurringToggle.addEventListener('change', function(){
+      recurringOptions.classList.toggle('hidden', !recurringToggle.checked);
+      if(!recurringToggle.checked){
+        document.querySelectorAll('input[name="frequency_' + idx + '"]:checked').forEach(function(c){
+          c.checked = false;
+          c.closest('.choice').classList.remove('active');
+        });
+      }
+    });
+
+    var card = document.querySelector('.property-card[data-idx="' + idx + '"]');
+    card.querySelectorAll('.choice input[type=checkbox], .choice input[type=radio]').forEach(function(inp){
+      inp.addEventListener('change', function(){
+        inp.closest('.choice').classList.toggle('active', inp.checked);
+        if(inp.type === 'radio'){
+          document.querySelectorAll('input[name="'+inp.name+'"]').forEach(function(r){
+            r.closest('.choice').classList.toggle('active', r.checked);
+          });
+        }
+        if(inp.closest('#areaChoices_' + idx)){
+          var choiceEl = inp.closest('.choice');
+          var qtyInput = choiceEl.querySelector('.area-qty');
+          if(qtyInput) qtyInput.classList.toggle('hidden', !inp.checked);
+          var textInput = choiceEl.querySelector('.others-specify');
+          if(textInput) textInput.classList.toggle('hidden', !inp.checked);
+        }
+        updateEstimate(idx);
+      });
+    });
+
+    $('sqft_' + idx).addEventListener('input', function(){ updateEstimate(idx); });
+    $('sizeUnit_' + idx).addEventListener('change', function(){
+      updateEstimate(idx);
+      if(this.value) setRateCardUnit(this.value);
+    });
+    $('facilityType_' + idx).addEventListener('change', function(){ updateEstimate(idx); });
+    $('balconySize_' + idx).addEventListener('input', function(){ updateEstimate(idx); });
+    $('lanaiSize_' + idx).addEventListener('input', function(){ updateEstimate(idx); });
+
+    updateEstimate(idx);
+  }
+
+  function addProperty(){
+    var idx = propertyCount++;
+    $('propertiesContainer').insertAdjacentHTML('beforeend', propertyCardHtml(idx));
+    wireProperty(idx);
+    return idx;
+  }
+
+  // Removes a not-yet-locked property card from the form — lets a client undo an accidental
+  // "+ Add Another Property" click. The Remove control is only ever shown on cards that
+  // haven't been submitted yet (see propertyCardHtml/lockPropertyCard), so there's never
+  // anything in state.properties, Airtable, or the calendar to undo here.
+  function removeProperty(idx){
+    var card = document.querySelector('.property-card[data-idx="' + idx + '"]');
+    if(card && card.getAttribute('data-locked')) return; // safety guard — shouldn't be reachable
+    if(card) card.remove();
+    delete propertyTypes[idx];
+    refreshCombinedEstimate();
+  }
+
+  function combinedEstimateHtml(){
+    return '<div class="card" id="combinedEstimateCard"><h2><span class="num">$</span> Estimated Price</h2>'
+      + '<div class="estimate-box">'
+      + '<div id="combinedEstimateRows"></div>'
+      + '<div class="row total"><span>Estimated total per visit (all properties)</span><span id="combinedEstimateTotal">$0.00</span></div>'
+      + '<div class="estimate-note">Each line shows size × the Rate Card price for that service. Final quote confirmed after walkthrough. Rates per visit, not per month. Sq. m. entries are converted to sq. ft. for pricing.</div>'
+      + '</div></div>';
+  }
+
+  addProperty();
+  $('propertiesContainer').insertAdjacentHTML('afterend', rateTableHtml());
+  $('rateCardWrap').insertAdjacentHTML('afterend', combinedEstimateHtml());
+  refreshCombinedEstimate();
+
+  // Locks the shared Client Information fields once the first property has been submitted, so
+  // a later "+ Add Another Property" round trip can't silently change the name a Client ID is
+  // tied to.
+  function lockClientInfo(){
+    ['prefix','firstName','lastName','suffix','phone','email'].forEach(function(id){
+      var el = $(id);
+      if(el) el.disabled = true;
+    });
+  }
+
+  // Locks (and badges) a single property card once it's been prepared/booked, so it can't be
+  // silently edited afterward — that edit would never be re-synced with the calendar event or
+  // Airtable record already created for it on our backend.
+  function lockPropertyCard(idx){
+    var card = document.querySelector('.property-card[data-idx="' + idx + '"]');
+    if(!card || card.getAttribute('data-locked')) return;
+    card.setAttribute('data-locked', '1');
+    card.querySelectorAll('input, select').forEach(function(el){ el.disabled = true; });
+    card.querySelectorAll('.toggle-btn').forEach(function(el){ el.style.pointerEvents = 'none'; el.style.opacity = '0.6'; });
+    var removeBtn = card.querySelector('.remove-property');
+    if(removeBtn) removeBtn.style.display = 'none';
+    var h2 = card.querySelector('h2');
+    if(h2) h2.insertAdjacentHTML('beforeend', ' <span style="font-size:11px;font-weight:700;color:var(--green);margin-left:6px;">&#10003; Locked in</span>');
+  }
+
+  // Locks (and badges) any property card already present in state.properties — used as a
+  // defensive re-sync when returning to the form via "+ Add Another Property" (each card is
+  // normally already locked immediately once it's included in a generated proposal).
+  function lockProcessedProperties(){
+    state.properties.forEach(function(p){ lockPropertyCard(p.idx); });
+  }
+
+  function getPropertyByIdx(idx){
+    for(var i=0;i<state.properties.length;i++){
+      if(state.properties[i].idx === idx) return state.properties[i];
+    }
+    return null;
+  }
+
+  // Reads and validates one property card's fields (mirrors what used to run for every card at
+  // final submit) and returns a fresh property object, or null (after alerting) if something
+  // required is missing. Does not touch state — callers decide when/whether to commit it.
+  function buildPropertyFromForm(idx){
+    var address = $('address_' + idx).value.trim();
+    var zip = $('zip_' + idx).value.trim();
+    var sizeVal = parseFloat($('sqft_' + idx).value) || 0;
+    var sizeUnit = $('sizeUnit_' + idx).value;
+
+    if(!address || !zip || !sizeVal || !sizeUnit){
+      alert('Property ' + (idx+1) + ': please fill in address, zip code, property size, and choose a size unit (sq. ft. or sq. m.) before scheduling.');
+      return null;
     }
 
-    var areas = [], service = '', rate = 0, total = 0, addonNote = '';
-    var balconySqft = 0, addonMin = 0, addonMax = 0, hasAddon = false, areaQuantities = {};
+    var propertyType = propertyTypes[idx];
+    var areas = [], service = '', rate = 0, total = 0, addonNote = '', othersSpecify = '';
+    var balconySqft = 0, balconySqftEquiv = 0, lanaiSqft = 0, lanaiSqftEquiv = 0, addonTotal = 0, hasAddon = false, areaQuantities = {};
+    // Priced entirely in whichever unit was chosen — nativeRate() gives the exact Rate Card
+    // rate for that unit, so size × rate = total with no sq. ft./sq. m. mixing.
+    var unitLbl = sizeUnit === 'sqm' ? 'sq m' : 'sq ft';
+    // Kept only for Airtable's fixed sq-ft-named field and any legacy display — not used in pricing.
+    var sqftEquiv = toSqFt(sizeVal, sizeUnit);
 
     if(propertyType === 'residential'){
-      areas = getSelectedAreas();
-      areaQuantities = getAreaQuantities();
-      service = getResService();
-      rate = RATES.residential[service];
-      total = rate * sqft;
-      hasAddon = hasBalconyOrLanai(areas);
+      areas = getSelectedAreas(idx);
+      areaQuantities = getAreaQuantities(idx);
+      if(areas.indexOf('Others') > -1){
+        othersSpecify = ($('othersSpecify_' + idx).value || '').trim();
+      }
+      service = getResService(idx);
+      rate = nativeRate(RATES.residential[service], sizeUnit);
+      total = rate * sizeVal;
+      var addonNotes = [];
+      if(hasBalcony(areas)){
+        balconySqft = getBalconySize(idx);
+        balconySqftEquiv = toSqFt(balconySqft, sizeUnit);
+        var effBalconyRate = nativeRate(BALCONY_RATE, sizeUnit);
+        var balconyAddon = effBalconyRate * balconySqft;
+        addonTotal += balconyAddon;
+        addonNotes.push('Balcony: ' + balconySqft + ' ' + unitLabel(sizeUnit) + ' × ' + fmt(effBalconyRate) + '/' + unitLbl + ' = ' + fmt(balconyAddon));
+      }
+      if(hasLanai(areas)){
+        lanaiSqft = getLanaiSize(idx);
+        lanaiSqftEquiv = toSqFt(lanaiSqft, sizeUnit);
+        var effLanaiRate = nativeRate(LANAI_RATE, sizeUnit);
+        var lanaiAddon = effLanaiRate * lanaiSqft;
+        addonTotal += lanaiAddon;
+        addonNotes.push('Lanai: ' + lanaiSqft + ' ' + unitLabel(sizeUnit) + ' × ' + fmt(effLanaiRate) + '/' + unitLbl + ' = ' + fmt(lanaiAddon));
+      }
+      hasAddon = addonNotes.length > 0;
       if(hasAddon){
-        balconySqft = getBalconySqft();
-        addonMin = balconySqft * ADDON_MIN;
-        addonMax = balconySqft * ADDON_MAX;
-        total += (addonMin + addonMax) / 2;
-        addonNote = 'Balcony/Lanai add-on: ' + balconySqft + ' sq ft × $0.15–$0.50/sq ft = ' + fmt(addonMin) + '–' + fmt(addonMax) + ' (final rate confirmed at walkthrough).';
+        total += addonTotal;
+        addonNote = addonNotes.join('; ') + ' (final rate confirmed at walkthrough).';
       }
     } else {
-      var facility = document.getElementById('facilityType').value;
+      var facility = $('facilityType_' + idx).value;
       service = facility;
-      rate = RATES.commercial[facility];
-      total = rate * sqft;
+      rate = nativeRate(RATES.commercial[facility], sizeUnit);
+      total = rate * sizeVal;
     }
 
-    var frequencies = getSelectedFrequencies();
-    var subscriptionDuration = getSubscriptionDuration();
-
+    var frequencies = getSelectedFrequencies(idx);
+    var subscriptionDuration = getSubscriptionDuration(idx);
     if(frequencies.length && !subscriptionDuration){
-      alert('Please enter a subscription duration (number of months).');
-      return;
+      alert('Property ' + (idx+1) + ': please enter a subscription duration (number of months) before scheduling.');
+      return null;
     }
 
-    state = { firstName: firstName, lastName: lastName, address: address, sqft: sqft, phone: phone, email: email,
-      propertyType: propertyType, areas: areas, areaQuantities: areaQuantities, service: service, rate: rate, total: total, addonNote: addonNote,
-      balconySqft: balconySqft, addonMin: addonMin, addonMax: addonMax, hasAddon: hasAddon, frequencies: frequencies,
-      subscriptionDuration: subscriptionDuration };
+    return {
+      idx: idx, address: address, zip: zip, sqft: sizeVal, sizeUnit: sizeUnit, sqftEquiv: sqftEquiv,
+      propertyType: propertyType, areas: areas, areaQuantities: areaQuantities, othersSpecify: othersSpecify,
+      areasFormatted: propertyType === 'residential' ? formatAreasWithQty(areas, areaQuantities) : '',
+      service: service, rate: rate, total: total, addonNote: addonNote,
+      balconySqft: balconySqft, balconySqftEquiv: balconySqftEquiv, lanaiSqft: lanaiSqft, lanaiSqftEquiv: lanaiSqftEquiv,
+      addonTotal: addonTotal, hasAddon: hasAddon,
+      frequencies: frequencies, frequency: frequencies[0] || '', subscriptionDuration: subscriptionDuration
+    };
+  }
 
-    btn.disabled = true;
-    btn.textContent = 'Submitting...';
+  // Validates every not-yet-processed property card, then submits them all in one call to our
+  // backend (which resolves/reuses the shared Client ID and assigns each new property's
+  // Order/Transaction ID) — done in one pass at Generate Proposal time. Returns a Promise
+  // resolving to the full, updated state.properties array. Already-processed properties (from
+  // an earlier round via "+ Add Another Property") are left untouched.
+  function resolveAllPropertiesForProposal(){
+    var firstName = $('firstName').value.trim();
+    var lastName = $('lastName').value.trim();
+    var phone = $('phone').value.trim();
+    var email = $('email').value.trim();
 
-    fetch('/api/submit', {
+    if(!firstName || !lastName || !phone || !email){
+      alert('Please fill in your name, phone, and email in Client Information above before generating your proposal.');
+      return Promise.reject(new Error('missing client info'));
+    }
+    if(!/^\S+@\S+\.\S+$/.test(email)){
+      alert('Please enter a valid email address in Client Information above.');
+      return Promise.reject(new Error('invalid email'));
+    }
+
+    var cards = document.querySelectorAll('.property-card');
+    if(!cards.length){
+      alert('Please add at least one property.');
+      return Promise.reject(new Error('no properties'));
+    }
+
+    var newProps = [];
+    for(var c = 0; c < cards.length; c++){
+      var idx = parseInt(cards[c].getAttribute('data-idx'), 10);
+      if(getPropertyByIdx(idx)) continue; // already processed in an earlier round
+      var p = buildPropertyFromForm(idx);
+      if(!p) return Promise.reject(new Error('invalid property fields'));
+      newProps.push(p);
+    }
+
+    if(!newProps.length) return Promise.resolve(state.properties);
+
+    var prefix = $('prefix').value;
+    var suffix = $('suffix').value.trim();
+
+    return fetch('/api/submit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        firstName: firstName, lastName: lastName, email: email, phone: phone, address: address,
-        propertyType: propertyType, sqft: sqft, areas: areas, areasFormatted: formatAreasWithQty(areas, areaQuantities), service: service, total: total,
-        balconySqft: hasAddon ? balconySqft : 0, addonNote: addonNote,
-        frequency: frequencies[0] || '', subscriptionDuration: subscriptionDuration
+        prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email,
+        properties: newProps
       })
     }).then(function(r){ return r.json(); }).then(function(data){
-      btn.disabled = false;
-      btn.textContent = 'Generate My Proposal';
-      if(data.error){
-        alert('Something went wrong submitting your info: ' + data.error + '. Please try again.');
-        return;
-      }
-      state.clientId = data.clientId;
-      state.orderId = data.orderId;
-      state.transactionId = data.transactionId;
+      if(data.error) throw new Error(data.error);
+      state.client = { prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, clientId: data.clientId };
+      lockClientInfo();
+      newProps.forEach(function(p, i){
+        var r0 = data.properties[i];
+        p.orderId = r0.orderId;
+        p.transactionId = r0.transactionId;
+        state.properties.push(p);
+        lockPropertyCard(p.idx);
+      });
+      return state.properties;
+    });
+  }
 
-      renderProposal();
-      updateBookingCopy();
-      document.getElementById('formSection').style.display = 'none';
-      document.getElementById('proposalSection').style.display = 'block';
+  // ---- Generate Proposal: validates and submits every property (assigning IDs), then renders
+  // the price summary. ----
+  $('submitBtn').addEventListener('click', function(){
+    var btn = this;
+    var origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+
+    resolveAllPropertiesForProposal().then(function(properties){
+      btn.disabled = false;
+      btn.textContent = 'Generate Proposal';
+
+      initProposalHeader();
+      appendPropertiesToProposal(properties);
+
+      $('formSection').style.display = 'none';
+      $('proposalSection').style.display = 'block';
       window.scrollTo({top:0, behavior:'smooth'});
     }).catch(function(err){
       btn.disabled = false;
-      btn.textContent = 'Generate My Proposal';
-      alert('Something went wrong submitting your info: ' + err.message + '. Please try again.');
+      btn.textContent = origText;
+      // Validation failures already alerted inside resolveAllPropertiesForProposal — only
+      // show an extra alert here for genuine unexpected errors (e.g. backend/lookup failures).
+      var msg = err && err.message;
+      if(msg !== 'missing client info' && msg !== 'invalid email' && msg !== 'invalid property fields' && msg !== 'no properties'){
+        alert('Could not generate your proposal: ' + (msg || err) + '. Please try again.');
+      }
     });
   });
 
-  function updateBookingCopy(){
-    var heading = document.getElementById('bookingHeading');
-    var desc = document.getElementById('bookingDesc');
-    var dateLabel = document.getElementById('bookingDateLabel');
-    if(state.frequencies && state.frequencies.length && state.subscriptionDuration){
-      heading.textContent = 'Schedule Your Subscription';
-      desc.textContent = 'Pick a start day, find an open 30-minute slot, select it, then click Submit Booking — we\'ll automatically place the full ' + state.frequencies[0] + ' schedule on the calendar for the next ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '. Nothing changes until you submit.';
-      dateLabel.textContent = 'Start Date';
-    } else {
-      heading.textContent = 'Book a Schedule';
-      desc.textContent = 'Pick a day, find open 30-minute slots, select one, then click Submit Booking to add it to the calendar — nothing changes until you submit.';
-      dateLabel.textContent = 'Preferred Date';
-    }
+  function clientDisplayName(){
+    var parts = [];
+    if(state.client.prefix) parts.push(state.client.prefix);
+    parts.push(state.client.firstName, state.client.lastName);
+    if(state.client.suffix) parts.push(state.client.suffix);
+    return parts.join(' ');
   }
 
-  function renderProposal(){
-    document.getElementById('proposalDate').textContent = 'Prepared ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
-    document.getElementById('refClientId').textContent = state.clientId;
-    document.getElementById('refOrderId').textContent = state.orderId;
-    document.getElementById('refTransactionId').textContent = state.transactionId;
+  function initProposalHeader(){
+    $('proposalDate').textContent = 'Prepared ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    $('refClientId').textContent = state.client.clientId;
+  }
 
+  function refreshGrandTotal(){
+    var grand = 0;
+    state.properties.forEach(function(p){ grand += p.total; });
+    $('grandTotal').textContent = fmt(grand);
+  }
+
+  function propertyProposalBlockHtml(p){
     var wantsText;
-    if(state.propertyType === 'residential'){
-      var areaText = state.areas.length ? formatAreasWithQty(state.areas, state.areaQuantities) : 'general living areas';
-      wantsText = state.firstName + ' ' + state.lastName + ' is requesting <b>' + state.service + '</b> for a ' + state.sqft + ' sq ft residential property at ' + state.address + ', covering: ' + areaText + '.';
+    if(p.propertyType === 'residential'){
+      var areaText = p.areas.length ? formatAreasWithQty(p.areas, p.areaQuantities) : 'general living areas';
+      wantsText = '<b>' + p.service + '</b> for a ' + p.sqft + ' ' + unitLabel(p.sizeUnit) + ' residential property at ' + p.address + ', covering: ' + areaText + (p.othersSpecify ? (' (Others: ' + p.othersSpecify + ')') : '') + '.';
     } else {
-      wantsText = state.firstName + ' ' + state.lastName + ' is requesting recurring cleaning for a ' + state.sqft + ' sq ft <b>' + state.service + '</b> facility at ' + state.address + '.';
+      wantsText = 'Recurring cleaning for a ' + p.sqft + ' ' + unitLabel(p.sizeUnit) + ' <b>' + p.service + '</b> facility at ' + p.address + '.';
     }
-    if(state.frequencies && state.frequencies.length){
-      wantsText += ' Requested subscription: <b>' + state.frequencies.join(', ') + '</b> for <b>' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '</b>.';
+    if(p.frequencies && p.frequencies.length){
+      wantsText += ' Requested subscription: <b>' + p.frequencies.join(', ') + '</b> for <b>' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '</b>.';
     }
-    document.getElementById('summaryLine').innerHTML = wantsText;
 
     var rows = '';
-    rows += '<tr><td>' + state.service + '</td><td style="text-align:right;">' + fmt(state.rate) + ' &times; ' + state.sqft + ' sq ft</td></tr>';
-    if(state.addonNote){
-      rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">' + state.addonNote + '</td></tr>';
+    rows += '<tr><td>' + p.service + '</td><td style="text-align:right;">' + fmt(p.rate) + ' &times; ' + p.sqft + ' ' + unitLabel(p.sizeUnit) + '</td></tr>';
+    if(p.addonNote){
+      rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">' + p.addonNote + '</td></tr>';
     }
-    if(state.frequencies && state.frequencies.length){
-      rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">Subscription requested: ' + state.frequencies.join(', ') + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '</td></tr>';
+    if(p.frequencies && p.frequencies.length){
+      rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">Subscription requested: ' + p.frequencies.join(', ') + ' for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '</td></tr>';
     }
-    rows += '<tr class="total"><td>Estimated total per visit</td><td style="text-align:right;">' + fmt(state.total) + '</td></tr>';
-    document.getElementById('priceTable').innerHTML = rows;
+    rows += '<tr class="total"><td>Estimated total per visit</td><td style="text-align:right;">' + fmt(p.total) + '</td></tr>';
+
+    return ''
+      + '<div class="property-proposal-block" data-idx="' + p.idx + '">'
+      + '<h3>Property ' + (p.idx+1) + ' &mdash; ' + p.address + '</h3>'
+      + '<div class="ref-mini">Order ID: <b>' + p.orderId + '</b> &nbsp;&middot;&nbsp; Transaction ID: <b>' + p.transactionId + '</b></div>'
+      + '<div class="summary-line">' + wantsText + '</div>'
+      + '<table class="price-table">' + rows + '</table>'
+      + '</div>';
   }
 
-  document.getElementById('editLink').addEventListener('click', function(){
-    document.getElementById('proposalSection').style.display = 'none';
-    document.getElementById('formSection').style.display = 'block';
+  // Tracks which properties' pricing blocks have already been appended to the proposal
+  // screen, so re-entering the form to add another property doesn't duplicate earlier ones.
+  var renderedIdx = {};
+
+  // Appends pricing-block markup for newly-validated properties only.
+  function appendPropertiesToProposal(newProps){
+    var blocksHtml = '';
+    newProps.forEach(function(p){
+      if(renderedIdx[p.idx]) return;
+      renderedIdx[p.idx] = true;
+      blocksHtml += propertyProposalBlockHtml(p);
+    });
+    if(blocksHtml) $('propertyProposals').insertAdjacentHTML('beforeend', blocksHtml);
+    refreshGrandTotal();
+  }
+
+  // Lives directly in the intake form now (above Generate Proposal), so it works whether
+  // you're adding a second property before ever generating a proposal, or you've come back
+  // via "Edit my information" after already generating one.
+  $('addPropertyBtnForm').addEventListener('click', function(){
+    if(state.client.clientId){
+      // A proposal has already been generated at least once — keep the shared Client
+      // Info fields and already-processed property cards locked/badged as usual.
+      lockClientInfo();
+      lockProcessedProperties();
+      $('submitBtn').textContent = 'Add This Property to Proposal';
+    }
+    var idx = addProperty();
+    var card = document.querySelector('.property-card[data-idx="' + idx + '"]');
+    if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
   });
 
-  // ---- Live Google Calendar booking (via our own backend, not window.cowork) ----
-  var CAL_TIMEZONE = 'Asia/Manila';
+  $('editLink').addEventListener('click', function(){
+    $('proposalSection').style.display = 'none';
+    $('formSection').style.display = 'block';
+    lockClientInfo();
+    lockProcessedProperties();
+  });
 
-  function fmtSlotTime(iso){
-    return new Date(iso).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit', timeZone: CAL_TIMEZONE });
-  }
-
-  var pendingSlot = null;
-
-  document.getElementById('findTimesBtn').addEventListener('click', function(){
+  // ---- Submit Form: creates one combined draft covering every property already added to the
+  // proposal (properties are validated and submitted to our backend back at Generate Proposal
+  // time). ----
+  $('draftBtn').addEventListener('click', function(){
     var btn = this;
-    var dateVal = document.getElementById('callDate').value;
-    var wrap = document.getElementById('slotsWrap');
-    var resultEl = document.getElementById('bookingResult');
-    var submitBookingBtn = document.getElementById('submitBookingBtn');
-    resultEl.innerHTML = '';
-    submitBookingBtn.classList.add('hidden');
-    pendingSlot = null;
-    if(!dateVal){
-      wrap.innerHTML = '<div class="booking-err">Pick a date first.</div>';
+    var statusEl = $('draftStatus');
+
+    if(!state.properties.length){
+      statusEl.className = 'draft-status err';
+      statusEl.textContent = 'Please generate your proposal above before submitting.';
       return;
     }
-    btn.disabled = true;
-    btn.textContent = 'Checking calendar...';
-    wrap.innerHTML = '';
 
-    fetch('/api/find-times', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ date: dateVal })
-    }).then(function(r){ return r.json(); }).then(function(data){
-      btn.disabled = false;
-      btn.textContent = 'Find Available Times';
-      if(data.error){
-        wrap.innerHTML = '<div class="booking-err">Could not check calendar: ' + data.error + '</div>';
-        return;
-      }
-      var slots = data.slots || [];
-      if(!slots.length){
-        wrap.innerHTML = '<div class="booking-err">No open 30-minute slots that day during business hours (9am&ndash;5pm). Try another date.</div>';
-        return;
-      }
-      wrap.innerHTML = slots.map(function(s, i){
-        return '<button type="button" class="slot-btn" data-i="'+i+'">' + fmtSlotTime(s.start) + '</button>';
-      }).join('');
-      // Clicking a slot only selects/highlights it — nothing is booked until
-      // "Submit Booking" is explicitly clicked below.
-      wrap.querySelectorAll('.slot-btn').forEach(function(b, i){
-        b.addEventListener('click', function(){
-          wrap.querySelectorAll('.slot-btn').forEach(function(x){ x.classList.remove('selected'); });
-          b.classList.add('selected');
-          pendingSlot = slots[i];
-          submitBookingBtn.classList.remove('hidden');
-          resultEl.innerHTML = '<div style="color:var(--muted);">Selected ' + fmtSlotTime(slots[i].start) + ' — click Submit Booking to confirm.</div>';
-        });
-      });
-    }).catch(function(err){
-      btn.disabled = false;
-      btn.textContent = 'Find Available Times';
-      wrap.innerHTML = '<div class="booking-err">Could not check calendar: ' + err.message + '</div>';
-    });
-  });
-
-  document.getElementById('submitBookingBtn').addEventListener('click', function(){
-    if(!pendingSlot) return;
-    var wrap = document.getElementById('slotsWrap');
-    bookSlot(pendingSlot, this, wrap);
-  });
-
-  function bookSlot(slot, clickedBtn, wrap){
-    var resultEl = document.getElementById('bookingResult');
-    wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = true; });
-    clickedBtn.disabled = true;
-    clickedBtn.textContent = 'Booking...';
-    resultEl.innerHTML = '';
-
-    var isSubscription = !!(state.frequencies && state.frequencies.length && state.subscriptionDuration);
-
-    fetch('/api/book', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        orderId: state.orderId, slot: slot,
-        firstName: state.firstName, lastName: state.lastName, phone: state.phone, email: state.email,
-        address: state.address, sqft: state.sqft, service: state.service,
-        isSubscription: isSubscription, freqName: state.frequencies && state.frequencies[0],
-        durationMonths: state.subscriptionDuration
-      })
-    }).then(function(r){ return r.json(); }).then(function(data){
-      if(data.error){
-        resultEl.innerHTML = '<div class="booking-err">Could not book: ' + data.error + '</div>';
-        wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
-        clickedBtn.disabled = false;
-        clickedBtn.textContent = 'Submit Booking';
-        return;
-      }
-      state.bookedSlot = slot;
-      if(isSubscription){
-        var untilStr = new Date(new Date(slot.start).setMonth(new Date(slot.start).getMonth() + state.subscriptionDuration)).toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric', timeZone: CAL_TIMEZONE});
-        resultEl.innerHTML = '<div class="booking-ok">Booked! Recurring ' + state.frequencies[0] + ' starting ' + data.startFormatted + ', through ' + untilStr + ' — automatically on the calendar.</div>';
-      } else {
-        resultEl.innerHTML = '<div class="booking-ok">Booked! Added to the calendar for ' + data.startFormatted + '.</div>';
-      }
-      wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.style.display = 'none'; });
-      clickedBtn.classList.add('hidden');
-    }).catch(function(err){
-      resultEl.innerHTML = '<div class="booking-err">Could not book: ' + err.message + '</div>';
-      wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
-      clickedBtn.disabled = false;
-      clickedBtn.textContent = 'Submit Booking';
-    });
-  }
-
-  // ---- Proposal email (via our own backend's Gmail draft creation) ----
-  document.getElementById('draftBtn').addEventListener('click', function(){
-    var btn = this;
-    var statusEl = document.getElementById('draftStatus');
-
-    var details = buildServiceDetails();
-
-    var bookedDateStr = state.bookedSlot ? new Date(state.bookedSlot.start).toLocaleString(undefined, {weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'numeric', minute:'2-digit', timeZone: CAL_TIMEZONE}) : '';
-
-    var addonHtml = state.addonNote ? '<p style="font-size:13px;color:#6b7280;margin-top:8px;">' + state.addonNote + '</p>' : '';
-
-    var checklistHtml = details.items.length
-      ? '<ul style="margin:8px 0 0;padding-left:20px;">' + details.items.map(function(i){ return '<li style="margin-bottom:5px;">' + i + '</li>'; }).join('') + '</ul>'
-      : '';
-
-    var isSubscriptionEmail = !!(state.frequencies && state.frequencies.length && state.subscriptionDuration);
-    var bookingHtml;
-    if(state.bookedSlot && isSubscriptionEmail){
-      bookingHtml = '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;margin:18px 0;"><p style="margin:0;color:#166534;"><b>Confirmed subscription:</b> starting ' + bookedDateStr + ', recurring ' + state.frequencies[0] + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + ' &mdash; the full schedule is already on our calendar.</p></div>';
-    } else if(state.bookedSlot){
-      bookingHtml = '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;margin:18px 0;"><p style="margin:0;color:#166534;"><b>Confirmed booking:</b> ' + bookedDateStr + ' (30 min call) &mdash; already on our calendar.</p></div>';
-    } else {
-      bookingHtml = '<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin:18px 0;"><p style="margin:0;color:#92400e;">No call time booked yet &mdash; reply to this email with a day/time that works and we\'ll get it on the calendar.</p></div>';
-    }
-
-    var scheduleHtml = (state.frequencies && state.frequencies.length)
-      ? '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">Subscription</h3><p style="margin:0;color:#374151;">' + state.frequencies.join(', ') + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '</p>'
-      : '';
-
-    var html = ''
-      + '<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">'
-      + '<h2 style="color:#0a5c64;margin-bottom:4px;">Primo Care &mdash; Your Cleaning Proposal</h2>'
-      + '<p style="color:#6b7280;font-size:13px;margin-top:0;">Prepared for ' + state.firstName + ' ' + state.lastName + ' &middot; ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'}) + '</p>'
-      + '<p>Hi ' + state.firstName + ',</p>'
-      + '<p>Thank you for reaching out to Primo Care! We\'re glad to put together a proposal for <b>' + state.address + '</b> (' + state.sqft + ' sq ft). Below is a full rundown of the service we recommend, exactly what\'s included, your estimated pricing, and your booked call &mdash; all in one place so there\'s nothing left to guess.</p>'
-
-      + '<div style="background:#f7f9fa;border:1px dashed #d1d5db;border-radius:8px;padding:10px 14px;margin:14px 0;font-size:12.5px;">'
-      + '<b style="color:#0a5c64;">Save these reference numbers</b> &mdash; you\'ll need your Order ID if you ever need to cancel or reschedule.'
-      + '<div style="margin-top:6px;">Client ID: <b>' + state.clientId + '</b> &nbsp;&middot;&nbsp; Order ID: <b>' + state.orderId + '</b> &nbsp;&middot;&nbsp; Transaction ID: <b>' + state.transactionId + '</b></div>'
-      + '</div>'
-
-      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">Recommended Service</h3>'
-      + '<p style="margin:0 0 4px;"><b>' + state.service + '</b></p>'
-      + '<p style="margin:0;color:#374151;">' + details.descText + '</p>'
-
-      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">What\'s Included (Checklist)</h3>'
-      + checklistHtml
-
-      + scheduleHtml
-
-      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">Estimated Pricing</h3>'
-      + '<table style="width:100%;border-collapse:collapse;margin:6px 0 0;">'
-      + '<tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;">' + state.service + '</td>'
-      + '<td style="padding:8px 0;border-bottom:1px solid #e2e8f0;text-align:right;">' + fmt(state.rate) + ' &times; ' + state.sqft + ' sq ft</td></tr>'
-      + '<tr><td style="padding:10px 0;font-weight:bold;color:#0a5c64;">Estimated total per visit</td>'
-      + '<td style="padding:10px 0;font-weight:bold;color:#0a5c64;text-align:right;">' + fmt(state.total) + '</td></tr>'
-      + '</table>'
-      + addonHtml
-      + '<p style="font-size:12px;color:#6b7280;">This is a per-visit estimate; final pricing is confirmed at walkthrough.</p>'
-
-      + '<h3 style="color:#0a5c64;font-size:15px;margin:22px 0 6px;">' + (isSubscriptionEmail ? 'Your Schedule' : 'Your Call') + '</h3>'
-      + bookingHtml
-
-      + '<p style="background:#0e7c86;color:#fff;padding:14px 16px;border-radius:8px;">Ready to get that space sparkling? Reply to this email any time with questions, and we\'ll take it from there.</p>'
-      + '<p>Best,<br>Primo Care Team</p>'
-      + '</div>';
-
-    var plainBookingLine;
-    if(state.bookedSlot && isSubscriptionEmail){
-      plainBookingLine = 'Confirmed subscription: starting ' + bookedDateStr + ', recurring ' + state.frequencies[0] + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + ' — already on our calendar.';
-    } else if(state.bookedSlot){
-      plainBookingLine = 'Confirmed: ' + bookedDateStr + ' (30 min) — already on our calendar.';
-    } else {
-      plainBookingLine = 'Not booked yet — reply with a day/time that works.';
-    }
-
-    var plain = 'Hi ' + state.firstName + ',\n\n'
-      + 'Thank you for reaching out to Primo Care! Here is your full proposal for ' + state.address + ' (' + state.sqft + ' sq ft):\n\n'
-      + 'REFERENCE NUMBERS (save these — needed to cancel or reschedule)\n' + 'Client ID: ' + state.clientId + '  |  Order ID: ' + state.orderId + '  |  Transaction ID: ' + state.transactionId + '\n\n'
-      + 'RECOMMENDED SERVICE\n' + state.service + '\n' + details.descText + '\n\n'
-      + 'WHAT\'S INCLUDED (CHECKLIST)\n' + (details.items.length ? details.items.map(function(i){ return '- ' + i; }).join('\n') : '(details confirmed at walkthrough)') + '\n\n'
-      + ((state.frequencies && state.frequencies.length) ? 'SUBSCRIPTION\n' + state.frequencies.join(', ') + ' for ' + state.subscriptionDuration + ' month' + (state.subscriptionDuration === 1 ? '' : 's') + '\n\n' : '')
-      + 'ESTIMATED PRICING\n' + state.service + ': ' + fmt(state.rate) + ' x ' + state.sqft + ' sq ft = ' + fmt(state.total) + ' per visit\n'
-      + (state.addonNote ? state.addonNote + '\n' : '')
-      + 'This is a per-visit estimate; final pricing is confirmed at walkthrough.\n\n'
-      + (isSubscriptionEmail ? 'YOUR SCHEDULE\n' : 'YOUR CALL\n') + plainBookingLine + '\n\n'
-      + 'Ready to get that space sparkling? Reply any time with questions.\n\nBest,\nPrimo Care Team';
-
+    statusEl.className = 'draft-status';
+    statusEl.textContent = '';
     btn.disabled = true;
     btn.textContent = 'Preparing...';
 
-    fetch('/api/create-draft', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ orderId: state.orderId, to: state.email, subject: 'Your Primo Care Cleaning Proposal', body: plain, htmlBody: html })
-    }).then(function(r){ return r.json(); }).then(function(data){
+    buildAndCreateDraft().then(function(data){
       btn.disabled = false;
       btn.textContent = 'Submit Form';
       if(data.error){
@@ -907,17 +1123,112 @@
         statusEl.textContent = 'Could not prepare your proposal email: ' + data.error;
       } else {
         statusEl.className = 'draft-status ok';
-        statusEl.textContent = 'Your proposal is queued up and will be reviewed and sent to ' + state.email + ' shortly.';
+        statusEl.textContent = 'Your combined proposal is queued up and will be reviewed and sent to ' + state.client.email + ' shortly.';
       }
     }).catch(function(err){
       btn.disabled = false;
       btn.textContent = 'Submit Form';
       statusEl.className = 'draft-status err';
-      statusEl.textContent = 'Could not prepare your proposal email: ' + err.message + '. Please try again.';
+      statusEl.textContent = 'Could not complete your submission: ' + (err && err.message ? err.message : err) + '. Please try again.';
     });
   });
 
-  function fmt(n){ return '$' + n.toFixed(2); }
+  var DISCLAIMER_TEXT = 'For everyone\'s peace of mind, please safely secure your precious/valuable belongings before our visit. Primo Care Cleaning Services is not liable for any loss or damage to personal items.';
+
+  // Builds one combined proposal email (HTML + plain text) covering every property and requests
+  // it as a single Gmail draft from our backend.
+  function buildAndCreateDraft(){
+    var grand = 0;
+    var propertyBlocksHtml = '';
+    var propertyBlocksPlain = '';
+    var orderIds = state.properties.map(function(p){ return p.orderId; });
+
+    state.properties.forEach(function(p){
+      grand += p.total;
+      var details = buildServiceDetails(p);
+      var isSubscriptionEmail = !!(p.frequencies && p.frequencies.length && p.subscriptionDuration);
+      var bookNowUrl = window.location.origin + '/book?orderId=' + encodeURIComponent(p.orderId);
+
+      var checklistHtml = details.items.length
+        ? '<ul style="margin:8px 0 0;padding-left:20px;">' + details.items.map(function(i){ return '<li style="margin-bottom:5px;">' + i + '</li>'; }).join('') + '</ul>'
+        : '';
+      var addonHtml = p.addonNote ? '<p style="font-size:13px;color:#6b7280;margin-top:8px;">' + p.addonNote + '</p>' : '';
+      var bookingLineHtml;
+      if(isSubscriptionEmail){
+        bookingLineHtml = 'Click below to pick a start date and lock in your recurring ' + p.frequencies[0] + ' visits for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + ', or reply to this email with your preferred date and we\'ll set it up for you.';
+      } else {
+        bookingLineHtml = 'Click below to pick an open time and book it instantly, or reply to this email with your preferred date and time and we\'ll get it booked.';
+      }
+
+      propertyBlocksHtml += ''
+        + '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:14px 0;">'
+        + '<h3 style="color:#0a5c64;font-size:15px;margin:0 0 6px;">Property ' + (p.idx+1) + ' &mdash; ' + p.address + '</h3>'
+        + '<p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Order ID: <b>' + p.orderId + '</b> &nbsp;&middot;&nbsp; Transaction ID: <b>' + p.transactionId + '</b></p>'
+        + '<p style="margin:0 0 4px;"><b>' + p.service + '</b></p>'
+        + '<p style="margin:0;color:#374151;">' + details.descText + '</p>'
+        + '<p style="margin:12px 0 4px;font-weight:bold;color:#0a5c64;">What\'s Included</p>'
+        + checklistHtml
+        + '<table style="width:100%;border-collapse:collapse;margin:10px 0 0;">'
+        + '<tr><td style="padding:6px 0;border-bottom:1px solid #e2e8f0;">' + p.service + '</td>'
+        + '<td style="padding:6px 0;border-bottom:1px solid #e2e8f0;text-align:right;">' + fmt(p.rate) + ' &times; ' + p.sqft + ' ' + unitLabel(p.sizeUnit) + '</td></tr>'
+        + '<tr><td style="padding:8px 0;font-weight:bold;color:#0a5c64;">Estimated total per visit</td>'
+        + '<td style="padding:8px 0;font-weight:bold;color:#0a5c64;text-align:right;">' + fmt(p.total) + '</td></tr>'
+        + '</table>'
+        + '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin-top:10px;">'
+        + '<span style="display:inline-block;background:#0a5c64;color:#ffffff;font-size:10.5px;font-weight:bold;letter-spacing:0.3px;padding:3px 9px;border-radius:10px;">SCHEDULING</span>'
+        + '<p style="margin:8px 0 2px;font-weight:bold;color:#166534;font-size:14px;">Book a Schedule</p>'
+        + '<p style="margin:0 0 10px;color:#166534;font-size:13.5px;">' + bookingLineHtml + '</p>'
+        + '<a href="' + bookNowUrl + '" style="display:inline-block;background:#0a5c64;color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;padding:9px 16px;border-radius:6px;">Book Now &rarr;</a>'
+        + '</div>'
+        + addonHtml
+        + '</div>';
+
+      var plainBookingLine = bookingLineHtml;
+
+      propertyBlocksPlain += '\n----\nPROPERTY ' + (p.idx+1) + ' — ' + p.address + '\n'
+        + 'Order ID: ' + p.orderId + '  |  Transaction ID: ' + p.transactionId + '\n'
+        + p.service + '\n' + details.descText + '\n\n'
+        + 'What\'s included:\n' + (details.items.length ? details.items.map(function(i){ return '- ' + i; }).join('\n') : '(details confirmed at walkthrough)') + '\n\n'
+        + p.service + ': ' + fmt(p.rate) + ' x ' + p.sqft + ' ' + unitLabel(p.sizeUnit) + ' = ' + fmt(p.rate * p.sqft) + '\n\n'
+        + 'Estimated total per visit: ' + fmt(p.total) + '\n\n'
+        + '[SCHEDULING] Book a Schedule: ' + plainBookingLine + '\n'
+        + 'Book Now: ' + bookNowUrl + '\n'
+        + (p.addonNote ? p.addonNote + '\n' : '');
+    });
+
+    var html = ''
+      + '<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:620px;">'
+      + '<h2 style="color:#0a5c64;margin-bottom:4px;">Primo Care &mdash; Your Cleaning Proposal</h2>'
+      + '<p style="color:#6b7280;font-size:13px;margin-top:0;">Prepared for ' + clientDisplayName() + ' &middot; ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'}) + '</p>'
+      + '<p>Hi ' + state.client.firstName + ',</p>'
+      + '<p>Thank you for reaching out to Primo Care! Below is your full proposal covering ' + state.properties.length + ' propert' + (state.properties.length === 1 ? 'y' : 'ies') + ', with everything included, your estimated pricing, and how to book a schedule for each.</p>'
+      + '<div style="background:#f7f9fa;border:1px dashed #d1d5db;border-radius:8px;padding:10px 14px;margin:14px 0;font-size:12.5px;">'
+      + '<b style="color:#0a5c64;">Save your Client ID</b> &mdash; it\'s shared across all your properties and needed (with each property\'s Order ID) to cancel or reschedule.'
+      + '<div style="margin-top:6px;">Client ID: <b>' + state.client.clientId + '</b></div>'
+      + '</div>'
+      + propertyBlocksHtml
+      + '<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0a5c64" style="background-color:#0a5c64;border-collapse:collapse;margin:14px 0;"><tr>'
+      + '<td style="padding:12px 16px;color:#ffffff;font-size:16px;font-weight:bold;">Grand Total (all properties, per visit)</td>'
+      + '<td align="right" style="padding:12px 16px;color:#ffffff;font-size:16px;font-weight:bold;white-space:nowrap;">' + fmt(grand) + '</td>'
+      + '</tr></table>'
+      + '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:12.5px;"><b>Please note:</b> ' + DISCLAIMER_TEXT + '</div>'
+      + '<p style="background:#0e7c86;color:#fff;padding:14px 16px;border-radius:8px;">Ready to get those spaces sparkling? Reply to this email any time with questions, and we\'ll take it from there.</p>'
+      + '<p>Best,<br>Primo Care Team</p>'
+      + '</div>';
+
+    var plain = 'Hi ' + state.client.firstName + ',\n\n'
+      + 'Thank you for reaching out to Primo Care! Here is your full proposal covering ' + state.properties.length + ' propert' + (state.properties.length === 1 ? 'y' : 'ies') + ':\n\n'
+      + 'CLIENT ID (shared across all your properties): ' + state.client.clientId + '\n'
+      + propertyBlocksPlain
+      + '\nGRAND TOTAL (all properties, per visit): ' + fmt(grand) + '\n\n'
+      + 'PLEASE NOTE: ' + DISCLAIMER_TEXT + '\n\n'
+      + 'Ready to get those spaces sparkling? Reply any time with questions.\n\nBest,\nPrimo Care Team';
+
+    return fetch('/api/create-draft', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ orderIds: orderIds, to: state.client.email, subject: 'Your Primo Care Cleaning Proposal (' + state.properties.length + ' Propert' + (state.properties.length === 1 ? 'y' : 'ies') + ')', body: plain, htmlBody: html })
+    }).then(function(r){ return r.json(); });
+  }
 })();
 </script>
 </body>

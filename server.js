@@ -52,39 +52,69 @@ async function deleteBookingEvent(rec, orderId) {
 // Intake form endpoints
 // ---------------------------------------------------------------------------
 
+// Accepts one client + an array of properties (one client can book multiple properties in a
+// single submission). A Client ID is resolved server-side (reused if this name already has one
+// on file, minted fresh otherwise — never trusted from the client, same as Order/Transaction
+// IDs) and shared across every property record created here; each property gets its own fresh
+// Order ID + Transaction ID so it can be individually cancelled/rescheduled later.
 app.post('/api/submit', async (req, res) => {
   try {
     const b = req.body || {};
-    const clientId = genRefId('CLI');
-    const orderId = genRefId('ORD');
-    const transactionId = genRefId('TXN');
+    const firstName = (b.firstName || '').trim();
+    const lastName = (b.lastName || '').trim();
+    const fullName = `${firstName} ${lastName}`;
+    const properties = Array.isArray(b.properties) ? b.properties : [];
+    if (!properties.length) return res.status(400).json({ error: 'At least one property is required.' });
 
-    const fields = {
-      'Client Name': `${b.firstName} ${b.lastName}`,
-      'Submitted At': new Date().toISOString(),
-      'First Name': b.firstName,
-      'Last Name': b.lastName,
-      'Email': b.email,
-      'Phone': b.phone,
-      'Address': b.address,
-      'Property Type': b.propertyType === 'residential' ? 'Residential' : 'Commercial',
-      'Property Size (sq ft)': b.sqft,
-      'Areas / Facility Type': b.propertyType === 'residential' ? (b.areasFormatted || (b.areas || []).join(', ')) : b.service,
-      'Service': b.service,
-      'Estimated Total per Visit': b.total,
-      'Draft Email Created': false,
-      'Client ID': clientId,
-      'Order ID': orderId,
-      'Transaction ID': transactionId,
-      'Status': 'Scheduled'
-    };
-    if (b.balconySqft) fields['Balcony-Lanai Size (sq ft)'] = b.balconySqft;
-    if (b.addonNote) fields['Balcony-Lanai Add-on'] = b.addonNote;
-    if (b.frequency) fields['Subscription Frequency'] = b.frequency;
-    if (b.subscriptionDuration) fields['Subscription Duration (months)'] = b.subscriptionDuration;
+    let clientId;
+    try {
+      const existing = await airtable.findClientIdByName(fullName);
+      clientId = (existing && existing.fields && existing.fields['Client ID']) || genRefId('CLI');
+    } catch (err) {
+      console.error('Client ID lookup failed, minting a new one:', err.message);
+      clientId = genRefId('CLI');
+    }
 
-    await airtable.createRecord(fields);
-    res.json({ clientId, orderId, transactionId });
+    const results = [];
+    for (const p of properties) {
+      const orderId = genRefId('ORD');
+      const transactionId = genRefId('TXN');
+
+      const fields = {
+        'Client Name': fullName,
+        'Submitted At': new Date().toISOString(),
+        'First Name': firstName,
+        'Last Name': lastName,
+        'Email': b.email,
+        'Phone': b.phone,
+        'Address': p.address,
+        'Zip Code': p.zip,
+        'Property Type': p.propertyType === 'residential' ? 'Residential' : 'Commercial',
+        'Property Size (sq ft)': p.sqft,
+        'Property Size Unit': p.sizeUnit === 'sqm' ? 'sq m' : 'sq ft',
+        'Areas / Facility Type': p.propertyType === 'residential' ? (p.areasFormatted || (p.areas || []).join(', ')) : p.service,
+        'Service': p.service,
+        'Estimated Total per Visit': p.total,
+        'Draft Email Created': false,
+        'Client ID': clientId,
+        'Order ID': orderId,
+        'Transaction ID': transactionId,
+        'Status': 'Scheduled'
+      };
+      if (b.prefix) fields['Prefix'] = b.prefix;
+      if (b.suffix) fields['Suffix'] = b.suffix;
+      const combinedAddonSqft = (p.balconySqftEquiv || 0) + (p.lanaiSqftEquiv || 0);
+      if (combinedAddonSqft) fields['Balcony-Lanai Size (sq ft)'] = combinedAddonSqft;
+      if (p.addonNote) fields['Balcony-Lanai Add-on'] = p.addonNote;
+      if (p.othersSpecify) fields['Others Area Specify'] = p.othersSpecify;
+      if (p.frequency) fields['Subscription Frequency'] = p.frequency;
+      if (p.subscriptionDuration) fields['Subscription Duration (months)'] = p.subscriptionDuration;
+
+      const rec = await airtable.createRecord(fields);
+      results.push({ orderId, transactionId, recordId: rec.id });
+    }
+
+    res.json({ clientId, properties: results });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -150,14 +180,114 @@ app.post('/api/book', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Live "Book Now" page endpoints — lets a client scheduling from the proposal email's link
+// look up their own property (identity-verified the same way as cancel/reschedule) and book
+// it directly, without re-entering all their property details.
+// ---------------------------------------------------------------------------
+
+app.post('/api/order-lookup', async (req, res) => {
+  try {
+    const { firstName, lastName, email, orderId } = req.body || {};
+    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+
+    const f = rec.fields || {};
+    res.json({
+      address: f['Address'] || '',
+      propertyType: f['Property Type'] || '',
+      sqft: f['Property Size (sq ft)'] || '',
+      sizeUnit: f['Property Size Unit'] || 'sq ft',
+      service: f['Service'] || '',
+      total: f['Estimated Total per Visit'] || 0,
+      frequency: f['Subscription Frequency'] || '',
+      subscriptionDuration: f['Subscription Duration (months)'] || '',
+      alreadyBooked: !!f['Booked Date/Time'],
+      bookedDisplay: f['Booked Date/Time'] || ''
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/book-verified', async (req, res) => {
+  try {
+    const { firstName, lastName, email, orderId, slot } = req.body || {};
+    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+    if (!slot || !slot.start || !slot.end) return res.status(400).json({ error: 'Missing time slot.' });
+
+    const f = rec.fields || {};
+    if (f['Booked Date/Time']) {
+      return res.status(400).json({ error: 'This property already has a schedule booked. Use the cancel/reschedule page if you need to change it.' });
+    }
+
+    const freqName = f['Subscription Frequency'];
+    const duration = f['Subscription Duration (months)'];
+    const isSubscription = !!(freqName && duration);
+    const clientLine = `${firstName} ${lastName} — ${f['Phone'] || ''} — ${email}`;
+
+    const summary = isSubscription
+      ? `Primo Care Cleaning (${freqName}) — ${firstName} ${lastName}`
+      : `Primo Care Call — ${firstName} ${lastName}`;
+    const description = [
+      `Primo Care ${isSubscription ? 'subscription cleaning' : 'service call'}.`,
+      `Client: ${clientLine}`,
+      `Order ID: ${orderId}`,
+      `Property: ${f['Address'] || ''} (${f['Property Size (sq ft)'] || ''} ${f['Property Size Unit'] || 'sq ft'})`,
+      `Service: ${f['Service'] || ''}`,
+      isSubscription ? `Schedule: ${freqName} for ${duration} month(s)` : ''
+    ].filter(Boolean).join('<br>');
+
+    let recurrence = null;
+    if (isSubscription) {
+      const untilDate = new Date(slot.start);
+      untilDate.setMonth(untilDate.getMonth() + Number(duration));
+      recurrence = { freqName, untilDate };
+    }
+
+    const event = await gcal.createEvent({
+      summary, description, location: f['Address'] || '',
+      startIso: slot.start, endIso: slot.end, recurrence
+    });
+
+    const startStr = new Date(slot.start).toLocaleString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: CAL_TIMEZONE
+    });
+
+    await airtable.updateRecord(rec.id, {
+      'Booked Date/Time': startStr + (isSubscription ? ` (recurring ${freqName})` : ''),
+      'Booked Start (ISO)': new Date(slot.start).toISOString(),
+      'Calendar Event ID': event.id
+    });
+
+    res.json({ eventId: event.id, startFormatted: startStr, isSubscription, freqName });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/book', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'book.html'));
+});
+
+// Creates a single Gmail draft covering one or more properties (accepts either `orderId`
+// for a single property or `orderIds` for a combined multi-property submission), and marks
+// every referenced property record as draft-created.
 app.post('/api/create-draft', async (req, res) => {
   try {
-    const { orderId, to, subject, body, htmlBody } = req.body || {};
-    const rec = await airtable.findByField('Order ID', orderId);
-    if (!rec) return res.status(404).json({ error: 'Booking not found.' });
+    const { orderId, orderIds, to, subject, body, htmlBody } = req.body || {};
+    const ids = Array.isArray(orderIds) ? orderIds : (orderId ? [orderId] : []);
+    if (!ids.length) return res.status(400).json({ error: 'Missing orderId(s).' });
+
+    for (const id of ids) {
+      const rec = await airtable.findByField('Order ID', id);
+      if (rec) await airtable.updateRecord(rec.id, { 'Draft Email Created': true });
+    }
 
     await gcal.createGmailDraft({ to, subject, body, htmlBody });
-    await airtable.updateRecord(rec.id, { 'Draft Email Created': true });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
