@@ -276,7 +276,7 @@
 
       <div class="cta-box">
         <b>Ready to get that space sparkling?</b>
-        Click Submit Form below to send this proposal for review &mdash; it'll include how to book a schedule for each property.
+        Click Submit Form below to send this proposal for review &mdash; it'll include a single link to book your schedule.
       </div>
 
       <button class="primary" id="draftBtn" style="margin-top:18px;">Submit Form</button>
@@ -1142,23 +1142,16 @@
     var propertyBlocksHtml = '';
     var propertyBlocksPlain = '';
     var orderIds = state.properties.map(function(p){ return p.orderId; });
+    var bookScheduleUrl = window.location.origin + '/book?clientId=' + encodeURIComponent(state.client.clientId);
 
     state.properties.forEach(function(p){
       grand += p.total;
       var details = buildServiceDetails(p);
-      var isSubscriptionEmail = !!(p.frequencies && p.frequencies.length && p.subscriptionDuration);
-      var bookNowUrl = window.location.origin + '/book?orderId=' + encodeURIComponent(p.orderId);
 
       var checklistHtml = details.items.length
         ? '<ul style="margin:8px 0 0;padding-left:20px;">' + details.items.map(function(i){ return '<li style="margin-bottom:5px;">' + i + '</li>'; }).join('') + '</ul>'
         : '';
       var addonHtml = p.addonNote ? '<p style="font-size:13px;color:#6b7280;margin-top:8px;">' + p.addonNote + '</p>' : '';
-      var bookingLineHtml;
-      if(isSubscriptionEmail){
-        bookingLineHtml = 'Click below to pick a start date and lock in your recurring ' + p.frequencies[0] + ' visits for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + ', or reply to this email with your preferred date and we\'ll set it up for you.';
-      } else {
-        bookingLineHtml = 'Click below to pick an open time and book it instantly, or reply to this email with your preferred date and time and we\'ll get it booked.';
-      }
 
       propertyBlocksHtml += ''
         + '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:14px 0;">'
@@ -1174,16 +1167,8 @@
         + '<tr><td style="padding:8px 0;font-weight:bold;color:#0a5c64;">Estimated total per visit</td>'
         + '<td style="padding:8px 0;font-weight:bold;color:#0a5c64;text-align:right;">' + fmt(p.total) + '</td></tr>'
         + '</table>'
-        + '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin-top:10px;">'
-        + '<span style="display:inline-block;background:#0a5c64;color:#ffffff;font-size:10.5px;font-weight:bold;letter-spacing:0.3px;padding:3px 9px;border-radius:10px;">SCHEDULING</span>'
-        + '<p style="margin:8px 0 2px;font-weight:bold;color:#166534;font-size:14px;">Book a Schedule</p>'
-        + '<p style="margin:0 0 10px;color:#166534;font-size:13.5px;">' + bookingLineHtml + '</p>'
-        + '<a href="' + bookNowUrl + '" style="display:inline-block;background:#0a5c64;color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;padding:9px 16px;border-radius:6px;">Book Now &rarr;</a>'
-        + '</div>'
         + addonHtml
         + '</div>';
-
-      var plainBookingLine = bookingLineHtml;
 
       propertyBlocksPlain += '\n----\nPROPERTY ' + (p.idx+1) + ' — ' + p.address + '\n'
         + 'Order ID: ' + p.orderId + '  |  Transaction ID: ' + p.transactionId + '\n'
@@ -1191,8 +1176,6 @@
         + 'What\'s included:\n' + (details.items.length ? details.items.map(function(i){ return '- ' + i; }).join('\n') : '(details confirmed at walkthrough)') + '\n\n'
         + p.service + ': ' + fmt(p.rate) + ' x ' + p.sqft + ' ' + unitLabel(p.sizeUnit) + ' = ' + fmt(p.rate * p.sqft) + '\n\n'
         + 'Estimated total per visit: ' + fmt(p.total) + '\n\n'
-        + '[SCHEDULING] Book a Schedule: ' + plainBookingLine + '\n'
-        + 'Book Now: ' + bookNowUrl + '\n'
         + (p.addonNote ? p.addonNote + '\n' : '');
     });
 
@@ -1201,7 +1184,7 @@
       + '<h2 style="color:#0a5c64;margin-bottom:4px;">Primo Care &mdash; Your Cleaning Proposal</h2>'
       + '<p style="color:#6b7280;font-size:13px;margin-top:0;">Prepared for ' + clientDisplayName() + ' &middot; ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'}) + '</p>'
       + '<p>Hi ' + state.client.firstName + ',</p>'
-      + '<p>Thank you for reaching out to Primo Care! Below is your full proposal covering ' + state.properties.length + ' propert' + (state.properties.length === 1 ? 'y' : 'ies') + ', with everything included, your estimated pricing, and how to book a schedule for each.</p>'
+      + '<p>Thank you for reaching out to Primo Care! Below is your full proposal covering ' + state.properties.length + ' propert' + (state.properties.length === 1 ? 'y' : 'ies') + ', with everything included, your estimated pricing, and a single link to book your schedule.</p>'
       + '<div style="background:#f7f9fa;border:1px dashed #d1d5db;border-radius:8px;padding:10px 14px;margin:14px 0;font-size:12.5px;">'
       + '<b style="color:#0a5c64;">Save your Client ID</b> &mdash; it\'s shared across all your properties and needed (with each property\'s Order ID) to cancel or reschedule.'
       + '<div style="margin-top:6px;">Client ID: <b>' + state.client.clientId + '</b></div>'
@@ -1211,6 +1194,12 @@
       + '<td style="padding:12px 16px;color:#ffffff;font-size:16px;font-weight:bold;">Grand Total (all properties, per visit)</td>'
       + '<td align="right" style="padding:12px 16px;color:#ffffff;font-size:16px;font-weight:bold;white-space:nowrap;">' + fmt(grand) + '</td>'
       + '</tr></table>'
+      + '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:14px 0;text-align:center;">'
+      + '<span style="display:inline-block;background:#0a5c64;color:#ffffff;font-size:10.5px;font-weight:bold;letter-spacing:0.3px;padding:3px 9px;border-radius:10px;">SCHEDULING</span>'
+      + '<p style="margin:8px 0 2px;font-weight:bold;color:#166534;font-size:15px;">Book a Schedule</p>'
+      + '<p style="margin:0 0 12px;color:#166534;font-size:13.5px;">Click below to pick times for your propert' + (state.properties.length === 1 ? 'y' : 'ies') + ' &mdash; book one or all in a single place, or reply to this email with your preferred dates and we\'ll set it up for you.</p>'
+      + '<a href="' + bookScheduleUrl + '" style="display:inline-block;background:#0a5c64;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;padding:11px 24px;border-radius:6px;">Book a Schedule &rarr;</a>'
+      + '</div>'
       + '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:12.5px;"><b>Please note:</b> ' + DISCLAIMER_TEXT + '</div>'
       + '<p style="background:#0e7c86;color:#fff;padding:14px 16px;border-radius:8px;">Ready to get those spaces sparkling? Reply to this email any time with questions, and we\'ll take it from there.</p>'
       + '<p>Best,<br>Primo Care Team</p>'
@@ -1221,6 +1210,8 @@
       + 'CLIENT ID (shared across all your properties): ' + state.client.clientId + '\n'
       + propertyBlocksPlain
       + '\nGRAND TOTAL (all properties, per visit): ' + fmt(grand) + '\n\n'
+      + '[SCHEDULING] Book a Schedule: Click the link below to pick times for your propert' + (state.properties.length === 1 ? 'y' : 'ies') + ' — book one or all in a single place, or reply to this email with your preferred dates and we\'ll set it up for you.\n'
+      + 'Book a Schedule: ' + bookScheduleUrl + '\n\n'
       + 'PLEASE NOTE: ' + DISCLAIMER_TEXT + '\n\n'
       + 'Ready to get those spaces sparkling? Reply any time with questions.\n\nBest,\nPrimo Care Team';
 

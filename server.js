@@ -31,6 +31,21 @@ async function findVerifiedRecord({ firstName, lastName, email, orderId }) {
   return rec;
 }
 
+// Same identity-verification pattern as findVerifiedRecord, but matched by Client ID and
+// returning EVERY property record under that client (a client can have multiple properties).
+// Identity is checked against the first matching record, since a Client ID always ties back to
+// one client's First/Last/Email across all their property records.
+async function findVerifiedClientRecords({ firstName, lastName, email, clientId }) {
+  const recs = await airtable.findAllByField('Client ID', clientId);
+  if (!recs.length) return null;
+  const f = recs[0].fields || {};
+  const norm = v => (v || '').toString().trim().toLowerCase();
+  if (norm(f['First Name']) !== norm(firstName)) return null;
+  if (norm(f['Last Name']) !== norm(lastName)) return null;
+  if (norm(f['Email']) !== norm(email)) return null;
+  return recs;
+}
+
 // Deletes the calendar event tied to a booking. Prefers the stored Calendar Event ID
 // (deleting a recurring series' master event cancels the whole series); falls back to a
 // full-text search on the Order ID for records saved before that field existed.
@@ -205,6 +220,40 @@ app.post('/api/order-lookup', async (req, res) => {
       alreadyBooked: !!f['Booked Date/Time'],
       bookedDisplay: f['Booked Date/Time'] || ''
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Looks up every property under a Client ID at once — backs the single "Book a Schedule" link
+// in the proposal email, which no longer points at one property's Order ID.
+app.post('/api/client-lookup', async (req, res) => {
+  try {
+    const { firstName, lastName, email, clientId } = req.body || {};
+    const recs = await findVerifiedClientRecords({ firstName, lastName, email, clientId });
+    if (!recs) return res.status(404).json({ error: 'We couldn\'t find any properties matching those details.' });
+
+    const properties = recs.map(rec => {
+      const f = rec.fields || {};
+      return {
+        orderId: f['Order ID'] || '',
+        address: f['Address'] || '',
+        propertyType: f['Property Type'] || '',
+        sqft: f['Property Size (sq ft)'] || '',
+        sizeUnit: f['Property Size Unit'] || 'sq ft',
+        service: f['Service'] || '',
+        total: f['Estimated Total per Visit'] || 0,
+        frequency: f['Subscription Frequency'] || '',
+        subscriptionDuration: f['Subscription Duration (months)'] || '',
+        alreadyBooked: !!f['Booked Date/Time'],
+        bookedDisplay: f['Booked Date/Time'] || ''
+      };
+    });
+    // Surface not-yet-booked properties first, since those are the ones needing action.
+    properties.sort((a, b) => Number(a.alreadyBooked) - Number(b.alreadyBooked));
+
+    res.json({ properties });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

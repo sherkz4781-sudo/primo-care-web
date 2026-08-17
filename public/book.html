@@ -103,6 +103,7 @@
   .summary-box .row { display: flex; justify-content: space-between; padding: 3px 0; }
   .summary-box .row span:first-child { color: var(--muted); }
 
+  .intro-note { text-align: center; font-size: 13px; color: var(--muted); margin: 0 0 18px; }
   .footer-note { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 20px; }
 </style>
 </head>
@@ -118,7 +119,7 @@
   </header>
 
   <div class="card" id="identityCard">
-    <p style="margin:0 0 14px;color:var(--muted);font-size:13.5px;">Confirm your details below to pull up your property and pick a time.</p>
+    <p style="margin:0 0 14px;color:var(--muted);font-size:13.5px;">Confirm your details below to pull up your properties and pick a time for each.</p>
     <div class="grid2">
       <div class="field">
         <label>First Name <span class="req">*</span></label>
@@ -134,38 +135,17 @@
       <input type="email" id="email" placeholder="jane@example.com">
     </div>
     <div class="field">
-      <label>Order ID <span class="req">*</span></label>
-      <input type="text" id="orderId" placeholder="PC-ORD-XXXXXXXX">
+      <label>Client ID <span class="req">*</span></label>
+      <input type="text" id="clientId" placeholder="PC-CLI-XXXXXXXX">
       <div class="hint">Found in your proposal email under "Reference Numbers."</div>
     </div>
-    <button class="primary" id="lookupBtn">Find My Property</button>
+    <button class="primary" id="lookupBtn">Find My Properties</button>
     <div class="result-box" id="lookupResultBox"></div>
   </div>
 
-  <div class="card hidden" id="bookingCard">
-    <div class="summary-box" id="propertySummary"></div>
-
-    <div id="alreadyBookedBlock" class="hidden">
-      <div class="result-box ok" style="display:block;" id="alreadyBookedMsg"></div>
-      <p style="font-size:13px;color:var(--muted);">Need to change it? Use our <a href="/cancel-reschedule" style="color:var(--teal-dark);">cancel/reschedule page</a> instead.</p>
-    </div>
-
-    <div id="findBlock">
-      <label>Pick a Date <span class="req">*</span></label>
-      <div class="booking-row">
-        <div class="field" style="margin-bottom:0;">
-          <input type="date" id="bookDate">
-        </div>
-        <div class="field" style="margin-bottom:0; display:flex; align-items:flex-end;">
-          <button class="secondary" id="findTimesBtn" style="width:100%;">Find Available Times</button>
-        </div>
-      </div>
-      <div class="hint">We'll show open 30-minute slots. Pick one, then confirm with Book This Schedule.</div>
-      <div id="slotsWrap" style="margin-top:10px;"></div>
-      <button class="primary hidden" id="bookBtn" style="margin-top:14px;">Book This Schedule</button>
-    </div>
-
-    <div class="result-box" id="bookResultBox"></div>
+  <div id="propertiesSection" class="hidden">
+    <p class="intro-note">Here's every property on file for you. Pick a time for each one below, or use the cancel/reschedule page for anything already booked.</p>
+    <div id="propertiesList"></div>
   </div>
 
   <div class="footer-note">Questions? Reply to your proposal email and our team will help.</div>
@@ -188,25 +168,24 @@
     }).then(function(r){ return r.json(); });
   }
 
-  // Prefill Order ID from ?orderId=... if the link included one.
+  // Prefill Client ID from ?clientId=... if the link included one.
   var params = new URLSearchParams(window.location.search);
-  var prefillOrderId = params.get('orderId');
-  if(prefillOrderId) $('orderId').value = prefillOrderId;
+  var prefillClientId = params.get('clientId');
+  if(prefillClientId) $('clientId').value = prefillClientId;
 
   var verifiedIdentity = null;
-  var pending = { slots: [], selectedIndex: -1 };
 
   function getIdentity(){
     return {
       firstName: $('firstName').value.trim(),
       lastName: $('lastName').value.trim(),
       email: $('email').value.trim(),
-      orderId: $('orderId').value.trim()
+      clientId: $('clientId').value.trim()
     };
   }
 
   function identityValid(id){
-    return !!(id.firstName && id.lastName && id.email && id.orderId);
+    return !!(id.firstName && id.lastName && id.email && id.clientId);
   }
 
   $('lookupBtn').addEventListener('click', function(){
@@ -217,150 +196,188 @@
     var id = getIdentity();
     if(!identityValid(id)){
       resultBox.className = 'result-box err';
-      resultBox.textContent = 'Please fill in your first name, last name, email, and Order ID.';
+      resultBox.textContent = 'Please fill in your first name, last name, email, and Client ID.';
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = 'Looking up your property...';
+    btn.textContent = 'Looking up your properties...';
 
-    postJson('/api/order-lookup', id).then(function(data){
+    postJson('/api/client-lookup', id).then(function(data){
       btn.disabled = false;
-      btn.textContent = 'Find My Property';
+      btn.textContent = 'Find My Properties';
       if(data.error){
         resultBox.className = 'result-box err';
         resultBox.textContent = data.error;
         return;
       }
       verifiedIdentity = id;
-      renderProperty(data);
+      renderProperties(data.properties || []);
     }).catch(function(err){
       btn.disabled = false;
-      btn.textContent = 'Find My Property';
+      btn.textContent = 'Find My Properties';
       resultBox.className = 'result-box err';
       resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
     });
   });
 
-  function renderProperty(data){
+  function renderProperties(properties){
     $('identityCard').classList.add('hidden');
-    $('bookingCard').classList.remove('hidden');
+    var listWrap = $('propertiesList');
+    listWrap.innerHTML = '';
 
-    var rows = ''
-      + '<div class="row"><span>Address</span><span>' + (data.address || '&mdash;') + '</span></div>'
-      + '<div class="row"><span>Service</span><span>' + (data.service || '&mdash;') + '</span></div>'
-      + '<div class="row"><span>Size</span><span>' + (data.sqft || '&mdash;') + ' ' + (data.sizeUnit || '') + '</span></div>'
-      + '<div class="row"><span>Estimated total per visit</span><span><b>$' + Number(data.total || 0).toFixed(2) + '</b></span></div>';
-    if(data.frequency && data.subscriptionDuration){
-      rows += '<div class="row"><span>Subscription</span><span>' + data.frequency + ' for ' + data.subscriptionDuration + ' month' + (data.subscriptionDuration === 1 ? '' : 's') + '</span></div>';
+    if(!properties.length){
+      listWrap.innerHTML = '<div class="card"><p style="margin:0;color:var(--muted);">No properties found for this Client ID.</p></div>';
+      $('propertiesSection').classList.remove('hidden');
+      return;
     }
-    $('propertySummary').innerHTML = '<h3>Your Property</h3>' + rows;
 
-    if(data.alreadyBooked){
-      $('alreadyBookedBlock').classList.remove('hidden');
-      $('findBlock').classList.add('hidden');
-      $('alreadyBookedMsg').textContent = 'This property is already booked for ' + data.bookedDisplay + '.';
-    } else {
-      $('alreadyBookedBlock').classList.add('hidden');
-      $('findBlock').classList.remove('hidden');
-    }
+    properties.forEach(function(p, i){
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = buildCardHtml(p, i);
+      listWrap.appendChild(card);
+      wireCard(card, p);
+    });
+
+    $('propertiesSection').classList.remove('hidden');
   }
 
-  var bookBtn = $('bookBtn');
+  function buildCardHtml(p, i){
+    var rows = ''
+      + '<div class="row"><span>Address</span><span>' + (p.address || '&mdash;') + '</span></div>'
+      + '<div class="row"><span>Service</span><span>' + (p.service || '&mdash;') + '</span></div>'
+      + '<div class="row"><span>Size</span><span>' + (p.sqft || '&mdash;') + ' ' + (p.sizeUnit || '') + '</span></div>'
+      + '<div class="row"><span>Estimated total per visit</span><span><b>$' + Number(p.total || 0).toFixed(2) + '</b></span></div>';
+    if(p.frequency && p.subscriptionDuration){
+      rows += '<div class="row"><span>Subscription</span><span>' + p.frequency + ' for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '</span></div>';
+    }
+    var summary = '<div class="summary-box"><h3>Property ' + (i+1) + ' &mdash; ' + (p.address || 'Untitled') + '</h3>' + rows + '</div>';
 
-  $('findTimesBtn').addEventListener('click', function(){
-    var btn = this;
-    var resultBox = $('bookResultBox');
-    var wrap = $('slotsWrap');
-    resultBox.className = 'result-box'; resultBox.textContent = '';
-    wrap.innerHTML = '';
-    bookBtn.classList.add('hidden');
-    pending = { slots: [], selectedIndex: -1 };
-
-    var dateVal = $('bookDate').value;
-    if(!dateVal){
-      resultBox.className = 'result-box err';
-      resultBox.textContent = 'Pick a date first.';
-      return;
+    if(p.alreadyBooked){
+      return summary
+        + '<div class="result-box ok" style="display:block;">This property is already booked for ' + p.bookedDisplay + '.</div>'
+        + '<p style="font-size:13px;color:var(--muted);margin:8px 0 0;">Need to change it? Use our <a href="/cancel-reschedule" style="color:var(--teal-dark);">cancel/reschedule page</a> instead.</p>';
     }
 
-    btn.disabled = true;
-    btn.textContent = 'Checking calendar...';
+    return summary
+      + '<div class="find-block">'
+      + '<label>Pick a Date <span class="req">*</span></label>'
+      + '<div class="booking-row">'
+      + '<div class="field" style="margin-bottom:0;"><input type="date" class="book-date"></div>'
+      + '<div class="field" style="margin-bottom:0; display:flex; align-items:flex-end;"><button type="button" class="secondary find-times-btn" style="width:100%;">Find Available Times</button></div>'
+      + '</div>'
+      + '<div class="hint">We\'ll show open 30-minute slots. Pick one, then confirm with Book This Schedule.</div>'
+      + '<div class="slots-wrap" style="margin-top:10px;"></div>'
+      + '<button type="button" class="primary book-btn hidden" style="margin-top:14px;">Book This Schedule</button>'
+      + '</div>'
+      + '<div class="result-box card-result-box"></div>';
+  }
 
-    postJson('/api/find-times', { date: dateVal }).then(function(data){
-      btn.disabled = false;
-      btn.textContent = 'Find Available Times';
-      if(data.error){
+  // Wires up one property card's find-times/book flow. Each card keeps its own `pending`
+  // state and queries elements scoped to itself (via card.querySelector), so multiple cards
+  // on the page never step on each other.
+  function wireCard(card, p){
+    var findBtn = card.querySelector('.find-times-btn');
+    if(!findBtn) return; // already-booked cards have no booking UI to wire
+
+    var dateInput = card.querySelector('.book-date');
+    var slotsWrap = card.querySelector('.slots-wrap');
+    var bookBtn = card.querySelector('.book-btn');
+    var resultBox = card.querySelector('.card-result-box');
+    var pending = { slots: [], selectedIndex: -1 };
+
+    findBtn.addEventListener('click', function(){
+      resultBox.className = 'result-box'; resultBox.textContent = '';
+      slotsWrap.innerHTML = '';
+      bookBtn.classList.add('hidden');
+      pending = { slots: [], selectedIndex: -1 };
+
+      var dateVal = dateInput.value;
+      if(!dateVal){
         resultBox.className = 'result-box err';
-        resultBox.textContent = data.error;
+        resultBox.textContent = 'Pick a date first.';
         return;
       }
-      var slots = data.slots || [];
-      if(!slots.length){
-        resultBox.className = 'result-box err';
-        resultBox.textContent = 'No open 30-minute slots that day during business hours (9am–5pm). Try another date.';
-        return;
-      }
-      pending.slots = slots;
-      wrap.innerHTML = slots.map(function(s, i){
-        return '<button type="button" class="slot-btn" data-i="'+i+'">' + fmtSlotTime(s.start) + '</button>';
-      }).join('');
-      wrap.querySelectorAll('.slot-btn').forEach(function(b, i){
-        b.addEventListener('click', function(){
-          wrap.querySelectorAll('.slot-btn').forEach(function(x){ x.classList.remove('selected'); });
-          b.classList.add('selected');
-          pending.selectedIndex = i;
-          bookBtn.classList.remove('hidden');
-          resultBox.className = 'result-box'; resultBox.textContent = '';
+
+      findBtn.disabled = true;
+      findBtn.textContent = 'Checking calendar...';
+
+      postJson('/api/find-times', { date: dateVal }).then(function(data){
+        findBtn.disabled = false;
+        findBtn.textContent = 'Find Available Times';
+        if(data.error){
+          resultBox.className = 'result-box err';
+          resultBox.textContent = data.error;
+          return;
+        }
+        var slots = data.slots || [];
+        if(!slots.length){
+          resultBox.className = 'result-box err';
+          resultBox.textContent = 'No open 30-minute slots that day during business hours (9am–5pm). Try another date.';
+          return;
+        }
+        pending.slots = slots;
+        slotsWrap.innerHTML = slots.map(function(s, i){
+          return '<button type="button" class="slot-btn" data-i="'+i+'">' + fmtSlotTime(s.start) + '</button>';
+        }).join('');
+        slotsWrap.querySelectorAll('.slot-btn').forEach(function(b, i){
+          b.addEventListener('click', function(){
+            slotsWrap.querySelectorAll('.slot-btn').forEach(function(x){ x.classList.remove('selected'); });
+            b.classList.add('selected');
+            pending.selectedIndex = i;
+            bookBtn.classList.remove('hidden');
+            resultBox.className = 'result-box'; resultBox.textContent = '';
+          });
         });
-      });
-    }).catch(function(err){
-      btn.disabled = false;
-      btn.textContent = 'Find Available Times';
-      resultBox.className = 'result-box err';
-      resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
-    });
-  });
-
-  bookBtn.addEventListener('click', function(){
-    var wrap = $('slotsWrap');
-    var resultBox = $('bookResultBox');
-    if(!verifiedIdentity || pending.selectedIndex < 0){
-      resultBox.className = 'result-box err';
-      resultBox.textContent = 'Please pick a time slot above first.';
-      return;
-    }
-    var slot = pending.slots[pending.selectedIndex];
-
-    wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = true; });
-    bookBtn.disabled = true;
-    bookBtn.textContent = 'Booking...';
-    resultBox.className = 'result-box'; resultBox.textContent = '';
-
-    postJson('/api/book-verified', {
-      firstName: verifiedIdentity.firstName, lastName: verifiedIdentity.lastName,
-      email: verifiedIdentity.email, orderId: verifiedIdentity.orderId, slot: slot
-    }).then(function(data){
-      if(data.error){
+      }).catch(function(err){
+        findBtn.disabled = false;
+        findBtn.textContent = 'Find Available Times';
         resultBox.className = 'result-box err';
-        resultBox.textContent = data.error;
-        wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
+        resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
+      });
+    });
+
+    bookBtn.addEventListener('click', function(){
+      if(!verifiedIdentity || pending.selectedIndex < 0){
+        resultBox.className = 'result-box err';
+        resultBox.textContent = 'Please pick a time slot above first.';
+        return;
+      }
+      var slot = pending.slots[pending.selectedIndex];
+
+      slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = true; });
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Booking...';
+      resultBox.className = 'result-box'; resultBox.textContent = '';
+
+      postJson('/api/book-verified', {
+        firstName: verifiedIdentity.firstName, lastName: verifiedIdentity.lastName,
+        email: verifiedIdentity.email, orderId: p.orderId, slot: slot
+      }).then(function(data){
+        if(data.error){
+          resultBox.className = 'result-box err';
+          resultBox.textContent = data.error;
+          slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
+          bookBtn.disabled = false;
+          bookBtn.textContent = 'Book This Schedule';
+          return;
+        }
+        resultBox.className = 'result-box ok';
+        resultBox.textContent = 'Booked! ' + (data.isSubscription ? 'Your recurring ' + data.freqName + ' schedule starts ' + data.startFormatted + '.' : 'Your visit is booked for ' + data.startFormatted + '.') + ' It\'s now on our calendar.';
+        slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.style.display = 'none'; });
+        bookBtn.classList.add('hidden');
+        dateInput.disabled = true;
+        findBtn.disabled = true;
+      }).catch(function(err){
+        resultBox.className = 'result-box err';
+        resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
+        slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
         bookBtn.disabled = false;
         bookBtn.textContent = 'Book This Schedule';
-        return;
-      }
-      resultBox.className = 'result-box ok';
-      resultBox.textContent = 'Booked! ' + (data.isSubscription ? 'Your recurring ' + data.freqName + ' schedule starts ' + data.startFormatted + '.' : 'Your visit is booked for ' + data.startFormatted + '.') + ' It\'s now on our calendar.';
-      wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.style.display = 'none'; });
-      bookBtn.classList.add('hidden');
-    }).catch(function(err){
-      resultBox.className = 'result-box err';
-      resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
-      wrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
-      bookBtn.disabled = false;
-      bookBtn.textContent = 'Book This Schedule';
+      });
     });
-  });
+  }
 })();
 </script>
 </body>
