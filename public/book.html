@@ -178,10 +178,13 @@
     }).then(function(r){ return r.json(); });
   }
 
-  // Prefill Client ID from ?clientId=... if the link included one.
+  // Prefill from the proposal email's link (?clientId=&firstName=&lastName=&email=) so the
+  // client doesn't have to type their own details back in — they just confirm and go.
   var params = new URLSearchParams(window.location.search);
-  var prefillClientId = params.get('clientId');
-  if(prefillClientId) $('clientId').value = prefillClientId;
+  if(params.get('firstName')) $('firstName').value = params.get('firstName');
+  if(params.get('lastName')) $('lastName').value = params.get('lastName');
+  if(params.get('email')) $('email').value = params.get('email');
+  if(params.get('clientId')) $('clientId').value = params.get('clientId');
 
   var verifiedIdentity = null;
 

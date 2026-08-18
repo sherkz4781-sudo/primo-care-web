@@ -1142,7 +1142,11 @@
     var propertyBlocksHtml = '';
     var propertyBlocksPlain = '';
     var orderIds = state.properties.map(function(p){ return p.orderId; });
-    var bookScheduleUrl = window.location.origin + '/book?clientId=' + encodeURIComponent(state.client.clientId);
+    var bookScheduleUrl = window.location.origin + '/book'
+      + '?clientId=' + encodeURIComponent(state.client.clientId)
+      + '&firstName=' + encodeURIComponent(state.client.firstName)
+      + '&lastName=' + encodeURIComponent(state.client.lastName)
+      + '&email=' + encodeURIComponent(state.client.email);
 
     state.properties.forEach(function(p){
       grand += p.total;
