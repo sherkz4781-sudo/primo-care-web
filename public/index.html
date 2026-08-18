@@ -370,6 +370,22 @@
 
   function $(id){ return document.getElementById(id); }
 
+  // Render's free tier spins the server down after inactivity, so the very first request after
+  // a lull can fail outright ("Failed to fetch") before the container finishes waking up. If the
+  // fetch itself throws (a network-level failure, not a normal error response from our server),
+  // wait a moment and try once more before giving up — covers the cold-start case transparently
+  // instead of showing the client a scary error on their first click.
+  function fetchJsonWithRetry(url, options, attempt){
+    attempt = attempt || 1;
+    return fetch(url, options).then(function(r){ return r.json(); }).catch(function(err){
+      if(attempt < 2){
+        return new Promise(function(resolve){ setTimeout(resolve, 2000); })
+          .then(function(){ return fetchJsonWithRetry(url, options, attempt + 1); });
+      }
+      throw err;
+    });
+  }
+
   function areaChoicesHtml(idx){
     var out = '';
     AREA_LIST.forEach(function(a){
@@ -957,13 +973,13 @@
     var prefix = $('prefix').value;
     var suffix = $('suffix').value.trim();
 
-    return fetch('/api/submit', {
+    return fetchJsonWithRetry('/api/submit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email,
         properties: newProps
       })
-    }).then(function(r){ return r.json(); }).then(function(data){
+    }).then(function(data){
       if(data.error) throw new Error(data.error);
       state.client = { prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, clientId: data.clientId };
       lockClientInfo();
@@ -1219,10 +1235,10 @@
       + 'PLEASE NOTE: ' + DISCLAIMER_TEXT + '\n\n'
       + 'Ready to get those spaces sparkling? Reply any time with questions.\n\nBest,\nPrimo Care Team';
 
-    return fetch('/api/create-draft', {
+    return fetchJsonWithRetry('/api/create-draft', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ orderIds: orderIds, to: state.client.email, subject: 'Your Primo Care Cleaning Proposal (' + state.properties.length + ' Propert' + (state.properties.length === 1 ? 'y' : 'ies') + ')', body: plain, htmlBody: html })
-    }).then(function(r){ return r.json(); });
+    });
   }
 })();
 </script>

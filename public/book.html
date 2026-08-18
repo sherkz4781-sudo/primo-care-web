@@ -171,11 +171,23 @@
     return new Date(iso).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit', timeZone: CAL_TIMEZONE });
   }
 
-  function postJson(url, body){
+  // Render's free tier spins the server down after inactivity, so the very first request after
+  // a lull can fail outright ("Failed to fetch") before the container finishes waking up. If the
+  // fetch itself throws (a network-level failure, not a normal error response from our server),
+  // wait a moment and try once more before giving up — covers the cold-start case transparently
+  // instead of showing the client a scary error on their first click.
+  function postJson(url, body, attempt){
+    attempt = attempt || 1;
     return fetch(url, {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body)
-    }).then(function(r){ return r.json(); });
+    }).then(function(r){ return r.json(); }).catch(function(err){
+      if(attempt < 2){
+        return new Promise(function(resolve){ setTimeout(resolve, 2000); })
+          .then(function(){ return postJson(url, body, attempt + 1); });
+      }
+      throw err;
+    });
   }
 
   // Prefill from the proposal email's link (?clientId=&firstName=&lastName=&email=) so the
