@@ -8,8 +8,9 @@ session or human in the loop required for a normal booking.
 It replaces the Cowork MCP connectors (`window.cowork.callMcpTool`) with direct API calls:
 Google Calendar + Gmail via OAuth2 (`googleapis`), and Airtable via its REST API.
 
-**Two pages:**
-- `/` — intake, live pricing, proposal, booking
+**Three pages:**
+- `/` — intake, live pricing, proposal (creates a Gmail draft with a single "Book a Schedule" link — booking itself no longer happens on this page)
+- `/book` — public booking page. Reached via the link in the proposal email (`?clientId=&firstName=&lastName=&email=` pre-fills the identity form). Looks up every property on file for a Client ID and lets the client book each one independently; ends with a Submit → Thank You → Close Page flow.
 - `/cancel-reschedule` — client self-serve cancel/reschedule, gated by the Cancellation & Reschedule Policy checkbox
 
 ## What you'll need before deploying
@@ -67,15 +68,23 @@ Any Node host works. A simple option:
 4. Add the same environment variables from your `.env` file in Render's dashboard (never commit `.env` itself).
 5. Deploy — Render gives you a public URL like `https://primo-care.onrender.com`.
 
-Point clients to `https://<your-domain>/` for the intake form and
+Point clients to `https://<your-domain>/` for the intake form,
+`https://<your-domain>/book` for booking (this is what the proposal email links to), and
 `https://<your-domain>/cancel-reschedule` for cancellations, or add a custom domain in your
 host's settings.
 
+**Pushing updates:** use SSH, not HTTPS/password auth — GitHub rejects password auth outright, and
+personal access tokens have been unreliable here. One-time setup: `ssh-keygen -t ed25519 -C "you@example.com"`,
+add the public key under GitHub → Settings → SSH and GPG keys, then
+`git remote set-url origin git@github.com:<user>/<repo>.git`. After that, `git push` just works —
+Render auto-redeploys on every push to `main`. Give the free-tier instance a few seconds to wake up
+after a quiet period; the site itself auto-retries failed requests once for this reason (see below).
+
 ## Important notes
 
-- **Draft emails, not auto-send.** Unlike the Cowork MCP Gmail connector (which had no send capability at all), this app uses the real Gmail API — which *can* send directly. It's currently wired to only create a **draft** in `sherkz4781@gmail.com`'s Drafts folder, matching the safe default used throughout this whole project. If you want it to send the proposal/reminder emails automatically without review, that's a small change in `lib/google.js` (`createGmailDraft` → `gmail.users.messages.send`) — flag it and it can be flipped once you've tested the app for a while.
+- **Proposal email is a draft; cancel/reschedule confirmation sends for real.** The proposal (from `/api/create-draft`) is still only ever created as a **draft** in `sherkz4781@gmail.com`'s Drafts folder, matching the safe default used throughout this project — a human reviews and sends it. Cancel/reschedule confirmations, by contrast, send immediately and automatically via the real Gmail API (`gmail.users.messages.send`) — no draft step, since there's no pricing/judgment call left to review at that point.
 - **No attendee invites.** Bookings never add the client as a calendar attendee, so no Google Calendar invite email goes out automatically — consistent with the original tool.
-- **Server-side ID generation.** Client ID / Order ID / Transaction ID are now generated server-side (`/api/submit`), not in the browser, so they can't be spoofed by a client-side request.
-- **Identity verification for cancel/reschedule.** A client must supply first name, last name, email, and Order ID that all match an existing Airtable record — a guessed Order ID alone can't touch someone else's booking, and the app never reveals which specific field mismatched.
+- **Server-side ID generation and identity checks.** Client ID / Order ID / Transaction ID are generated server-side, never trusted from the browser. Booking on `/book` and cancel/reschedule both require first name, last name, email (and Client ID or Order ID respectively) to all match an existing Airtable record before anything happens — the app never reveals which specific field mismatched.
+- **Cold-start auto-retry.** Render's free tier sleeps after ~15 min idle; the first request after that can fail with a network-level error before the container wakes up. Every POST call in `public/index.html` and `public/book.html` retries once automatically after a short delay before surfacing any error to the client.
 - **The `48-hour notice` and `auto-Ongoing status` scheduled tasks from the Cowork build are not part of this app.** Those ran as Cowork scheduled tasks against the MCP connectors. If you want the same behavior here, they'd need to become a small recurring job (e.g. a cron-triggered endpoint, or a `node-cron` job inside `server.js`) — ask if you'd like this added.
 - **`node_modules/` is disposable.** Don't deploy it — hosts run `npm install` themselves from `package.json`.
