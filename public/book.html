@@ -146,9 +146,19 @@
   <div id="propertiesSection" class="hidden">
     <p class="intro-note">Here's every property on file for you. Pick a time for each one below, or use the cancel/reschedule page for anything already booked.</p>
     <div id="propertiesList"></div>
+    <button class="primary hidden" id="submitAllBtn">Submit</button>
   </div>
 
-  <div class="footer-note">Questions? Reply to your proposal email and our team will help.</div>
+  <div id="thankYouSection" class="hidden">
+    <div class="card" style="text-align:center;">
+      <div style="font-size:38px;margin-bottom:6px;">&#127881;</div>
+      <h2 style="margin:0 0 10px;color:var(--teal-dark);font-size:20px;">Thank You!</h2>
+      <p style="margin:0 0 22px;color:var(--muted);font-size:13.5px;">Thanks for scheduling with Primo Care! Anything you booked is already on our calendar. If you need to make changes later, just reply to your proposal email or use our cancel/reschedule page.</p>
+      <button class="primary" id="closePageBtn">Close Page</button>
+    </div>
+  </div>
+
+  <div class="footer-note" id="footerNote">Questions? Reply to your proposal email and our team will help.</div>
 </div>
 
 <script>
@@ -228,6 +238,7 @@
 
     if(!properties.length){
       listWrap.innerHTML = '<div class="card"><p style="margin:0;color:var(--muted);">No properties found for this Client ID.</p></div>';
+      $('submitAllBtn').classList.add('hidden');
       $('propertiesSection').classList.remove('hidden');
       return;
     }
@@ -240,8 +251,31 @@
       wireCard(card, p);
     });
 
+    $('submitAllBtn').classList.remove('hidden');
     $('propertiesSection').classList.remove('hidden');
   }
+
+  // Final "I'm done" step — doesn't book anything itself (each card already booked its own
+  // slot on click), it just closes out the session with a confirmation screen instead of
+  // leaving the client staring at a page full of green checkmarks.
+  $('submitAllBtn').addEventListener('click', function(){
+    $('propertiesSection').classList.add('hidden');
+    $('footerNote').classList.add('hidden');
+    $('thankYouSection').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  });
+
+  // Browsers only allow script-initiated window.close() on tabs opened by script, so a tab the
+  // client navigated to directly often won't actually close. Attempt it, then fall back to
+  // telling them to close it themselves if it's still open a moment later.
+  $('closePageBtn').addEventListener('click', function(){
+    var btn = this;
+    window.close();
+    setTimeout(function(){
+      btn.textContent = 'You can now close this tab';
+      btn.disabled = true;
+    }, 300);
+  });
 
   function buildCardHtml(p, i){
     var rows = ''
