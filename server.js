@@ -101,11 +101,11 @@ app.post('/api/submit', async (req, res) => {
         'First Name': firstName,
         'Last Name': lastName,
         'Email': b.email,
-        'Phone': b.phone,
+        'Contact Number': b.phone,
         'Address': p.address,
         'Zip Code': p.zip,
         'Property Type': p.propertyType === 'residential' ? 'Residential' : 'Commercial',
-        'Property Size (sq ft)': p.sqft,
+        'Property Size': p.sqft,
         'Property Size Unit': p.sizeUnit === 'sqm' ? 'sq m' : 'sq ft',
         'Areas / Facility Type': p.propertyType === 'residential' ? (p.areasFormatted || (p.areas || []).join(', ')) : p.service,
         'Service': p.service,
@@ -122,8 +122,8 @@ app.post('/api/submit', async (req, res) => {
       if (combinedAddonSqft) fields['Balcony-Lanai Size (sq ft)'] = combinedAddonSqft;
       if (p.addonNote) fields['Balcony-Lanai Add-on'] = p.addonNote;
       if (p.othersSpecify) fields['Others Area Specify'] = p.othersSpecify;
-      if (p.frequency) fields['Subscription Frequency'] = p.frequency;
-      if (p.subscriptionDuration) fields['Subscription Duration (months)'] = p.subscriptionDuration;
+      if (p.frequency) fields['Subscription'] = p.frequency;
+      if (p.subscriptionDuration) fields['Duration'] = p.subscriptionDuration;
 
       const rec = await airtable.createRecord(fields);
       results.push({ orderId, transactionId, recordId: rec.id });
@@ -211,12 +211,12 @@ app.post('/api/order-lookup', async (req, res) => {
     res.json({
       address: f['Address'] || '',
       propertyType: f['Property Type'] || '',
-      sqft: f['Property Size (sq ft)'] || '',
+      sqft: f['Property Size'] || '',
       sizeUnit: f['Property Size Unit'] || 'sq ft',
       service: f['Service'] || '',
       total: f['Estimated Total per Visit'] || 0,
-      frequency: f['Subscription Frequency'] || '',
-      subscriptionDuration: f['Subscription Duration (months)'] || '',
+      frequency: f['Subscription'] || '',
+      subscriptionDuration: f['Duration'] || '',
       alreadyBooked: !!f['Booked Date/Time'],
       bookedDisplay: f['Booked Date/Time'] || ''
     });
@@ -240,12 +240,12 @@ app.post('/api/client-lookup', async (req, res) => {
         orderId: f['Order ID'] || '',
         address: f['Address'] || '',
         propertyType: f['Property Type'] || '',
-        sqft: f['Property Size (sq ft)'] || '',
+        sqft: f['Property Size'] || '',
         sizeUnit: f['Property Size Unit'] || 'sq ft',
         service: f['Service'] || '',
         total: f['Estimated Total per Visit'] || 0,
-        frequency: f['Subscription Frequency'] || '',
-        subscriptionDuration: f['Subscription Duration (months)'] || '',
+        frequency: f['Subscription'] || '',
+        subscriptionDuration: f['Duration'] || '',
         alreadyBooked: !!f['Booked Date/Time'],
         bookedDisplay: f['Booked Date/Time'] || ''
       };
@@ -272,10 +272,10 @@ app.post('/api/book-verified', async (req, res) => {
       return res.status(400).json({ error: 'This property already has a schedule booked. Use the cancel/reschedule page if you need to change it.' });
     }
 
-    const freqName = f['Subscription Frequency'];
-    const duration = f['Subscription Duration (months)'];
+    const freqName = f['Subscription'];
+    const duration = f['Duration'];
     const isSubscription = !!(freqName && duration);
-    const clientLine = `${firstName} ${lastName} — ${f['Phone'] || ''} — ${email}`;
+    const clientLine = `${firstName} ${lastName} — ${f['Contact Number'] || ''} — ${email}`;
 
     const summary = isSubscription
       ? `Primo Care Cleaning (${freqName}) — ${firstName} ${lastName}`
@@ -284,7 +284,7 @@ app.post('/api/book-verified', async (req, res) => {
       `Primo Care ${isSubscription ? 'subscription cleaning' : 'service call'}.`,
       `Client: ${clientLine}`,
       `Order ID: ${orderId}`,
-      `Property: ${f['Address'] || ''} (${f['Property Size (sq ft)'] || ''} ${f['Property Size Unit'] || 'sq ft'})`,
+      `Property: ${f['Address'] || ''} (${f['Property Size'] || ''} ${f['Property Size Unit'] || 'sq ft'})`,
       `Service: ${f['Service'] || ''}`,
       isSubscription ? `Schedule: ${freqName} for ${duration} month(s)` : ''
     ].filter(Boolean).join('<br>');
@@ -427,15 +427,15 @@ app.post('/api/reschedule/submit', async (req, res) => {
     if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
 
     const f = rec.fields || {};
-    const freqName = f['Subscription Frequency'];
-    const duration = f['Subscription Duration (months)'];
+    const freqName = f['Subscription'];
+    const duration = f['Duration'];
     const isSubscription = !!(freqName && duration);
     const originalBookedDisplay = f['Booked Date/Time'] || '';
     const feeNote = feeApplicabilityNote(f['Booked Start (ISO)']);
 
     await deleteBookingEvent(rec, orderId);
 
-    const clientLine = `${firstName} ${lastName} — ${f['Phone'] || ''} — ${email}`;
+    const clientLine = `${firstName} ${lastName} — ${f['Contact Number'] || ''} — ${email}`;
     const summary = isSubscription
       ? `Primo Care Cleaning (${freqName}) — ${firstName} ${lastName}`
       : `Primo Care Call — ${firstName} ${lastName}`;
@@ -443,7 +443,7 @@ app.post('/api/reschedule/submit', async (req, res) => {
       `Primo Care ${isSubscription ? 'subscription cleaning' : 'service call'} (rescheduled).`,
       `Client: ${clientLine}`,
       `Order ID: ${orderId}`,
-      `Property: ${f['Address'] || ''} (${f['Property Size (sq ft)'] || ''} sq ft)`,
+      `Property: ${f['Address'] || ''} (${f['Property Size'] || ''} sq ft)`,
       `Service: ${f['Service'] || ''}`,
       isSubscription ? `Schedule: ${freqName} for ${duration} month(s)` : ''
     ].filter(Boolean).join('<br>');
