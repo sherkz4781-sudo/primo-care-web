@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primo Care - Staff</title>
+<style>
+  :root {
+    color-scheme: light;
+    --teal: #0e7c86;
+    --teal-dark: #0a5c64;
+    --teal-light: #e6f4f5;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --bg: #ffffff;
+    --green: #16a34a;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #f7f9fa;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header.brand {
+    display: flex; align-items: center; gap: 12px; padding: 22px 24px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border-radius: 14px; color: white; margin-bottom: 22px;
+  }
+  header.brand .logo {
+    width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  header.brand h1 { margin: 0; font-size: 20px; }
+  header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .toolbar .count { font-size: 13px; color: var(--muted); }
+  button.refresh {
+    background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); font-weight: 700;
+    font-size: 12.5px; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+  }
+  button.refresh:hover { background: var(--teal-light); }
+
+  .job-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+  }
+  .job-card .info b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .job-card .info .line { font-size: 13px; color: var(--muted); margin-bottom: 2px; }
+  .job-card .info .badge {
+    display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; padding: 2px 8px; border-radius: 999px; margin-top: 6px;
+    background: var(--teal-light); color: var(--teal-dark);
+  }
+  .job-card .info .badge.ongoing { background: #fef3c7; color: #92400e; }
+  button.complete {
+    background: var(--green); color: #fff; border: none; border-radius: 8px;
+    font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+  button.complete:hover { background: #15803d; }
+  button.complete:disabled { opacity: 0.6; cursor: default; }
+
+  .empty { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 20px; }
+  .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <div class="logo">&#10003;</div>
+    <div>
+      <h1>Primo Care &mdash; Staff</h1>
+      <p>Mark completed jobs off the schedule</p>
+    </div>
+  </header>
+
+  <div id="errorBox"></div>
+
+  <div class="toolbar">
+    <span class="count" id="countLabel">Loading&hellip;</span>
+    <button class="refresh" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div id="jobList"></div>
+</div>
+
+<script>
+function $(id) { return document.getElementById(id); }
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function renderJobs(jobs) {
+  var list = $('jobList');
+  if (!jobs.length) {
+    list.innerHTML = '<div class="empty">No scheduled or ongoing jobs right now.</div>';
+    $('countLabel').textContent = '0 jobs';
+    return;
+  }
+  $('countLabel').textContent = jobs.length + ' job' + (jobs.length === 1 ? '' : 's');
+  list.innerHTML = jobs.map(function (j) {
+    var badgeClass = j.status === 'Ongoing' ? 'badge ongoing' : 'badge';
+    return (
+      '<div class="job-card" data-record-id="' + escapeHtml(j.recordId) + '">' +
+        '<div class="info">' +
+          '<b>' + escapeHtml(j.clientName || 'Unknown client') + '</b>' +
+          '<div class="line">' + escapeHtml(j.address || '') + '</div>' +
+          '<div class="line">' + escapeHtml(j.propertyType || '') + (j.service ? ' &middot; ' + escapeHtml(j.service) : '') + '</div>' +
+          '<div class="line">' + escapeHtml(j.bookedDisplay || 'Not yet scheduled') + '</div>' +
+          '<div class="line">' + escapeHtml(j.phone || '') + '</div>' +
+          '<span class="' + badgeClass + '">' + escapeHtml(j.status) + '</span>' +
+        '</div>' +
+        '<button class="complete" data-order-id="' + escapeHtml(j.orderId) + '">Mark Completed</button>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function loadJobs() {
+  $('errorBox').innerHTML = '';
+  $('countLabel').textContent = 'Loading&hellip;';
+  fetch('/api/staff/jobs')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.error) throw new Error(data.error);
+      renderJobs(data.jobs || []);
+    })
+    .catch(function (err) {
+      $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(err.message) + '</div>';
+      $('countLabel').textContent = '';
+    });
+}
+
+document.addEventListener('click', function (e) {
+  if (!e.target.classList.contains('complete')) return;
+  var btn = e.target;
+  var card = btn.closest('.job-card');
+  var recordId = card.getAttribute('data-record-id');
+  btn.disabled = true;
+  btn.textContent = 'Marking...';
+  fetch('/api/staff/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recordId: recordId })
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.error) throw new Error(data.error);
+      card.remove();
+      loadJobs();
+    })
+    .catch(function (err) {
+      $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(err.message) + '</div>';
+      btn.disabled = false;
+      btn.textContent = 'Mark Completed';
+    });
+});
+
+$('refreshBtn').addEventListener('click', loadJobs);
+loadJobs();
+</script>
+</body>
+</html>

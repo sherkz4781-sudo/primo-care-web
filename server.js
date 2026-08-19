@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 const gcal = require('./lib/google');
 const airtable = require('./lib/airtable');
 
@@ -504,6 +505,89 @@ app.post('/api/reschedule/submit', async (req, res) => {
 
 app.get('/cancel-reschedule', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cancel-reschedule.html'));
+});
+
+// ---------------------------------------------------------------------------
+// Staff-only: job completion
+// ---------------------------------------------------------------------------
+
+// HTTP Basic Auth gate for everything under /staff and /api/staff. Credentials live in
+// STAFF_USERNAME/STAFF_PASSWORD (env vars, never in code). Compared with timingSafeEqual so a
+// slow string compare can't leak how many characters matched.
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function staffAuth(req, res, next) {
+  const user = process.env.STAFF_USERNAME;
+  const pass = process.env.STAFF_PASSWORD;
+  if (!user || !pass) {
+    return res.status(500).send('Staff login is not configured on this server.');
+  }
+  const header = req.headers.authorization || '';
+  const [scheme, encoded] = header.split(' ');
+  if (scheme === 'Basic' && encoded) {
+    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+    const sep = decoded.indexOf(':');
+    const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
+    const reqPass = sep === -1 ? '' : decoded.slice(sep + 1);
+    if (safeEqual(reqUser, user) && safeEqual(reqPass, pass)) {
+      return next();
+    }
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Primo Care Staff"');
+  return res.status(401).send('Authentication required.');
+}
+
+app.get('/staff', staffAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'staff.html'));
+});
+
+// Lists every booking that's still Scheduled or Ongoing (i.e. not yet Completed/Cancelled/
+// Rescheduled-away), soonest first, for staff to pick from and mark done.
+app.get('/api/staff/jobs', staffAuth, async (req, res) => {
+  try {
+    const records = await airtable.listByFormula(
+      'OR({Status}="Scheduled",{Status}="Ongoing")',
+      { sort: [{ field: 'Booked Start (ISO)', direction: 'asc' }] }
+    );
+    const jobs = records.map(rec => {
+      const f = rec.fields || {};
+      return {
+        recordId: rec.id,
+        orderId: f['Order ID'] || '',
+        clientName: f['Client Name'] || '',
+        phone: f['Contact Number'] || '',
+        address: f['Address'] || '',
+        propertyType: f['Property Type'] || '',
+        service: f['Service'] || '',
+        bookedDisplay: f['Booked Date/Time'] || '',
+        status: f['Status'] || ''
+      };
+    });
+    res.json({ jobs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Marks one booking Completed. Trusts the recordId as given — unlike the public booking/
+// cancel/reschedule endpoints, this route is already gated by staffAuth, so there's no need for
+// the identity-verification dance used on the public-facing side.
+app.post('/api/staff/complete', staffAuth, async (req, res) => {
+  try {
+    const { recordId } = req.body || {};
+    if (!recordId) return res.status(400).json({ error: 'Missing recordId.' });
+    await airtable.updateRecord(recordId, { 'Status': 'Completed' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
