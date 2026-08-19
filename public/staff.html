@@ -68,6 +68,7 @@
 
   .empty { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 20px; }
   .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+  .toast { background: #ecfdf3; color: #166534; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
 </style>
 </head>
 <body>
@@ -81,6 +82,7 @@
   </header>
 
   <div id="errorBox"></div>
+  <div id="toastBox"></div>
 
   <div class="toolbar">
     <span class="count" id="countLabel">Loading&hellip;</span>
@@ -145,8 +147,10 @@ document.addEventListener('click', function (e) {
   var btn = e.target;
   var card = btn.closest('.job-card');
   var recordId = card.getAttribute('data-record-id');
+  var clientName = card.querySelector('b') ? card.querySelector('b').textContent : 'Client';
   btn.disabled = true;
   btn.textContent = 'Marking...';
+  $('errorBox').innerHTML = '';
   fetch('/api/staff/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -155,6 +159,8 @@ document.addEventListener('click', function (e) {
     .then(function (r) { return r.json(); })
     .then(function (data) {
       if (data.error) throw new Error(data.error);
+      $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(clientName) + ' marked completed' +
+        (data.emailSent ? ' — billing statement emailed.' : ' — no email on file, statement not sent.') + '</div>';
       card.remove();
       loadJobs();
     })

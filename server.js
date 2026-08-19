@@ -575,15 +575,55 @@ app.get('/api/staff/jobs', staffAuth, async (req, res) => {
   }
 });
 
-// Marks one booking Completed. Trusts the recordId as given — unlike the public booking/
-// cancel/reschedule endpoints, this route is already gated by staffAuth, so there's no need for
-// the identity-verification dance used on the public-facing side.
+// Formats a number as USD for the billing email; falls back to whatever's on file if the field
+// isn't a plain number for some reason.
+function fmtCurrency(total) {
+  return typeof total === 'number'
+    ? total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+    : (total || 'N/A');
+}
+
+// Marks one booking Completed and emails the client a billing statement for that visit. Trusts
+// the recordId as given — unlike the public booking/cancel/reschedule endpoints, this route is
+// already gated by staffAuth, so there's no need for the identity-verification dance used on
+// the public-facing side. The billing email reuses the amount locked in at booking time
+// (Estimated Total per Visit), so — like the cancel/reschedule confirmations — there's no new
+// pricing judgment call here, and it sends for real rather than staying a draft.
 app.post('/api/staff/complete', staffAuth, async (req, res) => {
   try {
     const { recordId } = req.body || {};
     if (!recordId) return res.status(400).json({ error: 'Missing recordId.' });
+
+    const rec = await airtable.getRecord(recordId);
+    const f = rec.fields || {};
+
     await airtable.updateRecord(recordId, { 'Status': 'Completed' });
-    res.json({ ok: true });
+
+    let emailSent = false;
+    if (f['Email']) {
+      const firstName = f['First Name'] || 'there';
+      const amount = fmtCurrency(f['Estimated Total per Visit']);
+      const subject = 'Thank You From Primo Care — Your Billing Statement';
+      const body = `Hi ${firstName},\n\nThank you for choosing Primo Care! Our team has completed your ${f['Service'] || 'cleaning'} service at ${f['Address'] || 'your property'}.\n\nBilling Statement\nOrder ID: ${f['Order ID'] || ''}\nService: ${f['Service'] || ''}\nProperty: ${f['Address'] || ''}\nAmount Due: ${amount}\n\nIf you have any questions about this statement, just reply to this email.\n\nThank you again for trusting us with your space!\n\nBest,\nPrimo Care Team`;
+      const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+        <h2 style="color:#0a5c64;">Thank You From Primo Care</h2>
+        <p>Hi ${firstName},</p>
+        <p>Our team has completed your <b>${f['Service'] || 'cleaning'}</b> service at <b>${f['Address'] || 'your property'}</b>. Here's your billing statement for this visit:</p>
+        <table style="margin:14px 0; border-collapse:collapse; width:100%;">
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Order ID</td><td>${f['Order ID'] || ''}</td></tr>
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Service</td><td>${f['Service'] || ''}</td></tr>
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Property</td><td>${f['Address'] || ''}</td></tr>
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0; font-weight:700;">Amount Due</td><td style="font-weight:700; color:#0a5c64;">${amount}</td></tr>
+        </table>
+        <p>If you have any questions about this statement, just reply to this email.</p>
+        <p>Thank you again for trusting us with your space!</p>
+        <p>Best,<br>Primo Care Team</p>
+      </div>`;
+      await sendConfirmationEmail({ to: f['Email'], subject, body, htmlBody });
+      emailSent = true;
+    }
+
+    res.json({ ok: true, emailSent });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
