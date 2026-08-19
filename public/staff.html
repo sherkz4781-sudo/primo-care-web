@@ -67,9 +67,14 @@
   }
   button.complete:hover { background: #15803d; }
   button.complete:disabled { opacity: 0.6; cursor: default; }
+  .pay-controls { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+  select.method {
+    border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; padding: 8px 10px;
+    color: var(--ink); background: #fff; font-family: inherit;
+  }
   button.pay {
     background: #d97706; color: #fff; border: none; border-radius: 8px;
-    font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; white-space: nowrap;
   }
   button.pay:hover { background: #b45309; }
   button.pay:disabled { opacity: 0.6; cursor: default; }
@@ -146,12 +151,17 @@ function fmtMoney(total) {
     : (total || 'N/A');
 }
 
+var PAYMENT_METHODS = ['Cash', 'Online / Card', 'Check', 'Bank Transfer'];
+
 function renderUnpaid(jobs) {
   var list = $('unpaidList');
   if (!jobs.length) {
     list.innerHTML = '<div class="empty">Nothing outstanding &mdash; all completed jobs are paid up.</div>';
     return;
   }
+  var methodOptions = PAYMENT_METHODS.map(function (m) {
+    return '<option value="' + escapeHtml(m) + '">' + escapeHtml(m) + '</option>';
+  }).join('');
   list.innerHTML = jobs.map(function (j) {
     return (
       '<div class="job-card" data-record-id="' + escapeHtml(j.recordId) + '">' +
@@ -163,7 +173,10 @@ function renderUnpaid(jobs) {
           '<div class="amount">' + escapeHtml(fmtMoney(j.total)) + ' due</div>' +
           '<span class="badge unpaid">Unpaid</span>' +
         '</div>' +
-        '<button class="pay">Mark Paid</button>' +
+        '<div class="pay-controls">' +
+          '<select class="method">' + methodOptions + '</select>' +
+          '<button class="pay">Mark Paid</button>' +
+        '</div>' +
       '</div>'
     );
   }).join('');
@@ -200,6 +213,10 @@ document.addEventListener('click', function (e) {
     var card = btn.closest('.job-card');
     var recordId = card.getAttribute('data-record-id');
     var clientName = card.querySelector('b') ? card.querySelector('b').textContent : 'Client';
+    var confirmed = window.confirm(
+      'Mark ' + clientName + '’s job as completed?\n\nThis will send them a billing statement email right away.'
+    );
+    if (!confirmed) return;
     btn.disabled = true;
     btn.textContent = 'Marking...';
     $('errorBox').innerHTML = '';
@@ -229,23 +246,31 @@ document.addEventListener('click', function (e) {
     var payCard = payBtn.closest('.job-card');
     var payRecordId = payCard.getAttribute('data-record-id');
     var payClientName = payCard.querySelector('b') ? payCard.querySelector('b').textContent : 'Client';
+    var methodSelect = payCard.querySelector('.method');
+    var method = methodSelect ? methodSelect.value : '';
+    var payConfirmed = window.confirm(
+      'Mark ' + payClientName + '’s job as paid via ' + method + '?'
+    );
+    if (!payConfirmed) return;
     payBtn.disabled = true;
+    methodSelect.disabled = true;
     payBtn.textContent = 'Marking...';
     $('errorBox').innerHTML = '';
     fetch('/api/staff/mark-paid', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recordId: payRecordId })
+      body: JSON.stringify({ recordId: payRecordId, method: method })
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.error) throw new Error(data.error);
-        $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(payClientName) + ' marked as paid.</div>';
+        $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(payClientName) + ' marked as paid (' + escapeHtml(method) + ').</div>';
         payCard.remove();
       })
       .catch(function (err) {
         $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(err.message) + '</div>';
         payBtn.disabled = false;
+        methodSelect.disabled = false;
         payBtn.textContent = 'Mark Paid';
       });
   }

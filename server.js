@@ -661,14 +661,19 @@ app.get('/api/staff/unpaid', staffAuth, async (req, res) => {
   }
 });
 
-// Marks one completed job's Payment Status as Paid. No email side-effect here — the billing
-// statement already went out when the job was marked Completed; this just records that the
-// client settled it.
+const PAYMENT_METHODS = ['Cash', 'Online / Card', 'Check', 'Bank Transfer'];
+
+// Marks one completed job's Payment Status as Paid, recording how the client paid. No email
+// side-effect here — the billing statement already went out when the job was marked Completed;
+// this just records that the client settled it.
 app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
   try {
-    const { recordId } = req.body || {};
+    const { recordId, method } = req.body || {};
     if (!recordId) return res.status(400).json({ error: 'Missing recordId.' });
-    await airtable.updateRecord(recordId, { 'Payment Status': 'Paid' });
+    if (!PAYMENT_METHODS.includes(method)) {
+      return res.status(400).json({ error: 'Invalid or missing payment method.' });
+    }
+    await airtable.updateRecord(recordId, { 'Payment Status': 'Paid', 'Payment Method': method });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
