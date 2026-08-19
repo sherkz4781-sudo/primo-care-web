@@ -115,7 +115,8 @@ app.post('/api/submit', async (req, res) => {
         'Client ID': clientId,
         'Order ID': orderId,
         'Transaction ID': transactionId,
-        'Status': 'Scheduled'
+        'Status': 'Scheduled',
+        'Payment Status': 'Unpaid'
       };
       if (b.prefix) fields['Prefix'] = b.prefix;
       if (b.suffix) fields['Suffix'] = b.suffix;
@@ -624,6 +625,51 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
     }
 
     res.json({ ok: true, emailSent });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Lists every Completed job that isn't marked Paid yet — includes records with no Payment
+// Status at all (bookings made before this field existed) so nothing old falls through the
+// cracks. Soonest-completed isn't tracked, so this just sorts by Booked Start (ISO) like the
+// active-jobs list.
+app.get('/api/staff/unpaid', staffAuth, async (req, res) => {
+  try {
+    const records = await airtable.listByFormula(
+      'AND({Status}="Completed", OR({Payment Status}="Unpaid", {Payment Status}=""))',
+      { sort: [{ field: 'Booked Start (ISO)', direction: 'asc' }] }
+    );
+    const jobs = records.map(rec => {
+      const f = rec.fields || {};
+      return {
+        recordId: rec.id,
+        orderId: f['Order ID'] || '',
+        clientName: f['Client Name'] || '',
+        phone: f['Contact Number'] || '',
+        address: f['Address'] || '',
+        service: f['Service'] || '',
+        total: f['Estimated Total per Visit'],
+        bookedDisplay: f['Booked Date/Time'] || ''
+      };
+    });
+    res.json({ jobs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Marks one completed job's Payment Status as Paid. No email side-effect here — the billing
+// statement already went out when the job was marked Completed; this just records that the
+// client settled it.
+app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
+  try {
+    const { recordId } = req.body || {};
+    if (!recordId) return res.status(400).json({ error: 'Missing recordId.' });
+    await airtable.updateRecord(recordId, { 'Payment Status': 'Paid' });
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
