@@ -61,8 +61,8 @@
   header.hero {
     position: relative;
     background:
-      linear-gradient(120deg, rgba(10,30,32,0.82), rgba(10,30,32,0.55)),
-      repeating-linear-gradient(135deg, #274850, #274850 12px, #23414a 12px, #23414a 24px);
+      linear-gradient(120deg, rgba(10,30,32,0.82), rgba(10,30,32,0.6)),
+      url('/images/hero.jpg') center 35% / cover no-repeat;
     color: #fff;
     padding: 70px 20px 90px;
   }
@@ -91,13 +91,11 @@
   @media (max-width: 800px) { .tile-grid { grid-template-columns: 1fr; } }
   .tile { border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
   .tile .photo {
-    height: 170px; position: relative; display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,0.85); font-size: 34px;
+    height: 170px; position: relative; background-size: cover; background-position: center;
   }
-  .tile .photo::after { content: "Add photo"; position: absolute; bottom: 8px; right: 10px; font-size: 10.5px; font-weight: 700; color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: 0.5px; }
-  .tile .photo.p1 { background: repeating-linear-gradient(135deg, #1b8f9c, #1b8f9c 14px, #17828d 14px, #17828d 28px); }
-  .tile .photo.p2 { background: repeating-linear-gradient(135deg, #0e6f79, #0e6f79 14px, #0a5c64 14px, #0a5c64 28px); }
-  .tile .photo.p3 { background: repeating-linear-gradient(135deg, #2a3f45, #2a3f45 14px, #23343a 14px, #23343a 28px); }
+  .tile .photo.p1 { background-image: url('/images/residential-tile.jpg'); }
+  .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); }
+  .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); }
   .tile .label { background: var(--teal); color: #fff; font-weight: 800; font-size: 15px; text-align: center; padding: 13px; }
 
   /* ---- 3-col About/Why/What ---- */
@@ -111,12 +109,11 @@
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
   .split .photo-block {
-    height: 280px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,0.85); font-size: 40px; position: relative;
+    height: 280px; border-radius: 8px; position: relative;
+    background-size: cover; background-position: center;
   }
-  .split .photo-block::after { content: "Add photo"; position: absolute; bottom: 10px; right: 12px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: 0.5px; }
-  .split .photo-block.a { background: repeating-linear-gradient(135deg, #17828d, #17828d 14px, #12707a 14px, #12707a 28px); }
-  .split .photo-block.b { background: repeating-linear-gradient(135deg, #0e6f79, #0e6f79 14px, #0a5c64 14px, #0a5c64 28px); }
+  .split .photo-block.a { background-image: url('/images/commercial-section.jpg'); }
+  .split .photo-block.b { background-image: url('/images/residential-section.jpg'); }
   .split h2 { font-size: 27px; margin: 0 0 6px; }
   .split h2 .accent { color: var(--teal); display: block; }
   .split p { color: var(--muted); font-size: 15px; margin: 14px 0 22px; }
@@ -205,15 +202,15 @@
 <section id="services">
   <div class="tile-grid">
     <div class="tile">
-      <div class="photo p1">&#127968;</div>
+      <div class="photo p1"></div>
       <div class="label">Residential</div>
     </div>
     <div class="tile">
-      <div class="photo p2">&#127970;</div>
+      <div class="photo p2"></div>
       <div class="label">Commercial</div>
     </div>
     <div class="tile">
-      <div class="photo p3">&#127981;</div>
+      <div class="photo p3"></div>
       <div class="label">Industrial</div>
     </div>
   </div>
