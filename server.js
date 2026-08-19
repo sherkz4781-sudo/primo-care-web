@@ -322,6 +322,12 @@ app.get('/book', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'book.html'));
 });
 
+// Intake/pricing/proposal tool — moved off "/" so that root can serve the marketing
+// homepage instead. Proposal letters and outreach should link here directly.
+app.get('/intake', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'intake.html'));
+});
+
 // Creates a single Gmail draft covering one or more properties (accepts either `orderId`
 // for a single property or `orderIds` for a combined multi-property submission), and marks
 // every referenced property record as draft-created.
