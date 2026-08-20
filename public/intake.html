@@ -303,6 +303,15 @@
     </div>
   </div>
 
+  <div id="thankYouSection" class="hidden">
+    <div class="card" style="text-align:center;">
+      <div style="font-size:38px;margin-bottom:6px;">&#127881;</div>
+      <h2 style="margin:0 0 10px;color:var(--teal-dark);font-size:20px;">Thank You!</h2>
+      <p id="thankYouMessage" style="margin:0 0 22px;color:var(--muted);font-size:13.5px;"></p>
+      <button class="primary" id="closePageBtn">Close Page</button>
+    </div>
+  </div>
+
   <div class="footer-note">Primo Care Cleaning Services</div>
 </div>
 
@@ -1327,22 +1336,20 @@
         btn.disabled = false;
         btn.textContent = 'Submit Form';
 
-        var notes = [];
-        if(bookResult.booked.length){
-          notes.push(bookResult.booked.length + ' propert' + (bookResult.booked.length === 1 ? 'y' : 'ies') + ' booked on our calendar.');
-        }
-        if(bookResult.failed.length){
-          notes.push(bookResult.failed.length + ' selected time' + (bookResult.failed.length === 1 ? '' : 's') + ' could not be booked — see the note' + (bookResult.failed.length === 1 ? '' : 's') + ' above.');
-        }
-        var prefix = notes.length ? notes.join(' ') + ' ' : '';
-
         if(data.error){
+          var notes = [];
+          if(bookResult.booked.length){
+            notes.push(bookResult.booked.length + ' propert' + (bookResult.booked.length === 1 ? 'y' : 'ies') + ' booked on our calendar.');
+          }
+          if(bookResult.failed.length){
+            notes.push(bookResult.failed.length + ' selected time' + (bookResult.failed.length === 1 ? '' : 's') + ' could not be booked — see the note' + (bookResult.failed.length === 1 ? '' : 's') + ' above.');
+          }
           statusEl.className = 'draft-status err';
-          statusEl.textContent = prefix + 'Could not prepare your proposal email: ' + data.error;
-        } else {
-          statusEl.className = 'draft-status ok';
-          statusEl.textContent = prefix + 'Your proposal has been sent to ' + state.client.email + '!';
+          statusEl.textContent = (notes.length ? notes.join(' ') + ' ' : '') + 'Could not prepare your proposal email: ' + data.error;
+          return;
         }
+
+        showThankYou(bookResult);
       });
     }).catch(function(err){
       btn.disabled = false;
@@ -1350,6 +1357,38 @@
       statusEl.className = 'draft-status err';
       statusEl.textContent = 'Could not complete your submission: ' + (err && err.message ? err.message : err) + '. Please try again.';
     });
+  });
+
+  // Hides the proposal and shows a closing "Thank You" screen once the proposal email has
+  // actually sent. The message reflects what really happened with any selected bookings —
+  // never claims a booking succeeded when it didn't, or when nothing was selected at all.
+  function showThankYou(bookResult){
+    var msg;
+    if(bookResult.booked.length && !bookResult.failed.length){
+      msg = 'Your schedule has been successfully booked, and your proposal has been sent to ' + state.client.email + '. We look forward to seeing you!';
+    } else if(bookResult.booked.length && bookResult.failed.length){
+      msg = bookResult.booked.length + ' propert' + (bookResult.booked.length === 1 ? 'y has' : 'ies have') + ' been successfully booked. ' + bookResult.failed.length + ' selected time' + (bookResult.failed.length === 1 ? '' : 's') + ' could not be booked, so we\'ll follow up on ' + (bookResult.failed.length === 1 ? 'that one' : 'those') + ' directly. Your proposal has been sent to ' + state.client.email + '.';
+    } else if(bookResult.failed.length){
+      msg = 'Your proposal has been sent to ' + state.client.email + ', but we couldn\'t complete your requested booking — we\'ll follow up directly to get that scheduled.';
+    } else {
+      msg = 'Your proposal has been sent to ' + state.client.email + '. You can book a schedule any time using the link in your email, or by returning to this page.';
+    }
+    $('thankYouMessage').textContent = msg;
+    $('proposalSection').style.display = 'none';
+    $('thankYouSection').classList.remove('hidden');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  // Browsers only allow script-initiated window.close() on tabs opened by script, so a tab the
+  // client navigated to directly often won't actually close. Attempt it, then fall back to
+  // telling them to close it themselves if it's still open a moment later.
+  $('closePageBtn').addEventListener('click', function(){
+    var btn = this;
+    window.close();
+    setTimeout(function(){
+      btn.textContent = 'You can now close this tab';
+      btn.disabled = true;
+    }, 300);
   });
 
   var DISCLAIMER_TEXT = 'For everyone\'s peace of mind, please safely secure your precious/valuable belongings before our visit. Primo Care Cleaning Services is not liable for any loss or damage to personal items.';
