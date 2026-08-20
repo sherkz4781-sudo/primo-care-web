@@ -70,9 +70,11 @@ async function deleteBookingEvent(rec, orderId) {
 
 // Accepts one client + an array of properties (one client can book multiple properties in a
 // single submission). A Client ID is resolved server-side (reused if this name already has one
-// on file, minted fresh otherwise — never trusted from the client, same as Order/Transaction
-// IDs) and shared across every property record created here; each property gets its own fresh
-// Order ID + Transaction ID so it can be individually cancelled/rescheduled later.
+// on file, minted fresh otherwise — never trusted from the client, same as Order ID) and shared
+// across every property record created here; each property gets its own fresh Order ID so it
+// can be individually cancelled/rescheduled later. Transaction ID is intentionally NOT minted
+// here — it's a proof-of-payment reference, so it's only generated once staff actually confirm
+// the client paid (see /api/staff/mark-paid).
 app.post('/api/submit', async (req, res) => {
   try {
     const b = req.body || {};
@@ -94,7 +96,6 @@ app.post('/api/submit', async (req, res) => {
     const results = [];
     for (const p of properties) {
       const orderId = genRefId('ORD');
-      const transactionId = genRefId('TXN');
 
       const fields = {
         'Client Name': fullName,
@@ -114,7 +115,6 @@ app.post('/api/submit', async (req, res) => {
         'Draft Email Created': false,
         'Client ID': clientId,
         'Order ID': orderId,
-        'Transaction ID': transactionId,
         'Status': 'Scheduled',
         'Payment Status': 'Unpaid'
       };
@@ -128,7 +128,7 @@ app.post('/api/submit', async (req, res) => {
       if (p.subscriptionDuration) fields['Duration'] = p.subscriptionDuration;
 
       const rec = await airtable.createRecord(fields);
-      results.push({ orderId, transactionId, recordId: rec.id });
+      results.push({ orderId, recordId: rec.id });
     }
 
     res.json({ clientId, properties: results });
@@ -663,9 +663,11 @@ app.get('/api/staff/unpaid', staffAuth, async (req, res) => {
 
 const PAYMENT_METHODS = ['Cash', 'Online / Card', 'Check', 'Bank Transfer'];
 
-// Marks one completed job's Payment Status as Paid, recording how the client paid. No email
-// side-effect here — the billing statement already went out when the job was marked Completed;
-// this just records that the client settled it.
+// Marks one completed job's Payment Status as Paid, recording how the client paid, and mints
+// its Transaction ID — deliberately generated here rather than at intake, since a Transaction
+// ID is a proof-of-payment reference and shouldn't exist for a job nobody's paid for yet. No
+// email side-effect here — the billing statement already went out when the job was marked
+// Completed; this just records that the client settled it.
 app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
   try {
     const { recordId, method } = req.body || {};
@@ -673,8 +675,13 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
     if (!PAYMENT_METHODS.includes(method)) {
       return res.status(400).json({ error: 'Invalid or missing payment method.' });
     }
-    await airtable.updateRecord(recordId, { 'Payment Status': 'Paid', 'Payment Method': method });
-    res.json({ ok: true });
+    const transactionId = genRefId('TXN');
+    await airtable.updateRecord(recordId, {
+      'Payment Status': 'Paid',
+      'Payment Method': method,
+      'Transaction ID': transactionId
+    });
+    res.json({ ok: true, transactionId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

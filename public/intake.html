@@ -162,6 +162,21 @@
   .ref-mini { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   .ref-mini b { color: var(--ink); }
 
+  .book-schedule-box {
+    background: #ecfdf3; border: 1px solid #bbf7d0; border-radius: 8px;
+    padding: 12px 14px; margin-top: 10px;
+  }
+  .book-schedule-box .tag {
+    display: inline-block; background: var(--teal-dark); color: #fff; font-size: 10.5px;
+    font-weight: 700; letter-spacing: 0.3px; padding: 3px 9px; border-radius: 10px;
+  }
+  .book-schedule-box p.title { margin: 8px 0 2px; font-weight: 700; color: #166534; font-size: 14px; }
+  .book-schedule-box p.desc { margin: 0 0 10px; color: #166534; font-size: 13.5px; }
+  .book-schedule-box a.book-now {
+    display: inline-block; background: var(--teal-dark); color: #fff; text-decoration: none;
+    font-weight: 700; font-size: 13px; padding: 9px 16px; border-radius: 6px;
+  }
+
   .booking-box { border: 1px dashed var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 6px; }
   .status-pill {
     display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
@@ -261,7 +276,7 @@
       </div>
 
       <div id="refIdsBox" style="background:#f7f9fa;border:1px dashed var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;">
-        <b style="color:var(--teal-dark);">Save these reference numbers</b> — you'll need your Client ID and each property's Order ID / Transaction ID to cancel or reschedule.
+        <b style="color:var(--teal-dark);">Save these reference numbers</b> — you'll need your Client ID and each property's Order ID to cancel or reschedule.
         <div style="margin-top:6px;">Client ID (shared across all your properties): <b id="refClientId"></b></div>
       </div>
 
@@ -276,7 +291,7 @@
 
       <div class="cta-box">
         <b>Ready to get that space sparkling?</b>
-        Click Submit Form below to send this proposal for review &mdash; it'll include a single link to book your schedule.
+        You can book a schedule for each property above right now &mdash; or click Submit Form below to send this proposal for your records.
       </div>
 
       <button class="primary" id="draftBtn" style="margin-top:18px;">Submit Form</button>
@@ -934,8 +949,8 @@
   }
 
   // Validates every not-yet-processed property card, then submits them all in one call to our
-  // backend (which resolves/reuses the shared Client ID and assigns each new property's
-  // Order/Transaction ID) — done in one pass at Generate Proposal time. Returns a Promise
+  // backend (which resolves/reuses the shared Client ID and assigns each new property's Order
+  // ID) — done in one pass at Generate Proposal time. Returns a Promise
   // resolving to the full, updated state.properties array. Already-processed properties (from
   // an earlier round via "+ Add Another Property") are left untouched.
   function resolveAllPropertiesForProposal(){
@@ -986,7 +1001,6 @@
       newProps.forEach(function(p, i){
         var r0 = data.properties[i];
         p.orderId = r0.orderId;
-        p.transactionId = r0.transactionId;
         state.properties.push(p);
         lockPropertyCard(p.idx);
       });
@@ -1043,6 +1057,18 @@
     $('grandTotal').textContent = fmt(grand);
   }
 
+  // Shared by both the on-screen "Book a Schedule" boxes and (previously) the email — book.html
+  // only supports looking a client's properties up by Client ID (not a single Order ID), so
+  // every property's box points at the same client-level link; book.html itself lists every
+  // property under that client and lets the client book each independently.
+  function buildBookScheduleUrl(){
+    return window.location.origin + '/book'
+      + '?clientId=' + encodeURIComponent(state.client.clientId)
+      + '&firstName=' + encodeURIComponent(state.client.firstName)
+      + '&lastName=' + encodeURIComponent(state.client.lastName)
+      + '&email=' + encodeURIComponent(state.client.email);
+  }
+
   function propertyProposalBlockHtml(p){
     var wantsText;
     if(p.propertyType === 'residential'){
@@ -1065,12 +1091,23 @@
     }
     rows += '<tr class="total"><td>Estimated total per visit</td><td style="text-align:right;">' + fmt(p.total) + '</td></tr>';
 
+    var isSubscription = !!(p.frequencies && p.frequencies.length && p.subscriptionDuration);
+    var bookingLine = isSubscription
+      ? 'Click below to pick a start date and lock in your recurring ' + p.frequencies[0] + ' visits for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '.'
+      : 'Click below to pick an open time and book this property\'s cleaning instantly.';
+
     return ''
       + '<div class="property-proposal-block" data-idx="' + p.idx + '">'
       + '<h3>Property ' + (p.idx+1) + ' &mdash; ' + p.address + '</h3>'
-      + '<div class="ref-mini">Order ID: <b>' + p.orderId + '</b> &nbsp;&middot;&nbsp; Transaction ID: <b>' + p.transactionId + '</b></div>'
+      + '<div class="ref-mini">Order ID: <b>' + p.orderId + '</b></div>'
       + '<div class="summary-line">' + wantsText + '</div>'
       + '<table class="price-table">' + rows + '</table>'
+      + '<div class="book-schedule-box">'
+      + '<span class="tag">SCHEDULING</span>'
+      + '<p class="title">Book a Schedule</p>'
+      + '<p class="desc">' + bookingLine + '</p>'
+      + '<a class="book-now" href="' + buildBookScheduleUrl() + '" target="_blank" rel="noopener">Book Now &rarr;</a>'
+      + '</div>'
       + '</div>';
   }
 
@@ -1151,18 +1188,16 @@
 
   var DISCLAIMER_TEXT = 'For everyone\'s peace of mind, please safely secure your precious/valuable belongings before our visit. Primo Care Cleaning Services is not liable for any loss or damage to personal items.';
 
-  // Builds one combined proposal email (HTML + plain text) covering every property and requests
-  // it as a single Gmail draft from our backend.
+  // Builds one combined proposal/quotation email (HTML + plain text) covering every property
+  // and requests it as a single Gmail draft from our backend. Deliberately has no Transaction
+  // ID (that's a proof-of-payment reference minted only once staff confirm payment, well after
+  // this quotation goes out) and no scheduling link (booking now happens right on the proposal
+  // page itself, per property — see the "Book a Schedule" box in propertyProposalBlockHtml).
   function buildAndCreateDraft(){
     var grand = 0;
     var propertyBlocksHtml = '';
     var propertyBlocksPlain = '';
     var orderIds = state.properties.map(function(p){ return p.orderId; });
-    var bookScheduleUrl = window.location.origin + '/book'
-      + '?clientId=' + encodeURIComponent(state.client.clientId)
-      + '&firstName=' + encodeURIComponent(state.client.firstName)
-      + '&lastName=' + encodeURIComponent(state.client.lastName)
-      + '&email=' + encodeURIComponent(state.client.email);
 
     state.properties.forEach(function(p){
       grand += p.total;
@@ -1176,7 +1211,7 @@
       propertyBlocksHtml += ''
         + '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:14px 0;">'
         + '<h3 style="color:#0a5c64;font-size:15px;margin:0 0 6px;">Property ' + (p.idx+1) + ' &mdash; ' + p.address + '</h3>'
-        + '<p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Order ID: <b>' + p.orderId + '</b> &nbsp;&middot;&nbsp; Transaction ID: <b>' + p.transactionId + '</b></p>'
+        + '<p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Order ID: <b>' + p.orderId + '</b></p>'
         + '<p style="margin:0 0 4px;"><b>' + p.service + '</b></p>'
         + '<p style="margin:0;color:#374151;">' + details.descText + '</p>'
         + '<p style="margin:12px 0 4px;font-weight:bold;color:#0a5c64;">What\'s Included</p>'
@@ -1191,7 +1226,7 @@
         + '</div>';
 
       propertyBlocksPlain += '\n----\nPROPERTY ' + (p.idx+1) + ' — ' + p.address + '\n'
-        + 'Order ID: ' + p.orderId + '  |  Transaction ID: ' + p.transactionId + '\n'
+        + 'Order ID: ' + p.orderId + '\n'
         + p.service + '\n' + details.descText + '\n\n'
         + 'What\'s included:\n' + (details.items.length ? details.items.map(function(i){ return '- ' + i; }).join('\n') : '(details confirmed at walkthrough)') + '\n\n'
         + p.service + ': ' + fmt(p.rate) + ' x ' + p.sqft + ' ' + unitLabel(p.sizeUnit) + ' = ' + fmt(p.rate * p.sqft) + '\n\n'
@@ -1204,7 +1239,7 @@
       + '<h2 style="color:#0a5c64;margin-bottom:4px;">Primo Care &mdash; Your Cleaning Proposal</h2>'
       + '<p style="color:#6b7280;font-size:13px;margin-top:0;">Prepared for ' + clientDisplayName() + ' &middot; ' + new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'}) + '</p>'
       + '<p>Hi ' + state.client.firstName + ',</p>'
-      + '<p>Thank you for reaching out to Primo Care! Below is your full proposal covering ' + state.properties.length + ' propert' + (state.properties.length === 1 ? 'y' : 'ies') + ', with everything included, your estimated pricing, and a single link to book your schedule.</p>'
+      + '<p>Thank you for reaching out to Primo Care! Below is your full proposal covering ' + state.properties.length + ' propert' + (state.properties.length === 1 ? 'y' : 'ies') + ', with everything included and your estimated pricing.</p>'
       + '<div style="background:#f7f9fa;border:1px dashed #d1d5db;border-radius:8px;padding:10px 14px;margin:14px 0;font-size:12.5px;">'
       + '<b style="color:#0a5c64;">Save your Client ID</b> &mdash; it\'s shared across all your properties and needed (with each property\'s Order ID) to cancel or reschedule.'
       + '<div style="margin-top:6px;">Client ID: <b>' + state.client.clientId + '</b></div>'
@@ -1214,12 +1249,6 @@
       + '<td style="padding:12px 16px;color:#ffffff;font-size:16px;font-weight:bold;">Grand Total (all properties, per visit)</td>'
       + '<td align="right" style="padding:12px 16px;color:#ffffff;font-size:16px;font-weight:bold;white-space:nowrap;">' + fmt(grand) + '</td>'
       + '</tr></table>'
-      + '<div style="background:#ecfdf3;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:14px 0;text-align:center;">'
-      + '<span style="display:inline-block;background:#0a5c64;color:#ffffff;font-size:10.5px;font-weight:bold;letter-spacing:0.3px;padding:3px 9px;border-radius:10px;">SCHEDULING</span>'
-      + '<p style="margin:8px 0 2px;font-weight:bold;color:#166534;font-size:15px;">Book a Schedule</p>'
-      + '<p style="margin:0 0 12px;color:#166534;font-size:13.5px;">Click below to pick times for your propert' + (state.properties.length === 1 ? 'y' : 'ies') + ' &mdash; book one or all in a single place, or reply to this email with your preferred dates and we\'ll set it up for you.</p>'
-      + '<a href="' + bookScheduleUrl + '" style="display:inline-block;background:#0a5c64;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;padding:11px 24px;border-radius:6px;">Book a Schedule &rarr;</a>'
-      + '</div>'
       + '<div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:12px 14px;margin:14px 0;font-size:12.5px;"><b>Please note:</b> ' + DISCLAIMER_TEXT + '</div>'
       + '<p style="background:#0e7c86;color:#fff;padding:14px 16px;border-radius:8px;">Ready to get those spaces sparkling? Reply to this email any time with questions, and we\'ll take it from there.</p>'
       + '<p>Best,<br>Primo Care Team</p>'
@@ -1230,8 +1259,6 @@
       + 'CLIENT ID (shared across all your properties): ' + state.client.clientId + '\n'
       + propertyBlocksPlain
       + '\nGRAND TOTAL (all properties, per visit): ' + fmt(grand) + '\n\n'
-      + '[SCHEDULING] Book a Schedule: Click the link below to pick times for your propert' + (state.properties.length === 1 ? 'y' : 'ies') + ' — book one or all in a single place, or reply to this email with your preferred dates and we\'ll set it up for you.\n'
-      + 'Book a Schedule: ' + bookScheduleUrl + '\n\n'
       + 'PLEASE NOTE: ' + DISCLAIMER_TEXT + '\n\n'
       + 'Ready to get those spaces sparkling? Reply any time with questions.\n\nBest,\nPrimo Care Team';
 
