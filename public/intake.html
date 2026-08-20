@@ -297,7 +297,7 @@
 
       <button class="primary" id="draftBtn" style="margin-top:18px;">Submit Form</button>
       <div class="draft-status" id="draftStatus"></div>
-      <div class="estimate-note" style="text-align:center;margin-top:8px;">Note: this creates a draft in Primo Care's Gmail for a quick review before it goes out &mdash; it isn't sent the instant you click.</div>
+      <div class="estimate-note" style="text-align:center;margin-top:8px;">Note: this sends the proposal directly to your email right away.</div>
 
       <div class="edit-link"><a id="editLink">&larr; Edit my information</a></div>
     </div>
@@ -1270,9 +1270,9 @@
     lockProcessedProperties();
   });
 
-  // ---- Submit Form: creates one combined draft covering every property already added to the
-  // proposal (properties are validated and submitted to our backend back at Generate Proposal
-  // time). ----
+  // ---- Submit Form: sends one combined proposal email covering every property already added
+  // to the proposal (properties are validated and submitted to our backend back at Generate
+  // Proposal time). ----
   $('draftBtn').addEventListener('click', function(){
     var btn = this;
     var statusEl = $('draftStatus');
@@ -1296,7 +1296,7 @@
         statusEl.textContent = 'Could not prepare your proposal email: ' + data.error;
       } else {
         statusEl.className = 'draft-status ok';
-        statusEl.textContent = 'Your combined proposal is queued up and will be reviewed and sent to ' + state.client.email + ' shortly.';
+        statusEl.textContent = 'Your proposal has been sent to ' + state.client.email + '!';
       }
     }).catch(function(err){
       btn.disabled = false;
@@ -1309,10 +1309,12 @@
   var DISCLAIMER_TEXT = 'For everyone\'s peace of mind, please safely secure your precious/valuable belongings before our visit. Primo Care Cleaning Services is not liable for any loss or damage to personal items.';
 
   // Builds one combined proposal/quotation email (HTML + plain text) covering every property
-  // and requests it as a single Gmail draft from our backend. Deliberately has no Transaction
-  // ID (that's a proof-of-payment reference minted only once staff confirm payment, well after
-  // this quotation goes out) and no scheduling link (booking now happens right on the proposal
-  // page itself, per property — see the "Book a Schedule" box in propertyProposalBlockHtml).
+  // and has our backend send it straight to the client — real send, not a draft, since the
+  // content here is fully computed from the client's own submitted inputs with no separate
+  // judgment call left to review. Deliberately has no Transaction ID (that's a proof-of-payment
+  // reference minted only once staff confirm payment, well after this quotation goes out) and
+  // no scheduling link (booking now happens right on the proposal page itself, per property —
+  // see the "Book a Schedule" box in propertyProposalBlockHtml).
   function buildAndCreateDraft(){
     var grand = 0;
     var propertyBlocksHtml = '';

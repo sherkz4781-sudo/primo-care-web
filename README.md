@@ -9,7 +9,7 @@ It replaces the Cowork MCP connectors (`window.cowork.callMcpTool`) with direct 
 Google Calendar + Gmail via OAuth2 (`googleapis`), and Airtable via its REST API.
 
 **Three pages:**
-- `/` — intake, live pricing, proposal (creates a Gmail draft with a single "Book a Schedule" link — booking itself no longer happens on this page)
+- `/intake` — intake, live pricing, proposal, and inline per-property booking (sends the proposal email directly to the client; `/` is the public marketing homepage instead)
 - `/book` — public booking page. Reached via the link in the proposal email (`?clientId=&firstName=&lastName=&email=` pre-fills the identity form). Looks up every property on file for a Client ID and lets the client book each one independently; ends with a Submit → Thank You → Close Page flow.
 - `/cancel-reschedule` — client self-serve cancel/reschedule, gated by the Cancellation & Reschedule Policy checkbox
 
@@ -82,7 +82,7 @@ after a quiet period; the site itself auto-retries failed requests once for this
 
 ## Important notes
 
-- **Proposal email is a draft; cancel/reschedule confirmation sends for real.** The proposal (from `/api/create-draft`) is still only ever created as a **draft** in `sherkz4781@gmail.com`'s Drafts folder, matching the safe default used throughout this project — a human reviews and sends it. Cancel/reschedule confirmations, by contrast, send immediately and automatically via the real Gmail API (`gmail.users.messages.send`) — no draft step, since there's no pricing/judgment call left to review at that point.
+- **Every client-facing email sends for real, no draft step.** The proposal (from `/api/create-draft` — route name is now a slight misnomer, kept to avoid an unnecessary rename) sends immediately via the real Gmail API (`gmail.users.messages.send`), same as cancel/reschedule confirmations and the billing-statement email sent when staff mark a job Completed. This used to stage a **draft** in `sherkz4781@gmail.com`'s Drafts folder for a human to review first, but that review step was removed by request — the proposal's content is fully computed from the client's own submitted inputs, so there's no separate judgment call left to make before it goes out.
 - **No attendee invites.** Bookings never add the client as a calendar attendee, so no Google Calendar invite email goes out automatically — consistent with the original tool.
 - **Server-side ID generation and identity checks.** Client ID / Order ID / Transaction ID are generated server-side, never trusted from the browser. Booking on `/book` and cancel/reschedule both require first name, last name, email (and Client ID or Order ID respectively) to all match an existing Airtable record before anything happens — the app never reveals which specific field mismatched.
 - **Cold-start auto-retry.** Render's free tier sleeps after ~15 min idle; the first request after that can fail with a network-level error before the container wakes up. Every POST call in `public/index.html` and `public/book.html` retries once automatically after a short delay before surfacing any error to the client.

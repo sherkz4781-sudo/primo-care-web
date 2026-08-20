@@ -330,9 +330,12 @@ app.get('/intake', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'intake.html'));
 });
 
-// Creates a single Gmail draft covering one or more properties (accepts either `orderId`
-// for a single property or `orderIds` for a combined multi-property submission), and marks
-// every referenced property record as draft-created.
+// Sends the proposal email covering one or more properties directly to the client (accepts
+// either `orderId` for a single property or `orderIds` for a combined multi-property
+// submission), and marks every referenced property record as sent. Real send, not a draft —
+// previously this staged a Gmail draft for a human to review first, but that review step was
+// removed by request; the proposal content is fully computed from the client's own submitted
+// inputs, so there's no separate judgment call left to make before it goes out.
 app.post('/api/create-draft', async (req, res) => {
   try {
     const { orderId, orderIds, to, subject, body, htmlBody } = req.body || {};
@@ -344,7 +347,7 @@ app.post('/api/create-draft', async (req, res) => {
       if (rec) await airtable.updateRecord(rec.id, { 'Draft Email Created': true });
     }
 
-    await gcal.createGmailDraft({ to, subject, body, htmlBody });
+    await gcal.sendGmailMessage({ to, subject, body, htmlBody });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
