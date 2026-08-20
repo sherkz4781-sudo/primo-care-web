@@ -195,6 +195,7 @@
   .booking-err { background: #fef2f2; color: #991b1b; padding: 10px 12px; border-radius: 8px; }
   .booking-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
   @media (max-width: 560px) { .booking-row { grid-template-columns: 1fr; } }
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
 
   .draft-status { margin-top: 12px; font-size: 13.5px; padding: 10px 12px; border-radius: 8px; display: none; }
   .draft-status.ok { background: #ecfdf3; color: #166534; display: block; }
@@ -1057,16 +1058,125 @@
     $('grandTotal').textContent = fmt(grand);
   }
 
-  // Shared by both the on-screen "Book a Schedule" boxes and (previously) the email — book.html
-  // only supports looking a client's properties up by Client ID (not a single Order ID), so
-  // every property's box points at the same client-level link; book.html itself lists every
-  // property under that client and lets the client book each independently.
-  function buildBookScheduleUrl(){
-    return window.location.origin + '/book'
-      + '?clientId=' + encodeURIComponent(state.client.clientId)
-      + '&firstName=' + encodeURIComponent(state.client.firstName)
-      + '&lastName=' + encodeURIComponent(state.client.lastName)
-      + '&email=' + encodeURIComponent(state.client.email);
+  var BOOK_CAL_TIMEZONE = 'Asia/Manila';
+  function fmtSlotTime(iso){
+    return new Date(iso).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit', timeZone: BOOK_CAL_TIMEZONE });
+  }
+
+  // Wires one property's inline "Book a Schedule" widget (find-times -> pick a slot -> book).
+  // Unlike book.html — which has to verify identity first since a client might reach it days
+  // later via a standalone link — this page already has a freshly-submitted, trusted
+  // state.client, so it books straight through /api/book-verified with no separate lookup step.
+  function wirePropertyBooking(p){
+    var block = document.querySelector('.property-proposal-block[data-idx="' + p.idx + '"]');
+    if(!block) return;
+    var findBtn = block.querySelector('.find-times-btn');
+    var dateInput = block.querySelector('.book-date');
+    var slotsWrap = block.querySelector('.slots-wrap');
+    var bookBtn = block.querySelector('.book-btn');
+    var resultBox = block.querySelector('.card-result-box');
+    var pending = { slots: [], selectedIndex: -1 };
+
+    findBtn.addEventListener('click', function(){
+      resultBox.className = 'card-result-box';
+      resultBox.textContent = '';
+      slotsWrap.innerHTML = '';
+      bookBtn.classList.add('hidden');
+      pending = { slots: [], selectedIndex: -1 };
+
+      var dateVal = dateInput.value;
+      if(!dateVal){
+        resultBox.className = 'card-result-box booking-err';
+        resultBox.textContent = 'Pick a date first.';
+        return;
+      }
+
+      findBtn.disabled = true;
+      findBtn.textContent = 'Checking calendar...';
+
+      fetchJsonWithRetry('/api/find-times', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ date: dateVal })
+      }).then(function(data){
+        findBtn.disabled = false;
+        findBtn.textContent = 'Find Available Times';
+        if(data.error){
+          resultBox.className = 'card-result-box booking-err';
+          resultBox.textContent = data.error;
+          return;
+        }
+        var slots = data.slots || [];
+        if(!slots.length){
+          resultBox.className = 'card-result-box booking-err';
+          resultBox.textContent = 'No open 30-minute slots that day during business hours (9am–5pm). Try another date.';
+          return;
+        }
+        pending.slots = slots;
+        slotsWrap.innerHTML = slots.map(function(s, i){
+          return '<button type="button" class="slot-btn" data-i="' + i + '">' + fmtSlotTime(s.start) + '</button>';
+        }).join('');
+        slotsWrap.querySelectorAll('.slot-btn').forEach(function(b, i){
+          b.addEventListener('click', function(){
+            slotsWrap.querySelectorAll('.slot-btn').forEach(function(x){ x.classList.remove('selected'); });
+            b.classList.add('selected');
+            pending.selectedIndex = i;
+            bookBtn.classList.remove('hidden');
+            resultBox.className = 'card-result-box';
+            resultBox.textContent = '';
+          });
+        });
+      }).catch(function(err){
+        findBtn.disabled = false;
+        findBtn.textContent = 'Find Available Times';
+        resultBox.className = 'card-result-box booking-err';
+        resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
+      });
+    });
+
+    bookBtn.addEventListener('click', function(){
+      if(pending.selectedIndex < 0){
+        resultBox.className = 'card-result-box booking-err';
+        resultBox.textContent = 'Please pick a time slot above first.';
+        return;
+      }
+      var slot = pending.slots[pending.selectedIndex];
+
+      slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = true; });
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Booking...';
+      resultBox.className = 'card-result-box';
+      resultBox.textContent = '';
+
+      fetchJsonWithRetry('/api/book-verified', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          firstName: state.client.firstName, lastName: state.client.lastName,
+          email: state.client.email, orderId: p.orderId, slot: slot
+        })
+      }).then(function(data){
+        if(data.error){
+          resultBox.className = 'card-result-box booking-err';
+          resultBox.textContent = data.error;
+          slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
+          bookBtn.disabled = false;
+          bookBtn.textContent = 'Book This Schedule';
+          return;
+        }
+        resultBox.className = 'card-result-box booking-ok';
+        resultBox.textContent = 'Booked! ' + (data.isSubscription ? 'Your recurring ' + data.freqName + ' schedule starts ' + data.startFormatted + '.' : 'Your visit is booked for ' + data.startFormatted + '.') + ' It\'s now on our calendar.';
+        slotsWrap.innerHTML = '';
+        bookBtn.classList.add('hidden');
+        dateInput.disabled = true;
+        findBtn.disabled = true;
+        findBtn.classList.add('hidden');
+      }).catch(function(err){
+        resultBox.className = 'card-result-box booking-err';
+        resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
+        slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Book This Schedule';
+      });
+    });
   }
 
   function propertyProposalBlockHtml(p){
@@ -1093,8 +1203,8 @@
 
     var isSubscription = !!(p.frequencies && p.frequencies.length && p.subscriptionDuration);
     var bookingLine = isSubscription
-      ? 'Click below to pick a start date and lock in your recurring ' + p.frequencies[0] + ' visits for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '.'
-      : 'Click below to pick an open time and book this property\'s cleaning instantly.';
+      ? 'Pick a start date and lock in your recurring ' + p.frequencies[0] + ' visits for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '.'
+      : 'Pick a date to see open times, then confirm right here — no need to leave this page.';
 
     return ''
       + '<div class="property-proposal-block" data-idx="' + p.idx + '">'
@@ -1106,7 +1216,14 @@
       + '<span class="tag">SCHEDULING</span>'
       + '<p class="title">Book a Schedule</p>'
       + '<p class="desc">' + bookingLine + '</p>'
-      + '<a class="book-now" href="' + buildBookScheduleUrl() + '" target="_blank" rel="noopener">Book Now &rarr;</a>'
+      + '<div class="booking-row">'
+      + '<div><input type="date" class="book-date" style="width:100%;"></div>'
+      + '<div><button type="button" class="secondary find-times-btn" style="width:100%;">Find Available Times</button></div>'
+      + '</div>'
+      + '<div class="hint">We\'ll show open 30-minute slots during business hours (9am&ndash;5pm), weekdays only.</div>'
+      + '<div class="slots-wrap" style="margin-top:10px;"></div>'
+      + '<button type="button" class="primary book-btn hidden" style="margin-top:12px;">Book This Schedule</button>'
+      + '<div class="card-result-box"></div>'
       + '</div>'
       + '</div>';
   }
@@ -1117,13 +1234,16 @@
 
   // Appends pricing-block markup for newly-validated properties only.
   function appendPropertiesToProposal(newProps){
+    var toWire = [];
     var blocksHtml = '';
     newProps.forEach(function(p){
       if(renderedIdx[p.idx]) return;
       renderedIdx[p.idx] = true;
       blocksHtml += propertyProposalBlockHtml(p);
+      toWire.push(p);
     });
     if(blocksHtml) $('propertyProposals').insertAdjacentHTML('beforeend', blocksHtml);
+    toWire.forEach(wirePropertyBooking);
     refreshGrandTotal();
   }
 
