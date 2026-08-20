@@ -267,7 +267,7 @@
 
     <button type="button" class="add-property" id="addPropertyBtnForm">+ Add Another Property</button>
 
-    <button class="primary" id="submitBtn">Generate Proposal</button>
+    <button class="primary" id="submitBtn">Book a Schedule</button>
     <div class="footer-note">By submitting, you'll see a proposal summary you can review before anything is sent.</div>
   </div>
 
@@ -965,7 +965,7 @@
 
   // Validates every not-yet-processed property card, then submits them all in one call to our
   // backend (which resolves/reuses the shared Client ID and assigns each new property's Order
-  // ID) — done in one pass at Generate Proposal time. Returns a Promise
+  // ID) — done in one pass at Book a Schedule time. Returns a Promise
   // resolving to the full, updated state.properties array. Already-processed properties (from
   // an earlier round via "+ Add Another Property") are left untouched.
   function resolveAllPropertiesForProposal(){
@@ -1023,17 +1023,17 @@
     });
   }
 
-  // ---- Generate Proposal: validates and submits every property (assigning IDs), then renders
+  // ---- Book a Schedule: validates and submits every property (assigning IDs), then renders
   // the price summary. ----
   $('submitBtn').addEventListener('click', function(){
     var btn = this;
     var origText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Generating...';
+    btn.textContent = 'Preparing...';
 
     resolveAllPropertiesForProposal().then(function(properties){
       btn.disabled = false;
-      btn.textContent = 'Generate Proposal';
+      btn.textContent = 'Book a Schedule';
 
       initProposalHeader();
       appendPropertiesToProposal(properties);
@@ -1294,7 +1294,7 @@
     refreshGrandTotal();
   }
 
-  // Lives directly in the intake form now (above Generate Proposal), so it works whether
+  // Lives directly in the intake form now (above Book a Schedule), so it works whether
   // you're adding a second property before ever generating a proposal, or you've come back
   // via "Edit my information" after already generating one.
   $('addPropertyBtnForm').addEventListener('click', function(){
