@@ -52,7 +52,10 @@
     border-radius: 12px;
     padding: 22px 22px 24px;
     margin-bottom: 18px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    transition: box-shadow 0.25s ease;
   }
+  .card:hover { box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
   .card h2 {
     font-size: 15px;
     margin: 0 0 14px;
@@ -110,20 +113,25 @@
   button.primary {
     background: var(--teal); color: #fff; border: none; border-radius: 9px;
     padding: 13px 20px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%;
+    box-shadow: 0 3px 8px rgba(14,124,134,0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  button.primary:hover { background: var(--teal-dark); }
+  button.primary:hover { background: var(--teal-dark); transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 20px rgba(14,124,134,0.32); }
   button.secondary {
     background: #fff; color: var(--teal-dark); border: 1.5px solid var(--teal);
     border-radius: 9px; padding: 11px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  button.secondary:hover { background: var(--teal-light); }
+  button.secondary:hover { background: var(--teal-light); transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
   button.add-property {
     background: #fff; color: var(--teal-dark); border: 1.5px dashed var(--teal);
     border-radius: 9px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     width: 100%; margin-bottom: 14px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  button.add-property:hover { background: var(--teal-light); }
+  button.add-property:hover { background: var(--teal-light); transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:disabled:hover { transform: none; box-shadow: none; }
 
   .req { color: #dc2626; }
 
@@ -175,7 +183,10 @@
   .book-schedule-box a.book-now {
     display: inline-block; background: var(--teal-dark); color: #fff; text-decoration: none;
     font-weight: 700; font-size: 13px; padding: 9px 16px; border-radius: 6px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
   }
+  .book-schedule-box a.book-now:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 16px rgba(0,0,0,0.22); }
 
   .booking-box { border: 1px dashed var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 6px; }
   .status-pill {
@@ -187,9 +198,11 @@
     display: inline-block; padding: 8px 12px; margin: 4px 6px 0 0; border-radius: 7px;
     border: 1.5px solid var(--teal); background: #fff; color: var(--teal-dark);
     font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
-  .slot-btn:hover { background: var(--teal-light); }
+  .slot-btn:hover { background: var(--teal-light); transform: translateY(-2px); box-shadow: 0 5px 12px rgba(0,0,0,0.1); }
   .slot-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .slot-btn:disabled:hover { transform: none; box-shadow: none; }
   .slot-btn.selected { background: var(--teal); color: #fff; }
   .booking-ok { background: #ecfdf3; color: #166534; padding: 10px 12px; border-radius: 8px; }
   .booking-err { background: #fef2f2; color: #991b1b; padding: 10px 12px; border-radius: 8px; }

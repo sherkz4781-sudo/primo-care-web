@@ -49,13 +49,16 @@
     display: inline-block; background: var(--yellow); color: #23281f !important; text-decoration: none;
     font-weight: 800; font-size: 13.5px; letter-spacing: 0.3px; padding: 12px 22px; border-radius: 3px;
     border: none; cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.14);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  .btn-yellow:hover { background: var(--yellow-dark); }
+  .btn-yellow:hover { background: var(--yellow-dark); transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
   .btn-outline {
     display: inline-block; background: transparent; color: var(--teal-dark) !important; text-decoration: none;
     font-weight: 700; font-size: 12.5px; padding: 9px 18px; border-radius: 3px; border: 1.5px solid var(--teal);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  .btn-outline:hover { background: var(--teal-light); }
+  .btn-outline:hover { background: var(--teal-light); transform: translateY(-2px) scale(1.04); box-shadow: 0 8px 16px rgba(0,0,0,0.12); }
 
   /* ---- Hero ---- */
   header.hero {
@@ -89,10 +92,13 @@
   /* ---- Category photo tiles ---- */
   .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .tile-grid { grid-template-columns: 1fr; } }
-  .tile { border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .tile { border-radius: 8px; overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,0.1); transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .tile:hover { box-shadow: 0 16px 32px rgba(0,0,0,0.18); transform: translateY(-3px); }
   .tile .photo {
     height: 170px; position: relative; background-size: cover; background-position: center;
+    transition: transform 0.4s ease;
   }
+  .tile:hover .photo { transform: scale(1.1); }
   .tile .photo.p1 { background-image: url('/images/residential-tile.jpg'); }
   .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); }
   .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); }
@@ -108,10 +114,17 @@
   /* ---- Split CTA sections ---- */
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
-  .split .photo-block {
-    height: 280px; border-radius: 8px; position: relative;
-    background-size: cover; background-position: center;
+  .split .photo-frame {
+    height: 280px; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.14); transition: box-shadow 0.25s ease;
   }
+  .split .photo-frame:hover { box-shadow: 0 18px 36px rgba(0,0,0,0.22); }
+  .split .photo-block {
+    height: 100%; width: 100%; position: relative;
+    background-size: cover; background-position: center;
+    transition: transform 0.4s ease;
+  }
+  .split .photo-frame:hover .photo-block { transform: scale(1.1); }
   .split .photo-block.a { background-image: url('/images/commercial-section.jpg'); }
   .split .photo-block.b { background-image: url('/images/residential-section.jpg'); }
   .split h2 { font-size: 27px; margin: 0 0 6px; }
@@ -127,7 +140,8 @@
   /* ---- Testimonials ---- */
   .testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 900px) { .testimonial-grid { grid-template-columns: 1fr; } }
-  .testimonial-card { background: var(--bg); border: 1px dashed var(--border); border-radius: 10px; padding: 24px; }
+  .testimonial-card { background: var(--bg); border: 1px dashed var(--border); border-radius: 10px; padding: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.06); transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .testimonial-card:hover { box-shadow: 0 12px 26px rgba(0,0,0,0.1); transform: translateY(-3px); }
   .testimonial-card .stars { color: var(--yellow-dark); font-size: 15px; margin-bottom: 10px; }
   .testimonial-card p.quote { font-size: 14.5px; color: var(--muted); font-style: italic; margin: 0 0 14px; }
   .testimonial-card .who { font-size: 13px; font-weight: 700; color: var(--ink); }
@@ -147,6 +161,23 @@
 
   footer { background: var(--teal-dark); color: rgba(255,255,255,0.85); text-align: center; padding: 22px 20px; font-size: 12px; }
   footer a { color: #fff; text-decoration: underline; }
+
+  /* ---- Small phones ---- */
+  @media (max-width: 480px) {
+    .topbar .wrap { flex-direction: column; align-items: flex-start; gap: 3px; padding: 7px 16px; font-size: 11.5px; }
+    nav.topnav .wrap { padding: 12px 16px; }
+    .brand-mark { font-size: 16px; }
+    header.hero { padding: 44px 16px 56px; }
+    header.hero h1 { font-size: 28px; }
+    header.hero p.lead { font-size: 14.5px; }
+    section { padding: 44px 16px; }
+    h2.section-title { font-size: 21px; }
+    p.section-sub { font-size: 14px; }
+    .split h2 { font-size: 22px; }
+    .quote-banner { padding: 40px 16px; }
+    .quote-banner p { font-size: 16px; }
+    .trio { gap: 26px; }
+  }
 </style>
 </head>
 <body>
@@ -256,13 +287,13 @@
       </ul>
       <a class="btn-yellow" href="/intake">GET A COMMERCIAL QUOTE</a>
     </div>
-    <div class="photo-block a"></div>
+    <div class="photo-frame"><div class="photo-block a"></div></div>
   </div>
 </section>
 
 <section class="alt">
   <div class="split">
-    <div class="photo-block b" style="order:1;"></div>
+    <div class="photo-frame" style="order:1;"><div class="photo-block b"></div></div>
     <div style="order:2;">
       <h2>Residential <span class="accent">Cleaning</span></h2>
       <p>From routine upkeep to a full deep clean, so you can spend less time cleaning and more time enjoying your home.</p>

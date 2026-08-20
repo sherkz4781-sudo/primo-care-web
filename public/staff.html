@@ -44,12 +44,21 @@
   button.refresh {
     background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); font-weight: 700;
     font-size: 12.5px; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  button.refresh:hover { background: var(--teal-light); }
+  button.refresh:hover { background: var(--teal-light); transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
 
   .job-card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
     padding: 16px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    transition: box-shadow 0.25s ease;
+  }
+  .job-card:hover { box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
+  @media (max-width: 560px) {
+    .job-card { flex-direction: column; align-items: stretch; }
+    .pay-controls { flex-direction: row; }
+    .pay-controls select.method { flex: 1; }
   }
   .job-card .info b { display: block; font-size: 15px; margin-bottom: 4px; }
   .job-card .info .line { font-size: 13px; color: var(--muted); margin-bottom: 2px; }
@@ -64,9 +73,12 @@
   button.complete {
     background: var(--green); color: #fff; border: none; border-radius: 8px;
     font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(22,163,74,0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  button.complete:hover { background: #15803d; }
+  button.complete:hover { background: #15803d; transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 16px rgba(22,163,74,0.32); }
   button.complete:disabled { opacity: 0.6; cursor: default; }
+  button.complete:disabled:hover { transform: none; box-shadow: 0 3px 8px rgba(22,163,74,0.25); }
   .pay-controls { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
   select.method {
     border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; padding: 8px 10px;
@@ -75,9 +87,12 @@
   button.pay {
     background: #d97706; color: #fff; border: none; border-radius: 8px;
     font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; white-space: nowrap;
+    box-shadow: 0 3px 8px rgba(217,119,6,0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  button.pay:hover { background: #b45309; }
+  button.pay:hover { background: #b45309; transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 16px rgba(217,119,6,0.32); }
   button.pay:disabled { opacity: 0.6; cursor: default; }
+  button.pay:disabled:hover { transform: none; box-shadow: 0 3px 8px rgba(217,119,6,0.25); }
 
   h2.section-title { font-size: 15px; color: var(--ink); margin: 30px 0 12px; }
 
