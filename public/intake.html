@@ -201,6 +201,8 @@
   .draft-status.ok { background: #ecfdf3; color: #166534; display: block; }
   .draft-status.err { background: #fef2f2; color: #991b1b; display: block; }
 
+  #thankYouSection { min-height: 65vh; display: flex; align-items: center; justify-content: center; }
+
   .footer-note { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 20px; }
   .edit-link { text-align: center; margin-top: 10px; }
   .edit-link a { color: var(--teal-dark); font-size: 13px; cursor: pointer; text-decoration: underline; }
@@ -304,10 +306,10 @@
   </div>
 
   <div id="thankYouSection" class="hidden">
-    <div class="card" style="text-align:center;">
-      <div style="font-size:38px;margin-bottom:6px;">&#127881;</div>
-      <h2 style="margin:0 0 10px;color:var(--teal-dark);font-size:20px;">Thank You!</h2>
-      <p id="thankYouMessage" style="margin:0 0 22px;color:var(--muted);font-size:13.5px;"></p>
+    <div class="card" style="text-align:center;width:100%;">
+      <div style="font-size:44px;margin-bottom:8px;">&#127881;</div>
+      <h2 style="margin:0 0 14px;color:var(--teal-dark);font-size:24px;">Thank You!</h2>
+      <p id="thankYouMessage" style="margin:0 auto 26px;max-width:440px;color:var(--ink);font-size:17px;line-height:1.5;"></p>
       <button class="primary" id="closePageBtn">Close Page</button>
     </div>
   </div>
@@ -1362,18 +1364,53 @@
   // Hides the proposal and shows a closing "Thank You" screen once the proposal email has
   // actually sent. The message reflects what really happened with any selected bookings —
   // never claims a booking succeeded when it didn't, or when nothing was selected at all.
+  // Renders `parts` (an array of {text, bold?}) into `el` as real DOM nodes — used instead of
+  // an innerHTML string so state.client.email (user-typed input) can never be interpreted as
+  // markup, while still letting specific phrases render bold.
+  function renderMessageParts(el, parts){
+    el.textContent = '';
+    parts.forEach(function(part){
+      if(part.bold){
+        var strong = document.createElement('strong');
+        strong.textContent = part.text;
+        el.appendChild(strong);
+      } else {
+        el.appendChild(document.createTextNode(part.text));
+      }
+    });
+  }
+
   function showThankYou(bookResult){
-    var msg;
+    var parts;
     if(bookResult.booked.length && !bookResult.failed.length){
-      msg = 'Your schedule has been successfully booked, and your proposal has been sent to ' + state.client.email + '. We look forward to seeing you!';
+      parts = [
+        { text: 'Your schedule has been successfully booked', bold: true },
+        { text: ', and your proposal has been sent to ' },
+        { text: state.client.email, bold: true },
+        { text: '. We look forward to seeing you!' }
+      ];
     } else if(bookResult.booked.length && bookResult.failed.length){
-      msg = bookResult.booked.length + ' propert' + (bookResult.booked.length === 1 ? 'y has' : 'ies have') + ' been successfully booked. ' + bookResult.failed.length + ' selected time' + (bookResult.failed.length === 1 ? '' : 's') + ' could not be booked, so we\'ll follow up on ' + (bookResult.failed.length === 1 ? 'that one' : 'those') + ' directly. Your proposal has been sent to ' + state.client.email + '.';
+      parts = [
+        { text: bookResult.booked.length + ' propert' + (bookResult.booked.length === 1 ? 'y has' : 'ies have') + ' been successfully booked', bold: true },
+        { text: '. ' + bookResult.failed.length + ' selected time' + (bookResult.failed.length === 1 ? '' : 's') + ' could not be booked, so we\'ll follow up on ' + (bookResult.failed.length === 1 ? 'that one' : 'those') + ' directly. Your proposal has been sent to ' },
+        { text: state.client.email, bold: true },
+        { text: '.' }
+      ];
     } else if(bookResult.failed.length){
-      msg = 'Your proposal has been sent to ' + state.client.email + ', but we couldn\'t complete your requested booking — we\'ll follow up directly to get that scheduled.';
+      parts = [
+        { text: 'Your proposal has been sent to ' },
+        { text: state.client.email, bold: true },
+        { text: ', but we couldn\'t complete your requested booking' , bold: true},
+        { text: ' — we\'ll follow up directly to get that scheduled.' }
+      ];
     } else {
-      msg = 'Your proposal has been sent to ' + state.client.email + '. You can book a schedule any time using the link in your email, or by returning to this page.';
+      parts = [
+        { text: 'Your proposal has been sent to ' },
+        { text: state.client.email, bold: true },
+        { text: '. You can book a schedule any time using the link in your email, or by returning to this page.' }
+      ];
     }
-    $('thankYouMessage').textContent = msg;
+    renderMessageParts($('thankYouMessage'), parts);
     $('proposalSection').style.display = 'none';
     $('thankYouSection').classList.remove('hidden');
     window.scrollTo({top:0, behavior:'smooth'});
