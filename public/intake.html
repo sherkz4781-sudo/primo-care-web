@@ -1062,32 +1062,37 @@
   function fmtSlotTime(iso){
     return new Date(iso).toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit', timeZone: BOOK_CAL_TIMEZONE });
   }
+  function fmtSlotDateTime(iso){
+    return new Date(iso).toLocaleString(undefined, { weekday:'long', month:'long', day:'numeric', hour:'numeric', minute:'2-digit', timeZone: BOOK_CAL_TIMEZONE });
+  }
 
-  // Wires one property's inline "Book a Schedule" widget (find-times -> pick a slot -> book).
-  // Unlike book.html — which has to verify identity first since a client might reach it days
-  // later via a standalone link — this page already has a freshly-submitted, trusted
-  // state.client, so it books straight through /api/book-verified with no separate lookup step.
+  // Wires one property's inline "Book a Schedule" widget: find times -> pick a slot. Picking a
+  // slot only stores it on p.pendingSlot (visible client-side, nothing on the calendar yet) —
+  // the client can hit "Change Date" to pick a different one right up until Submit Form is
+  // clicked, at which point bookPendingSlots() below actually books everything selected.
   function wirePropertyBooking(p){
     var block = document.querySelector('.property-proposal-block[data-idx="' + p.idx + '"]');
     if(!block) return;
     var findBtn = block.querySelector('.find-times-btn');
     var dateInput = block.querySelector('.book-date');
     var slotsWrap = block.querySelector('.slots-wrap');
-    var bookBtn = block.querySelector('.book-btn');
-    var resultBox = block.querySelector('.card-result-box');
-    var pending = { slots: [], selectedIndex: -1 };
+    var findControls = block.querySelector('.find-controls');
+    var findResultBox = block.querySelector('.find-result-box');
+    var selectedWrap = block.querySelector('.selected-wrap');
+    var selectedSummary = block.querySelector('.selected-summary');
+    var changeDateBtn = block.querySelector('.change-date-btn');
+    var pending = { slots: [] };
 
     findBtn.addEventListener('click', function(){
-      resultBox.className = 'card-result-box';
-      resultBox.textContent = '';
+      findResultBox.className = 'find-result-box';
+      findResultBox.textContent = '';
       slotsWrap.innerHTML = '';
-      bookBtn.classList.add('hidden');
-      pending = { slots: [], selectedIndex: -1 };
+      pending = { slots: [] };
 
       var dateVal = dateInput.value;
       if(!dateVal){
-        resultBox.className = 'card-result-box booking-err';
-        resultBox.textContent = 'Pick a date first.';
+        findResultBox.className = 'find-result-box booking-err';
+        findResultBox.textContent = 'Pick a date first.';
         return;
       }
 
@@ -1101,14 +1106,14 @@
         findBtn.disabled = false;
         findBtn.textContent = 'Find Available Times';
         if(data.error){
-          resultBox.className = 'card-result-box booking-err';
-          resultBox.textContent = data.error;
+          findResultBox.className = 'find-result-box booking-err';
+          findResultBox.textContent = data.error;
           return;
         }
         var slots = data.slots || [];
         if(!slots.length){
-          resultBox.className = 'card-result-box booking-err';
-          resultBox.textContent = 'No open 30-minute slots that day during business hours (9am–5pm). Try another date.';
+          findResultBox.className = 'find-result-box booking-err';
+          findResultBox.textContent = 'No open 30-minute slots that day during business hours (9am–5pm). Try another date.';
           return;
         }
         pending.slots = slots;
@@ -1117,66 +1122,89 @@
         }).join('');
         slotsWrap.querySelectorAll('.slot-btn').forEach(function(b, i){
           b.addEventListener('click', function(){
-            slotsWrap.querySelectorAll('.slot-btn').forEach(function(x){ x.classList.remove('selected'); });
-            b.classList.add('selected');
-            pending.selectedIndex = i;
-            bookBtn.classList.remove('hidden');
-            resultBox.className = 'card-result-box';
-            resultBox.textContent = '';
+            var slot = pending.slots[i];
+            p.pendingSlot = slot;
+            selectedSummary.className = 'selected-summary booking-ok';
+            selectedSummary.textContent = 'Selected: ' + fmtSlotDateTime(slot.start) + '. Click Submit Form below to lock this in — nothing’s booked yet.';
+            findControls.classList.add('hidden');
+            selectedWrap.classList.remove('hidden');
           });
         });
       }).catch(function(err){
         findBtn.disabled = false;
         findBtn.textContent = 'Find Available Times';
-        resultBox.className = 'card-result-box booking-err';
-        resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
+        findResultBox.className = 'find-result-box booking-err';
+        findResultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
       });
     });
 
-    bookBtn.addEventListener('click', function(){
-      if(pending.selectedIndex < 0){
-        resultBox.className = 'card-result-box booking-err';
-        resultBox.textContent = 'Please pick a time slot above first.';
-        return;
-      }
-      var slot = pending.slots[pending.selectedIndex];
+    changeDateBtn.addEventListener('click', function(){
+      p.pendingSlot = null;
+      selectedWrap.classList.add('hidden');
+      findControls.classList.remove('hidden');
+      slotsWrap.innerHTML = '';
+      findResultBox.className = 'find-result-box';
+      findResultBox.textContent = '';
+    });
+  }
 
-      slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = true; });
-      bookBtn.disabled = true;
-      bookBtn.textContent = 'Booking...';
-      resultBox.className = 'card-result-box';
-      resultBox.textContent = '';
+  // Reflects the outcome of an actual /api/book-verified call (fired from bookPendingSlots at
+  // Submit Form time) back onto that property's widget. On success the slot is now really on
+  // the calendar, so "Change Date" is hidden — changing it from here on means a real
+  // cancel/reschedule, not just picking a different local selection.
+  function markPropertyBookingResult(p, success, dataOrErrorMsg){
+    var block = document.querySelector('.property-proposal-block[data-idx="' + p.idx + '"]');
+    if(!block) return;
+    var selectedSummary = block.querySelector('.selected-summary');
+    var changeDateBtn = block.querySelector('.change-date-btn');
+    if(!selectedSummary) return;
+    if(success){
+      var startFormatted = dataOrErrorMsg.startFormatted;
+      selectedSummary.className = 'selected-summary booking-ok';
+      selectedSummary.textContent = 'Booked! ' + (dataOrErrorMsg.isSubscription ? 'Your recurring ' + dataOrErrorMsg.freqName + ' schedule starts ' + startFormatted + '.' : 'Your visit is booked for ' + startFormatted + '.') + ' It\'s now on our calendar.';
+      if(changeDateBtn) changeDateBtn.classList.add('hidden');
+    } else {
+      selectedSummary.className = 'selected-summary booking-err';
+      selectedSummary.textContent = 'Could not book this time: ' + dataOrErrorMsg + '. Click Change Date to try another time.';
+    }
+  }
 
-      fetchJsonWithRetry('/api/book-verified', {
+  // Books every property that has a pendingSlot (sequentially, so per-property errors are easy
+  // to attribute), called right before the proposal email goes out on Submit Form. Properties
+  // with no slot selected are simply skipped — the client can still book later via the
+  // cancel/reschedule-adjacent flow, this just isn't required to submit the proposal.
+  function bookPendingSlots(){
+    var toBook = state.properties.filter(function(p){ return p.pendingSlot && !p.bookedConfirmed; });
+    var booked = [];
+    var failed = [];
+
+    function bookNext(i){
+      if(i >= toBook.length) return Promise.resolve({ booked: booked, failed: failed });
+      var p = toBook[i];
+      return fetchJsonWithRetry('/api/book-verified', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
           firstName: state.client.firstName, lastName: state.client.lastName,
-          email: state.client.email, orderId: p.orderId, slot: slot
+          email: state.client.email, orderId: p.orderId, slot: p.pendingSlot
         })
       }).then(function(data){
         if(data.error){
-          resultBox.className = 'card-result-box booking-err';
-          resultBox.textContent = data.error;
-          slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
-          bookBtn.disabled = false;
-          bookBtn.textContent = 'Book This Schedule';
-          return;
+          failed.push({ p: p, error: data.error });
+          markPropertyBookingResult(p, false, data.error);
+        } else {
+          p.bookedConfirmed = true;
+          booked.push({ p: p, data: data });
+          markPropertyBookingResult(p, true, data);
         }
-        resultBox.className = 'card-result-box booking-ok';
-        resultBox.textContent = 'Booked! ' + (data.isSubscription ? 'Your recurring ' + data.freqName + ' schedule starts ' + data.startFormatted + '.' : 'Your visit is booked for ' + data.startFormatted + '.') + ' It\'s now on our calendar.';
-        slotsWrap.innerHTML = '';
-        bookBtn.classList.add('hidden');
-        dateInput.disabled = true;
-        findBtn.disabled = true;
-        findBtn.classList.add('hidden');
+        return bookNext(i + 1);
       }).catch(function(err){
-        resultBox.className = 'card-result-box booking-err';
-        resultBox.textContent = 'Something went wrong: ' + err.message + '. Please try again.';
-        slotsWrap.querySelectorAll('.slot-btn').forEach(function(b){ b.disabled = false; });
-        bookBtn.disabled = false;
-        bookBtn.textContent = 'Book This Schedule';
+        failed.push({ p: p, error: err.message });
+        markPropertyBookingResult(p, false, err.message);
+        return bookNext(i + 1);
       });
-    });
+    }
+
+    return bookNext(0);
   }
 
   function propertyProposalBlockHtml(p){
@@ -1203,8 +1231,8 @@
 
     var isSubscription = !!(p.frequencies && p.frequencies.length && p.subscriptionDuration);
     var bookingLine = isSubscription
-      ? 'Pick a start date and lock in your recurring ' + p.frequencies[0] + ' visits for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '.'
-      : 'Pick a date to see open times, then confirm right here — no need to leave this page.';
+      ? 'Pick a start date for your recurring ' + p.frequencies[0] + ' visits (' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '). Nothing is booked until you submit the form below.'
+      : 'Pick a date to see open times. Nothing is booked until you submit the form below — pick a different date any time before then.';
 
     return ''
       + '<div class="property-proposal-block" data-idx="' + p.idx + '">'
@@ -1216,14 +1244,19 @@
       + '<span class="tag">SCHEDULING</span>'
       + '<p class="title">Book a Schedule</p>'
       + '<p class="desc">' + bookingLine + '</p>'
+      + '<div class="find-controls">'
       + '<div class="booking-row">'
       + '<div><input type="date" class="book-date" style="width:100%;"></div>'
       + '<div><button type="button" class="secondary find-times-btn" style="width:100%;">Find Available Times</button></div>'
       + '</div>'
       + '<div class="hint">We\'ll show open 30-minute slots during business hours (9am&ndash;5pm), weekdays only.</div>'
       + '<div class="slots-wrap" style="margin-top:10px;"></div>'
-      + '<button type="button" class="primary book-btn hidden" style="margin-top:12px;">Book This Schedule</button>'
-      + '<div class="card-result-box"></div>'
+      + '<div class="find-result-box"></div>'
+      + '</div>'
+      + '<div class="selected-wrap hidden" style="margin-top:10px;">'
+      + '<div class="selected-summary"></div>'
+      + '<button type="button" class="secondary change-date-btn" style="margin-top:8px;">Change Date</button>'
+      + '</div>'
       + '</div>'
       + '</div>';
   }
@@ -1286,18 +1319,31 @@
     statusEl.className = 'draft-status';
     statusEl.textContent = '';
     btn.disabled = true;
-    btn.textContent = 'Preparing...';
+    btn.textContent = 'Booking...';
 
-    buildAndCreateDraft().then(function(data){
-      btn.disabled = false;
-      btn.textContent = 'Submit Form';
-      if(data.error){
-        statusEl.className = 'draft-status err';
-        statusEl.textContent = 'Could not prepare your proposal email: ' + data.error;
-      } else {
-        statusEl.className = 'draft-status ok';
-        statusEl.textContent = 'Your proposal has been sent to ' + state.client.email + '!';
-      }
+    bookPendingSlots().then(function(bookResult){
+      btn.textContent = 'Sending...';
+      return buildAndCreateDraft().then(function(data){
+        btn.disabled = false;
+        btn.textContent = 'Submit Form';
+
+        var notes = [];
+        if(bookResult.booked.length){
+          notes.push(bookResult.booked.length + ' propert' + (bookResult.booked.length === 1 ? 'y' : 'ies') + ' booked on our calendar.');
+        }
+        if(bookResult.failed.length){
+          notes.push(bookResult.failed.length + ' selected time' + (bookResult.failed.length === 1 ? '' : 's') + ' could not be booked — see the note' + (bookResult.failed.length === 1 ? '' : 's') + ' above.');
+        }
+        var prefix = notes.length ? notes.join(' ') + ' ' : '';
+
+        if(data.error){
+          statusEl.className = 'draft-status err';
+          statusEl.textContent = prefix + 'Could not prepare your proposal email: ' + data.error;
+        } else {
+          statusEl.className = 'draft-status ok';
+          statusEl.textContent = prefix + 'Your proposal has been sent to ' + state.client.email + '!';
+        }
+      });
     }).catch(function(err){
       btn.disabled = false;
       btn.textContent = 'Submit Form';
