@@ -311,6 +311,9 @@
       <h2 style="margin:0 0 14px;color:var(--teal-dark);font-size:24px;">Thank You!</h2>
       <p id="thankYouMessage" style="margin:0 auto 26px;max-width:440px;color:var(--ink);font-size:17px;line-height:1.5;"></p>
       <button class="primary" id="closePageBtn">Close Page</button>
+      <div id="closeFallbackLink" class="hidden" style="margin-top:14px;">
+        <a href="/" style="color:var(--teal-dark);font-size:13px;text-decoration:underline;">&larr; Or return to our homepage</a>
+      </div>
     </div>
   </div>
 
@@ -1425,6 +1428,7 @@
     setTimeout(function(){
       btn.textContent = 'You can now close this tab';
       btn.disabled = true;
+      $('closeFallbackLink').classList.remove('hidden');
     }, 300);
   });
 
