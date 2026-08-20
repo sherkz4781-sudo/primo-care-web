@@ -33,7 +33,8 @@
   /* ---- Top announcement bar ---- */
   .topbar { background: #0d1117; color: #fff; font-size: 12.5px; }
   .topbar .wrap { display: flex; justify-content: space-between; align-items: center; padding: 7px 20px; }
-  .topbar .call { color: var(--yellow); font-weight: 800; }
+  .topbar .call { color: var(--yellow); font-weight: 800; text-decoration: none; }
+  .topbar .call:hover { text-decoration: underline; }
 
   /* ---- Nav ---- */
   nav.topnav { background: #fff; border-bottom: 1px solid var(--border); }
@@ -232,7 +233,7 @@
 <div class="topbar">
   <div class="wrap">
     <span>Primo Care &mdash; Cleaning Services</span>
-    <span>Any questions? Call us today: <span class="call">[Your Contact Number]</span></span>
+    <span>Any questions? Call us today: <a class="call" href="tel:+18008888">1800-8888</a></span>
   </div>
 </div>
 
@@ -462,8 +463,8 @@
       </div>
     </div>
     <div class="contact-box">
-      <div class="row"><span class="ic">&#9742;</span> [Your Contact Number]</div>
-      <div class="row"><span class="ic">&#9993;</span> [Your Email]</div>
+      <div class="row"><span class="ic">&#9742;</span> <a href="tel:+18008888" style="color:inherit;text-decoration:none;">1800-8888</a></div>
+      <div class="row"><span class="ic">&#9993;</span> <a href="mailto:desk@primocare.com" style="color:inherit;text-decoration:none;">desk@primocare.com</a></div>
       <div class="row"><span class="ic">&#128205;</span> Serving the Frisco, TX area</div>
       <a class="btn-yellow" href="/intake">GET A FREE QUOTE</a>
     </div>
