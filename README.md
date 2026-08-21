@@ -98,6 +98,11 @@ logins, role-driven by a **Members** table in Airtable:
 - Each member has a Username, Password, Full Name, and Role (`Admin` or `Staff`).
 - **Staff** role unlocks `/staff` only. **Admin** role unlocks both `/staff` and `/dashboard`
   (including the members page itself, so only admins can manage other accounts).
+- **Removing a member requires the owner's credentials, entered fresh, every time.** Any Admin
+  can view the list or add someone, but clicking Remove opens a prompt for an owner
+  username/password that must match a `DASHBOARD_USERS` break-glass account — a logged-in Admin's
+  own credentials don't count, even their own. This is a deliberate extra gate on the one
+  irreversible action here.
 - Passwords are stored in plain text in Airtable, same as the rest of the app's data — this is
   an internal tool, not a security-hardened product, so there's no hashing. Don't reuse a
   password here that matters anywhere else.

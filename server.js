@@ -1009,11 +1009,23 @@ app.post('/api/dashboard/members', dashboardAuth, async (req, res) => {
   }
 });
 
-// Removes a member account. Doesn't block removing the last Admin — the break-glass
-// DASHBOARD_USERS/STAFF_USERS env-var accounts still work regardless, so this can't lock anyone
-// out of the app entirely, only out of a specific named account.
+// Removing a member is deliberately gated tighter than everything else on this page: any Admin
+// can view the list or add someone, but only whoever holds an owner (break-glass DASHBOARD_USERS)
+// credential can actually remove an account — verified fresh on every request, separate from
+// whatever session/Basic-Auth is already logged in. This stops a merely-logged-in Admin browser
+// tab from being enough to remove someone; the real owner password has to be typed in each time.
+function verifyOwnerCredentials(username, password) {
+  if (!username || !password) return false;
+  const expectedPass = BREAK_GLASS_DASHBOARD[username];
+  return !!expectedPass && safeEqual(password, expectedPass);
+}
+
 app.delete('/api/dashboard/members/:recordId', dashboardAuth, async (req, res) => {
   try {
+    const { ownerUsername, ownerPassword } = req.body || {};
+    if (!verifyOwnerCredentials(ownerUsername, ownerPassword)) {
+      return res.status(403).json({ error: 'Incorrect owner username or password.' });
+    }
     await airtable.deleteRecordForTable(MEMBERS_TABLE, req.params.recordId);
     res.json({ ok: true });
   } catch (err) {

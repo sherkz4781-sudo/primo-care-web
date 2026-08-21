@@ -100,6 +100,34 @@
 
   .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 24px; }
 
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.5);
+    display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #fff; border-radius: 12px; padding: 22px 24px; max-width: 380px; width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 16px; color: var(--ink); }
+  .modal .modal-sub { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  .modal .field { margin-bottom: 12px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+  button.secondary {
+    background: #fff; border: 1.5px solid var(--border); color: var(--ink); font-weight: 700;
+    font-size: 13.5px; padding: 10px 16px; border-radius: 8px; cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button.secondary:hover { background: #f3f4f6; }
+  button.danger {
+    background: var(--red); color: #fff; border: none; border-radius: 8px;
+    padding: 10px 16px; font-size: 13.5px; font-weight: 700; cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  button.danger:hover { background: #b91c1c; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(220,38,38,0.25); }
+  button.danger:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: none; }
+  .modal .modal-error { background: #fef2f2; color: #991b1b; padding: 8px 12px; border-radius: 7px; font-size: 12.5px; margin-bottom: 12px; }
+
   @media (max-width: 560px) {
     .form-grid { grid-template-columns: 1fr; }
     header.brand { flex-direction: column; align-items: flex-start; }
@@ -157,6 +185,28 @@
   <div class="card">
     <h2 class="section-title">Company Members</h2>
     <div id="membersTableWrap"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="removeModal">
+  <div class="modal">
+    <h3>Remove <span id="removeTargetName"></span>?</h3>
+    <p class="modal-sub">Only the account owner can remove a member. Confirm with the owner username and password.</p>
+    <div id="removeModalError"></div>
+    <form id="removeForm">
+      <div class="field">
+        <label for="ownerUsername">Owner Username</label>
+        <input type="text" id="ownerUsername" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ownerPassword">Owner Password</label>
+        <input type="password" id="ownerPassword" required autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="removeCancelBtn">Cancel</button>
+        <button type="submit" class="danger" id="removeConfirmBtn">Remove Member</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -242,26 +292,63 @@ $('addForm').addEventListener('submit', function (e) {
     });
 });
 
+// ---- Remove-member modal (requires the owner's username/password every time) ----
+var pendingRemove = null; // { recordId, btn }
+
+function openRemoveModal(recordId, name, btn) {
+  pendingRemove = { recordId: recordId, btn: btn };
+  $('removeTargetName').textContent = name;
+  $('removeModalError').innerHTML = '';
+  $('ownerUsername').value = '';
+  $('ownerPassword').value = '';
+  $('removeModal').classList.remove('hidden');
+  $('ownerUsername').focus();
+}
+
+function closeRemoveModal() {
+  $('removeModal').classList.add('hidden');
+  pendingRemove = null;
+}
+
 $('membersTableWrap').addEventListener('click', function (e) {
   var btn = e.target.closest('button.remove');
   if (!btn) return;
   var recordId = btn.getAttribute('data-record-id');
   var row = btn.closest('tr');
   var name = row.children[0].textContent;
-  if (!confirm('Remove ' + name + '’s access? This cannot be undone.')) return;
-  btn.disabled = true;
-  btn.textContent = 'Removing…';
-  fetch('/api/dashboard/members/' + encodeURIComponent(recordId), { method: 'DELETE' })
+  openRemoveModal(recordId, name, btn);
+});
+
+$('removeCancelBtn').addEventListener('click', closeRemoveModal);
+$('removeModal').addEventListener('click', function (e) {
+  if (e.target === $('removeModal')) closeRemoveModal();
+});
+
+$('removeForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  if (!pendingRemove) return;
+  $('removeModalError').innerHTML = '';
+  var confirmBtn = $('removeConfirmBtn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Removing…';
+  fetch('/api/dashboard/members/' + encodeURIComponent(pendingRemove.recordId), {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ownerUsername: $('ownerUsername').value, ownerPassword: $('ownerPassword').value })
+  })
     .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
     .then(function (res) {
       if (!res.ok) throw new Error(res.data.error || 'Failed to remove member.');
       showToast('Member removed.');
+      closeRemoveModal();
       loadMembers();
     })
     .catch(function (err) {
-      showError(err.message);
-      btn.disabled = false;
-      btn.textContent = 'Remove';
+      $('removeModalError').innerHTML = '<div class="modal-error">' + escapeHtml(err.message) + '</div>';
+    })
+    .then(function () {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Remove Member';
     });
 });
 
