@@ -787,7 +787,7 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
   }
 });
 
-app.get('/staff/dashboard', dashboardAuth, (req, res) => {
+app.get('/dashboard', dashboardAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'staff-dashboard.html'));
 });
 

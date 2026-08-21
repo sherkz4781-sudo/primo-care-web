@@ -91,13 +91,14 @@ after a quiet period; the site itself auto-retries failed requests once for this
 
 ## Staff logins
 
-`/staff` (job list + calendar) and `/staff/dashboard` (business KPIs) are separate HTTP Basic
-Auth logins — a staff account does **not** also unlock the dashboard, and vice versa.
+`/staff` (job list + calendar) and `/dashboard` (business KPIs) are separate HTTP Basic
+Auth logins — a staff account does **not** also unlock the dashboard, and vice versa. There's no
+link between the two pages by design, since they're meant for different audiences.
 
 - **`STAFF_USERS`** — comma-separated `username:password` pairs, one per staff member:
   `STAFF_USERS=alice:sOmEpAsS,bob:anotherPass`. To add or remove someone, edit this value in
   Render's environment variables and redeploy (Render → your service → Environment).
-- **`DASHBOARD_USERS`** — same format, for whoever should see `/staff/dashboard`. Keep this list
+- **`DASHBOARD_USERS`** — same format, for whoever should see `/dashboard`. Keep this list
   short (owner/manager only) since it's business-wide revenue and lead data.
 - **`STAFF_USERNAME`/`STAFF_PASSWORD`** — the original single-account variables still work if
   set, in addition to `STAFF_USERS`, so existing setups don't break.
