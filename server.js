@@ -541,21 +541,34 @@ function parseCredentialList(raw) {
   return map;
 }
 
-// All staff-level accounts (job list + calendar access): STAFF_USERS plus, for back-compat, the
-// original single STAFF_USERNAME/STAFF_PASSWORD pair if still set.
-const STAFF_USERS = parseCredentialList(process.env.STAFF_USERS);
+// Break-glass accounts that always work regardless of what's in the Members table — protects
+// against ever being locked out if Airtable is briefly unreachable, or the Members table is
+// accidentally emptied. Not shown anywhere in the UI; just env vars.
+const BREAK_GLASS_STAFF = parseCredentialList(process.env.STAFF_USERS);
 if (process.env.STAFF_USERNAME && process.env.STAFF_PASSWORD) {
-  STAFF_USERS[process.env.STAFF_USERNAME] = process.env.STAFF_PASSWORD;
+  BREAK_GLASS_STAFF[process.env.STAFF_USERNAME] = process.env.STAFF_PASSWORD;
+}
+const BREAK_GLASS_DASHBOARD = parseCredentialList(process.env.DASHBOARD_USERS);
+
+const MEMBERS_TABLE = 'Members';
+
+// Looks up one login account by username in the Members table. Returns null if not found —
+// callers treat that the same as a wrong password (never reveal which one was wrong).
+async function findMember(username) {
+  if (!username) return null;
+  const escaped = String(username).replace(/"/g, '\\"');
+  const records = await airtable.listAllForTable(MEMBERS_TABLE, { formula: `{Username} = "${escaped}"` });
+  const rec = records[0];
+  if (!rec) return null;
+  const f = rec.fields || {};
+  return { recordId: rec.id, username: f['Username'] || '', password: f['Password'] || '', fullName: f['Full Name'] || '', role: f['Role'] || '' };
 }
 
-// Builds a Basic Auth middleware against a given { username: password } map and realm. The KPI
-// dashboard uses a separate map/realm from regular staff (see DASHBOARD_USERS below) so it's a
-// genuinely different login, not just a different link — staff credentials don't unlock it.
-function makeBasicAuth(users, realm) {
-  return function (req, res, next) {
-    if (!Object.keys(users).length) {
-      return res.status(500).send('Login is not configured on this server.');
-    }
+// Builds a Basic Auth middleware that accepts either a break-glass env-var login, or a Members
+// table account whose Role is in allowedRoles. Staff role can only pass the staffAuth gate;
+// Admin role passes both — that's the entire access model, driven by one field per person.
+function makeRoleAuth(breakGlassUsers, allowedRoles, realm) {
+  return async function (req, res, next) {
     const header = req.headers.authorization || '';
     const [scheme, encoded] = header.split(' ');
     if (scheme === 'Basic' && encoded) {
@@ -563,9 +576,21 @@ function makeBasicAuth(users, realm) {
       const sep = decoded.indexOf(':');
       const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
       const reqPass = sep === -1 ? '' : decoded.slice(sep + 1);
-      const expectedPass = users[reqUser];
-      if (expectedPass && safeEqual(reqPass, expectedPass)) {
+
+      const breakGlassPass = breakGlassUsers[reqUser];
+      if (breakGlassPass && safeEqual(reqPass, breakGlassPass)) {
+        req.member = { username: reqUser, role: 'Admin', fullName: reqUser };
         return next();
+      }
+
+      try {
+        const member = await findMember(reqUser);
+        if (member && member.password && allowedRoles.includes(member.role) && safeEqual(reqPass, member.password)) {
+          req.member = member;
+          return next();
+        }
+      } catch (err) {
+        console.error('Member lookup failed during auth:', err.message);
       }
     }
     res.set('WWW-Authenticate', 'Basic realm="' + realm + '"');
@@ -573,12 +598,8 @@ function makeBasicAuth(users, realm) {
   };
 }
 
-const staffAuth = makeBasicAuth(STAFF_USERS, 'Primo Care Staff');
-
-// KPI dashboard gets its own, separate login (DASHBOARD_USERS, same "user1:pass1,..." format) so
-// it isn't visible to every staff account — just whoever's meant to see business metrics.
-const DASHBOARD_USERS = parseCredentialList(process.env.DASHBOARD_USERS);
-const dashboardAuth = makeBasicAuth(DASHBOARD_USERS, 'Primo Care Dashboard');
+const staffAuth = makeRoleAuth(BREAK_GLASS_STAFF, ['Admin', 'Staff'], 'Primo Care Staff');
+const dashboardAuth = makeRoleAuth(BREAK_GLASS_DASHBOARD, ['Admin'], 'Primo Care Dashboard');
 
 app.get('/staff', staffAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'staff.html'));
@@ -920,6 +941,81 @@ app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
       upcomingList: upcomingList.slice(0, 6),
       recentLeads: recentLeads.slice(0, 6)
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Member management (admin-only) — add/list/remove login accounts for /staff and /dashboard.
+// ---------------------------------------------------------------------------
+
+const MEMBER_ROLES = ['Admin', 'Staff'];
+
+app.get('/dashboard/members', dashboardAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard-members.html'));
+});
+
+// Lists every member account (never returns Password).
+app.get('/api/dashboard/members', dashboardAuth, async (req, res) => {
+  try {
+    const records = await airtable.listAllForTable(MEMBERS_TABLE, { sort: [{ field: 'Username', direction: 'asc' }] });
+    const members = records.map(rec => {
+      const f = rec.fields || {};
+      return {
+        recordId: rec.id,
+        username: f['Username'] || '',
+        fullName: f['Full Name'] || '',
+        role: f['Role'] || '',
+        addedAt: rec.createdTime
+      };
+    });
+    res.json({ members });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Creates a new member account. Username must be unique (case-insensitive) so login lookups
+// stay unambiguous.
+app.post('/api/dashboard/members', dashboardAuth, async (req, res) => {
+  try {
+    const { username, password, fullName, role } = req.body || {};
+    if (!username || !password || !role) {
+      return res.status(400).json({ error: 'Username, password, and role are all required.' });
+    }
+    if (!MEMBER_ROLES.includes(role)) {
+      return res.status(400).json({ error: 'Role must be Admin or Staff.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+    const existing = await findMember(username);
+    if (existing) {
+      return res.status(409).json({ error: 'That username is already taken.' });
+    }
+    const rec = await airtable.createRecordForTable(MEMBERS_TABLE, {
+      'Username': username,
+      'Password': password,
+      'Full Name': fullName || '',
+      'Role': role
+    });
+    res.json({ ok: true, recordId: rec.id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Removes a member account. Doesn't block removing the last Admin — the break-glass
+// DASHBOARD_USERS/STAFF_USERS env-var accounts still work regardless, so this can't lock anyone
+// out of the app entirely, only out of a specific named account.
+app.delete('/api/dashboard/members/:recordId', dashboardAuth, async (req, res) => {
+  try {
+    await airtable.deleteRecordForTable(MEMBERS_TABLE, req.params.recordId);
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

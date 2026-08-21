@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primo Care - Members</title>
+<style>
+  :root {
+    color-scheme: light;
+    --teal: #0e7c86;
+    --teal-dark: #0a5c64;
+    --teal-light: #e6f4f5;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --bg: #ffffff;
+    --green: #16a34a;
+    --red: #dc2626;
+    --amber: #d97706;
+    --purple: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #f7f9fa;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header.brand {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 26px;
+    background: linear-gradient(120deg, var(--teal), var(--teal-dark));
+    border-radius: 14px; color: white; margin-bottom: 24px;
+  }
+  header.brand .id { display: flex; align-items: center; gap: 12px; }
+  header.brand .logo {
+    width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  header.brand h1 { margin: 0; font-size: 20px; }
+  header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+  header.brand a.back-link {
+    background: rgba(255,255,255,0.16); color: #fff; text-decoration: none; font-weight: 700;
+    font-size: 12.5px; padding: 9px 15px; border-radius: 8px; white-space: nowrap;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  header.brand a.back-link:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
+
+  .card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 22px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  .card h2.section-title { font-size: 15px; margin: 0 0 16px; }
+
+  .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+  .toast { background: #ecfdf3; color: #166534; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.full { grid-column: 1 / -1; }
+  label { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  input[type=text], input[type=password], select {
+    padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; color: var(--ink); background: #fff; font-family: inherit;
+  }
+  input:focus, select:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+  .hint { font-size: 11.5px; color: var(--muted); }
+
+  button.primary {
+    background: var(--teal); color: #fff; border: none; border-radius: 9px;
+    padding: 12px 20px; font-size: 14.5px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 3px 8px rgba(14,124,134,0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  button.primary:hover { background: var(--teal-dark); transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 20px rgba(14,124,134,0.32); }
+  button.primary:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: 0 3px 8px rgba(14,124,134,0.25); }
+
+  table.members { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.members thead th {
+    text-align: left; padding: 10px 12px; font-size: 11.5px; text-transform: uppercase;
+    letter-spacing: 0.3px; color: var(--muted); border-bottom: 2px solid var(--border);
+  }
+  table.members tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.members tbody tr:hover { background: var(--teal-light); }
+  table.members tbody tr:last-child td { border-bottom: none; }
+
+  .role-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+  .role-badge.admin { background: #ede9fe; color: var(--purple); }
+  .role-badge.staff { background: #dbeafe; color: #1e40af; }
+
+  button.remove {
+    background: #fff; border: 1.5px solid var(--red); color: var(--red); font-weight: 700;
+    font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  button.remove:hover { background: #fef2f2; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(220,38,38,0.15); }
+  button.remove:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: none; }
+
+  .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 24px; }
+
+  @media (max-width: 560px) {
+    .form-grid { grid-template-columns: 1fr; }
+    header.brand { flex-direction: column; align-items: flex-start; }
+    table.members { font-size: 12.5px; }
+    table.members thead th, table.members tbody td { padding: 8px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <div class="id">
+      <div class="logo">&#128101;</div>
+      <div>
+        <h1>Primo Care &mdash; Members</h1>
+        <p>Add and manage staff and admin accounts</p>
+      </div>
+    </div>
+    <a class="back-link" href="/dashboard">&larr; Back to Dashboard</a>
+  </header>
+
+  <div id="errorBox"></div>
+  <div id="toastBox"></div>
+
+  <div class="card">
+    <h2 class="section-title">Add New Member</h2>
+    <form id="addForm">
+      <div class="form-grid">
+        <div class="field">
+          <label for="fullName">Full Name</label>
+          <input type="text" id="fullName" placeholder="Jane Doe">
+        </div>
+        <div class="field">
+          <label for="username">Username <span style="color:var(--red);">*</span></label>
+          <input type="text" id="username" placeholder="jane" required>
+        </div>
+        <div class="field">
+          <label for="password">Password <span style="color:var(--red);">*</span></label>
+          <input type="password" id="password" placeholder="At least 6 characters" required minlength="6">
+        </div>
+        <div class="field">
+          <label for="role">Role <span style="color:var(--red);">*</span></label>
+          <select id="role" required>
+            <option value="">Select a role&hellip;</option>
+            <option value="Staff">Staff &mdash; access to /staff only</option>
+            <option value="Admin">Admin &mdash; access to /staff and /dashboard</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint" style="margin-bottom:14px;">Staff members can only access the job list and calendar. Admins can access both the staff page and this dashboard.</div>
+      <button class="primary" type="submit" id="addBtn">Add Member</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2 class="section-title">Company Members</h2>
+    <div id="membersTableWrap"></div>
+  </div>
+</div>
+
+<script>
+function $(id) { return document.getElementById(id); }
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function showError(msg) {
+  $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(msg) + '</div>';
+}
+function showToast(msg) {
+  $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(msg) + '</div>';
+  setTimeout(function () { $('toastBox').innerHTML = ''; }, 3000);
+}
+
+function renderMembers(members) {
+  var wrap = $('membersTableWrap');
+  if (!members.length) {
+    wrap.innerHTML = '<div class="empty">No members yet &mdash; add the first one above.</div>';
+    return;
+  }
+  var rows = members.map(function (m) {
+    var roleCls = m.role === 'Admin' ? 'admin' : 'staff';
+    return '<tr data-record-id="' + escapeHtml(m.recordId) + '">'
+      + '<td>' + escapeHtml(m.fullName || '—') + '</td>'
+      + '<td>' + escapeHtml(m.username) + '</td>'
+      + '<td><span class="role-badge ' + roleCls + '">' + escapeHtml(m.role) + '</span></td>'
+      + '<td>' + fmtDate(m.addedAt) + '</td>'
+      + '<td><button class="remove" data-record-id="' + escapeHtml(m.recordId) + '">Remove</button></td>'
+      + '</tr>';
+  }).join('');
+  wrap.innerHTML = '<table class="members"><thead><tr>'
+    + '<th>Name</th><th>Username</th><th>Role</th><th>Added</th><th></th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function loadMembers() {
+  fetch('/api/dashboard/members')
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.data.error || 'Failed to load members.');
+      renderMembers(res.data.members || []);
+    })
+    .catch(function (err) { showError(err.message); });
+}
+
+$('addForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  $('errorBox').innerHTML = '';
+  var payload = {
+    fullName: $('fullName').value.trim(),
+    username: $('username').value.trim(),
+    password: $('password').value,
+    role: $('role').value
+  };
+  var btn = $('addBtn');
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+  fetch('/api/dashboard/members', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.data.error || 'Failed to add member.');
+      $('addForm').reset();
+      showToast('Member added.');
+      loadMembers();
+    })
+    .catch(function (err) { showError(err.message); })
+    .then(function () {
+      btn.disabled = false;
+      btn.textContent = 'Add Member';
+    });
+});
+
+$('membersTableWrap').addEventListener('click', function (e) {
+  var btn = e.target.closest('button.remove');
+  if (!btn) return;
+  var recordId = btn.getAttribute('data-record-id');
+  var row = btn.closest('tr');
+  var name = row.children[0].textContent;
+  if (!confirm('Remove ' + name + '’s access? This cannot be undone.')) return;
+  btn.disabled = true;
+  btn.textContent = 'Removing…';
+  fetch('/api/dashboard/members/' + encodeURIComponent(recordId), { method: 'DELETE' })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.data.error || 'Failed to remove member.');
+      showToast('Member removed.');
+      loadMembers();
+    })
+    .catch(function (err) {
+      showError(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Remove';
+    });
+});
+
+loadMembers();
+</script>
+</body>
+</html>
