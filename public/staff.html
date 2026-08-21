@@ -104,6 +104,43 @@
 
   h2.section-title { font-size: 15px; color: var(--ink); margin: 30px 0 12px; }
 
+  .cal-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 26px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  .cal-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-toolbar .cal-nav { display: flex; align-items: center; gap: 8px; }
+  button.cal-btn {
+    background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); font-weight: 700;
+    font-size: 12.5px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  button.cal-btn:hover { background: var(--teal-light); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+  .cal-label { font-weight: 800; font-size: 14.5px; color: var(--ink); min-width: 140px; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-dow { text-align: center; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; padding-bottom: 4px; }
+  .cal-day {
+    border: 1px solid var(--border); border-radius: 7px; min-height: 74px;
+    padding: 5px 5px 3px; background: #fff; transition: box-shadow 0.2s ease;
+  }
+  .cal-day.other-month { background: #fafbfc; }
+  .cal-day.other-month .cal-num { color: var(--muted); }
+  .cal-day.today { border-color: var(--teal); box-shadow: 0 0 0 1.5px var(--teal) inset; }
+  .cal-num { font-size: 11.5px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+  .cal-chip {
+    display: block; background: var(--teal-light); color: var(--teal-dark); font-size: 10px;
+    font-weight: 600; padding: 2px 5px; border-radius: 4px; margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cal-chip.recurring { background: #fef3c7; color: #92400e; }
+  .cal-more { font-size: 9.5px; color: var(--muted); padding-left: 1px; }
+  @media (max-width: 560px) {
+    .cal-day { min-height: 58px; padding: 3px 3px 2px; }
+    .cal-num { font-size: 10px; }
+    .cal-chip { font-size: 8.5px; padding: 1px 3px; }
+    .cal-dow { font-size: 9px; }
+  }
+
   .empty { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 20px; }
   .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
   .toast { background: #ecfdf3; color: #166534; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
@@ -124,6 +161,20 @@
 
   <div id="errorBox"></div>
   <div id="toastBox"></div>
+
+  <h2 class="section-title" style="margin-top:0;">Schedule</h2>
+  <div class="cal-card">
+    <div class="cal-toolbar">
+      <div class="cal-nav">
+        <button class="cal-btn" id="calPrev">&larr;</button>
+        <button class="cal-btn" id="calToday">Today</button>
+        <button class="cal-btn" id="calNext">&rarr;</button>
+      </div>
+      <div class="cal-label" id="calLabel">&nbsp;</div>
+      <div style="width:1px;"></div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
 
   <div class="toolbar">
     <span class="count" id="countLabel">Loading&hellip;</span>
@@ -302,6 +353,110 @@ document.addEventListener('click', function (e) {
       });
   }
 });
+
+// ---- Schedule calendar ----
+var calState = { year: 0, month: 0 };
+
+function calSetToday() {
+  var now = new Date();
+  calState.year = now.getFullYear();
+  calState.month = now.getMonth() + 1;
+}
+
+function calMonthLabel(y, m) {
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function renderCalendar(events) {
+  var y = calState.year, m = calState.month;
+  var firstOfMonth = new Date(y, m - 1, 1);
+  var startWeekday = firstOfMonth.getDay();
+  var daysInMonth = new Date(y, m, 0).getDate();
+  var daysInPrevMonth = new Date(y, m - 1, 0).getDate();
+  var todayStr = new Date().toDateString();
+
+  var byDay = {};
+  events.forEach(function (ev) {
+    if (!ev.start) return;
+    var d = new Date(ev.start);
+    var key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    (byDay[key] = byDay[key] || []).push(ev);
+  });
+
+  var dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var cells = dow.map(function (d) { return '<div class="cal-dow">' + d + '</div>'; }).join('');
+
+  var totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+  for (var i = 0; i < totalCells; i++) {
+    var dayNum, cellMonth, cellYear, isOther = false;
+    if (i < startWeekday) {
+      dayNum = daysInPrevMonth - startWeekday + 1 + i;
+      cellMonth = m - 1 < 1 ? 12 : m - 1;
+      cellYear = m - 1 < 1 ? y - 1 : y;
+      isOther = true;
+    } else if (i >= startWeekday + daysInMonth) {
+      dayNum = i - (startWeekday + daysInMonth) + 1;
+      cellMonth = m + 1 > 12 ? 1 : m + 1;
+      cellYear = m + 1 > 12 ? y + 1 : y;
+      isOther = true;
+    } else {
+      dayNum = i - startWeekday + 1;
+      cellMonth = m;
+      cellYear = y;
+    }
+    var key = cellYear + '-' + cellMonth + '-' + dayNum;
+    var dayEvents = byDay[key] || [];
+    var isToday = new Date(cellYear, cellMonth - 1, dayNum).toDateString() === todayStr;
+
+    var chips = dayEvents.slice(0, 3).map(function (ev) {
+      var timeLabel = '';
+      if (ev.start && ev.start.indexOf('T') !== -1) {
+        timeLabel = new Date(ev.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ';
+      }
+      var cls = /Primo Care Cleaning/.test(ev.title) ? 'recurring' : '';
+      var label = ev.title.replace(/^Primo Care (Cleaning \([^)]+\)|Call) — /, '');
+      return '<span class="cal-chip ' + cls + '" title="' + escapeHtml(ev.title) + '">' + escapeHtml(timeLabel + label) + '</span>';
+    }).join('');
+    var more = dayEvents.length > 3 ? '<div class="cal-more">+' + (dayEvents.length - 3) + ' more</div>' : '';
+
+    cells += '<div class="cal-day' + (isOther ? ' other-month' : '') + (isToday ? ' today' : '') + '">'
+      + '<div class="cal-num">' + dayNum + '</div>' + chips + more
+      + '</div>';
+  }
+  $('calGrid').innerHTML = cells;
+}
+
+function loadCalendar() {
+  $('calLabel').textContent = calMonthLabel(calState.year, calState.month);
+  $('calGrid').innerHTML = '<div class="empty" style="grid-column:1/-1;">Loading&hellip;</div>';
+  fetch('/api/staff/calendar?year=' + calState.year + '&month=' + calState.month)
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.error) throw new Error(data.error);
+      renderCalendar(data.events || []);
+    })
+    .catch(function (err) {
+      $('calGrid').innerHTML = '<div class="error-box" style="grid-column:1/-1;">' + escapeHtml(err.message) + '</div>';
+    });
+}
+
+$('calPrev').addEventListener('click', function () {
+  calState.month--;
+  if (calState.month < 1) { calState.month = 12; calState.year--; }
+  loadCalendar();
+});
+$('calNext').addEventListener('click', function () {
+  calState.month++;
+  if (calState.month > 12) { calState.month = 1; calState.year++; }
+  loadCalendar();
+});
+$('calToday').addEventListener('click', function () {
+  calSetToday();
+  loadCalendar();
+});
+
+calSetToday();
+loadCalendar();
 
 $('refreshBtn').addEventListener('click', loadJobs);
 loadJobs();

@@ -578,6 +578,39 @@ app.get('/api/staff/jobs', staffAuth, async (req, res) => {
   }
 });
 
+// Returns every Primo Care calendar event in the given month (year, 1-indexed month), for the
+// staff calendar view. Reads straight from Google Calendar rather than Airtable, since Calendar
+// is already the source of truth for individual occurrences of a recurring subscription (see
+// the 48hr-notice task) — this avoids re-deriving that same occurrence logic here.
+app.get('/api/staff/calendar', staffAuth, async (req, res) => {
+  try {
+    const year = parseInt(req.query.year, 10);
+    const month = parseInt(req.query.month, 10);
+    if (!year || !month || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Missing or invalid year/month.' });
+    }
+    const timeMin = new Date(Date.UTC(year, month - 1, 1)).toISOString();
+    const timeMax = new Date(Date.UTC(year, month, 1)).toISOString();
+    const rawEvents = await gcal.listEventsInWindow(timeMin, timeMax, 'Primo Care');
+    const events = rawEvents.map(ev => {
+      const desc = ev.description || '';
+      const orderMatch = desc.match(/Order ID:\s*(PC-ORD-[A-Za-z0-9]+)/);
+      return {
+        id: ev.id,
+        title: ev.summary || '',
+        start: (ev.start && (ev.start.dateTime || ev.start.date)) || '',
+        end: (ev.end && (ev.end.dateTime || ev.end.date)) || '',
+        location: ev.location || '',
+        orderId: orderMatch ? orderMatch[1] : null
+      };
+    });
+    res.json({ events });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Formats a number as USD for the billing email; falls back to whatever's on file if the field
 // isn't a plain number for some reason.
 function fmtCurrency(total) {
