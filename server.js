@@ -902,7 +902,31 @@ function payMessagePage({ title, message, tone }) {
     h1 { font-size:20px; color:${color}; margin:0 0 12px; }
     p { color:#374151; font-size:14.5px; line-height:1.6; margin:0; }
     a { color:#0e7c86; }
-  </style></head><body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
+    button.close-tab {
+      display:inline-block; margin-top:22px; background:#0e7c86; color:#fff; border:none; border-radius:8px;
+      padding:11px 24px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    }
+    button.close-tab:hover { background:#0a5c64; }
+    .close-note { font-size:12px; color:#9ca3af; margin-top:10px; display:none; }
+  </style></head><body>
+  <div class="card">
+    <h1>${title}</h1>
+    <p>${message}</p>
+    <div>
+      <button class="close-tab" id="closeTabBtn" type="button">Close Tab</button>
+      <p class="close-note" id="closeNote">This tab was opened from a link, so your browser may not let it close automatically &mdash; feel free to close it yourself.</p>
+    </div>
+  </div>
+  <script>
+    document.getElementById('closeTabBtn').addEventListener('click', function () {
+      window.close();
+      // window.close() only works for tabs a script opened; a tab reached by clicking an email
+      // link usually won't close itself, and browsers give no error when that happens — so if
+      // we're still here a moment later, say so instead of leaving the button looking broken.
+      setTimeout(function () { document.getElementById('closeNote').style.display = 'block'; }, 400);
+    });
+  </script>
+  </body></html>`;
 }
 
 // The "how would you like to pay?" landing page itself — plain HTML forms (no client-side JS
