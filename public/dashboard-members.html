@@ -90,13 +90,17 @@
   .role-badge.admin { background: #ede9fe; color: var(--purple); }
   .role-badge.staff { background: #dbeafe; color: #1e40af; }
 
-  button.remove {
-    background: #fff; border: 1.5px solid var(--red); color: var(--red); font-weight: 700;
-    font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+  .row-actions { display: flex; gap: 8px; }
+  button.remove, button.edit-role {
+    font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    white-space: nowrap;
   }
+  button.remove { background: #fff; border: 1.5px solid var(--red); color: var(--red); }
   button.remove:hover { background: #fef2f2; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(220,38,38,0.15); }
-  button.remove:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: none; }
+  button.edit-role { background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); }
+  button.edit-role:hover { background: var(--teal-light); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+  button.remove:disabled, button.edit-role:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: none; }
 
   .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 24px; }
 
@@ -210,6 +214,35 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="roleModal">
+  <div class="modal">
+    <h3>Change Role &mdash; <span id="roleTargetName"></span></h3>
+    <p class="modal-sub">Only the account owner can change a member's role. Confirm with the owner username and password.</p>
+    <div id="roleModalError"></div>
+    <form id="roleForm">
+      <div class="field">
+        <label for="newRole">New Role</label>
+        <select id="newRole" required>
+          <option value="Staff">Staff &mdash; access to /staff only</option>
+          <option value="Admin">Admin &mdash; access to /staff and /dashboard</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="roleOwnerUsername">Owner Username</label>
+        <input type="text" id="roleOwnerUsername" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="roleOwnerPassword">Owner Password</label>
+        <input type="password" id="roleOwnerPassword" required autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="roleCancelBtn">Cancel</button>
+        <button type="submit" class="primary" id="roleConfirmBtn">Save Role</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function $(id) { return document.getElementById(id); }
 
@@ -245,7 +278,10 @@ function renderMembers(members) {
       + '<td>' + escapeHtml(m.username) + '</td>'
       + '<td><span class="role-badge ' + roleCls + '">' + escapeHtml(m.role) + '</span></td>'
       + '<td>' + fmtDate(m.addedAt) + '</td>'
-      + '<td><button class="remove" data-record-id="' + escapeHtml(m.recordId) + '">Remove</button></td>'
+      + '<td><div class="row-actions">'
+      + '<button class="edit-role" data-record-id="' + escapeHtml(m.recordId) + '" data-role="' + escapeHtml(m.role) + '">Edit Role</button>'
+      + '<button class="remove" data-record-id="' + escapeHtml(m.recordId) + '">Remove</button>'
+      + '</div></td>'
       + '</tr>';
   }).join('');
   wrap.innerHTML = '<table class="members"><thead><tr>'
@@ -311,12 +347,20 @@ function closeRemoveModal() {
 }
 
 $('membersTableWrap').addEventListener('click', function (e) {
-  var btn = e.target.closest('button.remove');
-  if (!btn) return;
-  var recordId = btn.getAttribute('data-record-id');
-  var row = btn.closest('tr');
-  var name = row.children[0].textContent;
-  openRemoveModal(recordId, name, btn);
+  var removeBtn = e.target.closest('button.remove');
+  var roleBtn = e.target.closest('button.edit-role');
+  if (removeBtn) {
+    var recordId = removeBtn.getAttribute('data-record-id');
+    var row = removeBtn.closest('tr');
+    var name = row.children[0].textContent;
+    openRemoveModal(recordId, name, removeBtn);
+  } else if (roleBtn) {
+    var recId = roleBtn.getAttribute('data-record-id');
+    var currentRole = roleBtn.getAttribute('data-role');
+    var roleRow = roleBtn.closest('tr');
+    var roleName = roleRow.children[0].textContent;
+    openRoleModal(recId, roleName, currentRole);
+  }
 });
 
 $('removeCancelBtn').addEventListener('click', closeRemoveModal);
@@ -349,6 +393,62 @@ $('removeForm').addEventListener('submit', function (e) {
     .then(function () {
       confirmBtn.disabled = false;
       confirmBtn.textContent = 'Remove Member';
+    });
+});
+
+// ---- Edit-role modal (also requires the owner's username/password every time) ----
+var pendingRole = null; // { recordId }
+
+function openRoleModal(recordId, name, currentRole) {
+  pendingRole = { recordId: recordId };
+  $('roleTargetName').textContent = name;
+  $('roleModalError').innerHTML = '';
+  $('newRole').value = currentRole === 'Admin' ? 'Admin' : 'Staff';
+  $('roleOwnerUsername').value = '';
+  $('roleOwnerPassword').value = '';
+  $('roleModal').classList.remove('hidden');
+  $('roleOwnerUsername').focus();
+}
+
+function closeRoleModal() {
+  $('roleModal').classList.add('hidden');
+  pendingRole = null;
+}
+
+$('roleCancelBtn').addEventListener('click', closeRoleModal);
+$('roleModal').addEventListener('click', function (e) {
+  if (e.target === $('roleModal')) closeRoleModal();
+});
+
+$('roleForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  if (!pendingRole) return;
+  $('roleModalError').innerHTML = '';
+  var confirmBtn = $('roleConfirmBtn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Saving…';
+  fetch('/api/dashboard/members/' + encodeURIComponent(pendingRole.recordId), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      role: $('newRole').value,
+      ownerUsername: $('roleOwnerUsername').value,
+      ownerPassword: $('roleOwnerPassword').value
+    })
+  })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.data.error || 'Failed to change role.');
+      showToast('Role updated.');
+      closeRoleModal();
+      loadMembers();
+    })
+    .catch(function (err) {
+      $('roleModalError').innerHTML = '<div class="modal-error">' + escapeHtml(err.message) + '</div>';
+    })
+    .then(function () {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Save Role';
     });
 });
 

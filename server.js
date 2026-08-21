@@ -1020,6 +1020,26 @@ function verifyOwnerCredentials(username, password) {
   return !!expectedPass && safeEqual(password, expectedPass);
 }
 
+// Changing a member's role (e.g. promoting Staff to Admin) is gated the same way as removal —
+// owner credentials required fresh on every request, not just any Admin's own login. A role
+// change is effectively as sensitive as add/remove: it can grant or revoke dashboard access.
+app.patch('/api/dashboard/members/:recordId', dashboardAuth, async (req, res) => {
+  try {
+    const { role, ownerUsername, ownerPassword } = req.body || {};
+    if (!MEMBER_ROLES.includes(role)) {
+      return res.status(400).json({ error: 'Role must be Admin or Staff.' });
+    }
+    if (!verifyOwnerCredentials(ownerUsername, ownerPassword)) {
+      return res.status(403).json({ error: 'Incorrect owner username or password.' });
+    }
+    await airtable.updateRecordForTable(MEMBERS_TABLE, req.params.recordId, { 'Role': role });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/dashboard/members/:recordId', dashboardAuth, async (req, res) => {
   try {
     const { ownerUsername, ownerPassword } = req.body || {};
