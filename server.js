@@ -514,9 +514,9 @@ app.get('/cancel-reschedule', (req, res) => {
 // Staff-only: job completion
 // ---------------------------------------------------------------------------
 
-// HTTP Basic Auth gate for everything under /staff and /api/staff. Credentials live in
-// STAFF_USERNAME/STAFF_PASSWORD (env vars, never in code). Compared with timingSafeEqual so a
-// slow string compare can't leak how many characters matched.
+// HTTP Basic Auth gate for everything under /staff and /api/staff. Credentials live in env vars,
+// never in code. Compared with timingSafeEqual so a slow string compare can't leak how many
+// characters matched.
 function safeEqual(a, b) {
   const bufA = Buffer.from(String(a));
   const bufB = Buffer.from(String(b));
@@ -524,26 +524,61 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-function staffAuth(req, res, next) {
-  const user = process.env.STAFF_USERNAME;
-  const pass = process.env.STAFF_PASSWORD;
-  if (!user || !pass) {
-    return res.status(500).send('Staff login is not configured on this server.');
-  }
-  const header = req.headers.authorization || '';
-  const [scheme, encoded] = header.split(' ');
-  if (scheme === 'Basic' && encoded) {
-    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-    const sep = decoded.indexOf(':');
-    const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
-    const reqPass = sep === -1 ? '' : decoded.slice(sep + 1);
-    if (safeEqual(reqUser, user) && safeEqual(reqPass, pass)) {
-      return next();
-    }
-  }
-  res.set('WWW-Authenticate', 'Basic realm="Primo Care Staff"');
-  return res.status(401).send('Authentication required.');
+// Parses "user1:pass1,user2:pass2" into a { username: password } map. Used for STAFF_USERS (any
+// number of staff logins) — one shared list edited in Render's env vars, not a database, since
+// staff turnover here is infrequent enough that a redeploy-to-update model is fine.
+function parseCredentialList(raw) {
+  const map = {};
+  String(raw || '').split(',').forEach(pair => {
+    const trimmed = pair.trim();
+    if (!trimmed) return;
+    const sep = trimmed.indexOf(':');
+    if (sep === -1) return;
+    const user = trimmed.slice(0, sep).trim();
+    const pass = trimmed.slice(sep + 1).trim();
+    if (user && pass) map[user] = pass;
+  });
+  return map;
 }
+
+// All staff-level accounts (job list + calendar access): STAFF_USERS plus, for back-compat, the
+// original single STAFF_USERNAME/STAFF_PASSWORD pair if still set.
+const STAFF_USERS = parseCredentialList(process.env.STAFF_USERS);
+if (process.env.STAFF_USERNAME && process.env.STAFF_PASSWORD) {
+  STAFF_USERS[process.env.STAFF_USERNAME] = process.env.STAFF_PASSWORD;
+}
+
+// Builds a Basic Auth middleware against a given { username: password } map and realm. The KPI
+// dashboard uses a separate map/realm from regular staff (see DASHBOARD_USERS below) so it's a
+// genuinely different login, not just a different link — staff credentials don't unlock it.
+function makeBasicAuth(users, realm) {
+  return function (req, res, next) {
+    if (!Object.keys(users).length) {
+      return res.status(500).send('Login is not configured on this server.');
+    }
+    const header = req.headers.authorization || '';
+    const [scheme, encoded] = header.split(' ');
+    if (scheme === 'Basic' && encoded) {
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const sep = decoded.indexOf(':');
+      const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
+      const reqPass = sep === -1 ? '' : decoded.slice(sep + 1);
+      const expectedPass = users[reqUser];
+      if (expectedPass && safeEqual(reqPass, expectedPass)) {
+        return next();
+      }
+    }
+    res.set('WWW-Authenticate', 'Basic realm="' + realm + '"');
+    return res.status(401).send('Authentication required.');
+  };
+}
+
+const staffAuth = makeBasicAuth(STAFF_USERS, 'Primo Care Staff');
+
+// KPI dashboard gets its own, separate login (DASHBOARD_USERS, same "user1:pass1,..." format) so
+// it isn't visible to every staff account — just whoever's meant to see business metrics.
+const DASHBOARD_USERS = parseCredentialList(process.env.DASHBOARD_USERS);
+const dashboardAuth = makeBasicAuth(DASHBOARD_USERS, 'Primo Care Dashboard');
 
 app.get('/staff', staffAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'staff.html'));
@@ -752,14 +787,14 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
   }
 });
 
-app.get('/staff/dashboard', staffAuth, (req, res) => {
+app.get('/staff/dashboard', dashboardAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'staff-dashboard.html'));
 });
 
-// Aggregates business metrics from Airtable for the staff dashboard. Reads both Submissions and
+// Aggregates business metrics from Airtable for the KPI dashboard. Reads both Submissions and
 // Leads directly (no caching) since this base is small enough that a full scan on every load is
-// cheap, and staff pull this up infrequently.
-app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
+// cheap, and this page is pulled up infrequently.
+app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
   try {
     const [submissions, leads] = await Promise.all([
       airtable.listAllForTable(process.env.AIRTABLE_TABLE_NAME || 'Submissions'),

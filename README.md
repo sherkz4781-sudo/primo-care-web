@@ -88,3 +88,19 @@ after a quiet period; the site itself auto-retries failed requests once for this
 - **Cold-start auto-retry.** Render's free tier sleeps after ~15 min idle; the first request after that can fail with a network-level error before the container wakes up. Every POST call in `public/index.html` and `public/book.html` retries once automatically after a short delay before surfacing any error to the client.
 - **The `48-hour notice` and `auto-Ongoing status` scheduled tasks from the Cowork build are not part of this app.** Those ran as Cowork scheduled tasks against the MCP connectors. If you want the same behavior here, they'd need to become a small recurring job (e.g. a cron-triggered endpoint, or a `node-cron` job inside `server.js`) — ask if you'd like this added.
 - **`node_modules/` is disposable.** Don't deploy it — hosts run `npm install` themselves from `package.json`.
+
+## Staff logins
+
+`/staff` (job list + calendar) and `/staff/dashboard` (business KPIs) are separate HTTP Basic
+Auth logins — a staff account does **not** also unlock the dashboard, and vice versa.
+
+- **`STAFF_USERS`** — comma-separated `username:password` pairs, one per staff member:
+  `STAFF_USERS=alice:sOmEpAsS,bob:anotherPass`. To add or remove someone, edit this value in
+  Render's environment variables and redeploy (Render → your service → Environment).
+- **`DASHBOARD_USERS`** — same format, for whoever should see `/staff/dashboard`. Keep this list
+  short (owner/manager only) since it's business-wide revenue and lead data.
+- **`STAFF_USERNAME`/`STAFF_PASSWORD`** — the original single-account variables still work if
+  set, in addition to `STAFF_USERS`, so existing setups don't break.
+
+There's no in-app UI for managing these — they're plain env vars, not stored in Airtable, so
+adding a staff member always means a Render env var edit + redeploy.
