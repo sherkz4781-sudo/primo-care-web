@@ -753,6 +753,7 @@ app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
     let cancelledJobs = 0;
     let rescheduledJobs = 0;
     let revenueCollected = 0;
+    let paidCount = 0;
     let unpaidAmount = 0;
     let unpaidCount = 0;
     let totalBookedValue = 0;
@@ -785,6 +786,7 @@ app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
         completedJobs++;
         if (f['Payment Status'] === 'Paid') {
           revenueCollected += total;
+          paidCount++;
         } else {
           unpaidAmount += total;
           unpaidCount++;
@@ -841,6 +843,7 @@ app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
       cancelledJobs,
       rescheduledJobs,
       revenueCollected,
+      paidCount,
       unpaidAmount,
       unpaidCount,
       monthlyTrend: monthBuckets,
