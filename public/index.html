@@ -229,8 +229,8 @@
 
   /* ---- AI chat widget ---- */
   .chat-launcher {
-    position: fixed; right: 22px; bottom: 22px; width: 58px; height: 58px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: #fff; border: none;
+    position: fixed; right: 40px; bottom: 40px; width: 58px; height: 58px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: var(--yellow); border: none;
     box-shadow: 0 8px 20px rgba(10,92,100,0.35); cursor: pointer; z-index: 1000;
     display: flex; align-items: center; justify-content: center;
     transition: transform 0.18s ease, box-shadow 0.18s ease;
@@ -242,7 +242,7 @@
   .chat-launcher.open .close-icon { display: block; }
 
   .chat-panel {
-    position: fixed; right: 22px; bottom: 92px; width: 340px; max-width: calc(100vw - 44px);
+    position: fixed; right: 40px; bottom: 110px; width: 340px; max-width: calc(100vw - 44px);
     height: 460px; max-height: calc(100vh - 140px); background: #fff; border-radius: 16px;
     box-shadow: 0 20px 50px rgba(0,0,0,0.22); border: 1px solid var(--border);
     display: none; flex-direction: column; overflow: hidden; z-index: 999;
@@ -274,8 +274,8 @@
   .chat-input-row button svg { width: 16px; height: 16px; }
 
   @media (max-width: 480px) {
-    .chat-panel { right: 12px; left: 12px; width: auto; bottom: 84px; }
-    .chat-launcher { right: 16px; bottom: 16px; }
+    .chat-panel { right: 12px; left: 12px; width: auto; bottom: 96px; }
+    .chat-launcher { right: 24px; bottom: 28px; }
   }
 </style>
 </head>
