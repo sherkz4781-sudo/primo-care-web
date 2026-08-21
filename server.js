@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const gcal = require('./lib/google');
 const airtable = require('./lib/airtable');
 const stripeLib = require('./lib/stripe');
+const multer = require('multer');
 
 const app = express();
 
@@ -28,7 +29,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
       if (orderId) {
         const rec = await airtable.findByField('Order ID', orderId);
         if (rec && (rec.fields || {})['Payment Status'] !== 'Paid') {
-          await markJobPaid(rec.id, 'Online / Card');
+          await markJobPaid(rec.id, 'Online / Card', 'Stripe (automatic)');
         }
       }
     }
@@ -42,6 +43,9 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 });
 
 app.use(express.json({ limit: '1mb' }));
+// The Cash/Check buttons on /pay/:orderId are plain HTML <form> posts (no JS), which the browser
+// sends as x-www-form-urlencoded rather than JSON.
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const CAL_TIMEZONE = gcal.CAL_TIMEZONE;
@@ -784,6 +788,7 @@ app.get('/api/staff/unpaid', staffAuth, async (req, res) => {
     );
     const jobs = records.map(rec => {
       const f = rec.fields || {};
+      const proof = Array.isArray(f['Bank Transfer Proof']) ? f['Bank Transfer Proof'][0] : null;
       return {
         recordId: rec.id,
         orderId: f['Order ID'] || '',
@@ -792,7 +797,10 @@ app.get('/api/staff/unpaid', staffAuth, async (req, res) => {
         address: f['Address'] || '',
         service: f['Service'] || '',
         total: f['Estimated Total per Visit'],
-        bookedDisplay: f['Booked Date/Time'] || ''
+        bookedDisplay: f['Booked Date/Time'] || '',
+        clientSelectedMethod: f['Client Selected Payment Method'] || '',
+        proofUrl: proof ? (proof.thumbnails && proof.thumbnails.large ? proof.thumbnails.large.url : proof.url) : null,
+        proofFullUrl: proof ? proof.url : null
       };
     });
     res.json({ jobs });
@@ -811,12 +819,13 @@ const PAYMENT_METHODS = ['Cash', 'Online / Card', 'Check', 'Bank Transfer'];
 // separate from the billing statement that already went out when the job was marked Completed.
 // Shared by the staff-facing "Mark Paid" button and the Stripe webhook — same rules apply
 // whether a human confirms payment or Stripe does, so there's exactly one place this happens.
-async function markJobPaid(recordId, method) {
+async function markJobPaid(recordId, method, receivedBy) {
   const transactionId = genRefId('TXN');
   const updated = await airtable.updateRecord(recordId, {
     'Payment Status': 'Paid',
     'Payment Method': method,
-    'Transaction ID': transactionId
+    'Transaction ID': transactionId,
+    'Received By': receivedBy || ''
   });
   const f = updated.fields || {};
 
@@ -854,7 +863,8 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
     if (!PAYMENT_METHODS.includes(method)) {
       return res.status(400).json({ error: 'Invalid or missing payment method.' });
     }
-    const { transactionId, emailSent } = await markJobPaid(recordId, method);
+    const receivedBy = (req.member && (req.member.fullName || req.member.username)) || 'Staff';
+    const { transactionId, emailSent } = await markJobPaid(recordId, method, receivedBy);
     res.json({ ok: true, transactionId, emailSent });
   } catch (err) {
     console.error(err);
@@ -863,8 +873,19 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Online payments (Stripe Checkout) — the "Pay Now" link in the billing statement email.
+// Payments — the "Pay Now" link in the billing statement email lands on /pay/:orderId, a small
+// "how would you like to pay?" page. Paying online (if Stripe is configured) goes to a real
+// Stripe Checkout session; Cash/Check just records the client's stated intent for staff to
+// confirm in person; Bank Transfer additionally takes a screenshot as proof. None of the manual
+// options mark a job Paid by themselves — that still only happens when staff confirm receipt
+// (or, for Stripe, when the webhook confirms a real charge) via the shared markJobPaid() above.
 // ---------------------------------------------------------------------------
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /^image\/(png|jpe?g|webp|heic|heif)$|^application\/pdf$/.test(file.mimetype))
+});
 
 // Small, self-contained HTML wrapper for the handful of plain messages this section shows a
 // client's browser (not the app's real UI, so no shared template — just enough styling to look
@@ -884,13 +905,91 @@ function payMessagePage({ title, message, tone }) {
   </style></head><body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
 }
 
+// The "how would you like to pay?" landing page itself — plain HTML forms (no client-side JS
+// needed), so Cash/Check submit as ordinary POSTs and Bank Transfer as a normal multipart file
+// upload the browser handles natively.
+function payOptionsPage({ orderId, service, amount, stripeConfigured, notice }) {
+  const esc = escapeHtmlServer;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pay Your Invoice - Primo Care</title>
+  <style>
+    :root { --teal:#0e7c86; --teal-dark:#0a5c64; --teal-light:#e6f4f5; --ink:#1f2937; --muted:#6b7280; --border:#e2e8f0; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:#f7f9fa; color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      line-height:1.5; padding:32px 20px 60px; }
+    .wrap { max-width:480px; margin:0 auto; }
+    header { background:linear-gradient(135deg,var(--teal),var(--teal-dark)); color:#fff; border-radius:14px; padding:22px 24px; margin-bottom:20px; }
+    header h1 { margin:0 0 4px; font-size:19px; }
+    header p { margin:0; font-size:13px; opacity:0.9; }
+    .amount-row { display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.25); }
+    .amount-row .label { font-size:12.5px; opacity:0.85; }
+    .amount-row .value { font-size:24px; font-weight:800; }
+    .notice { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:16px; }
+    .card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:14px; }
+    .card h2 { font-size:14px; margin:0 0 10px; color:var(--ink); }
+    .card p.sub { font-size:12.5px; color:var(--muted); margin:0 0 12px; }
+    button.pay-online {
+      display:block; width:100%; background:var(--teal); color:#fff; border:none; border-radius:9px;
+      padding:14px; font-size:15px; font-weight:700; cursor:pointer; text-align:center; text-decoration:none;
+    }
+    .manual-row { display:flex; gap:10px; }
+    button.manual {
+      flex:1; background:#fff; border:1.5px solid var(--teal); color:var(--teal-dark); border-radius:9px;
+      padding:11px; font-size:13.5px; font-weight:700; cursor:pointer;
+    }
+    button.manual:hover, button.pay-online:hover { filter:brightness(0.96); }
+    input[type=file] { width:100%; font-size:13px; margin-bottom:10px; }
+    .footnote { text-align:center; font-size:12px; color:var(--muted); margin-top:18px; }
+  </style></head><body>
+  <div class="wrap">
+    <header>
+      <h1>Pay Your Invoice</h1>
+      <p>Order ${esc(orderId)} &middot; ${esc(service || 'Service')}</p>
+      <div class="amount-row"><span class="label">Amount Due</span><span class="value">${esc(amount)}</span></div>
+    </header>
+    ${notice ? `<div class="notice">${esc(notice)}</div>` : ''}
+    ${stripeConfigured ? `
+    <div class="card">
+      <h2>Pay Online</h2>
+      <p class="sub">Fast and secure, by card.</p>
+      <a class="pay-online" href="/pay/${encodeURIComponent(orderId)}/checkout">Pay ${esc(amount)} Now</a>
+    </div>` : ''}
+    <div class="card">
+      <h2>Cash or Check</h2>
+      <p class="sub">Let us know which you'll use — we'll confirm once we've received it.</p>
+      <div class="manual-row">
+        <form method="POST" action="/pay/${encodeURIComponent(orderId)}/method"><input type="hidden" name="method" value="Cash"><button class="manual" type="submit">I'll Pay Cash</button></form>
+        <form method="POST" action="/pay/${encodeURIComponent(orderId)}/method"><input type="hidden" name="method" value="Check"><button class="manual" type="submit">I'll Pay by Check</button></form>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Bank Transfer</h2>
+      <p class="sub">Made a transfer already? Upload a screenshot of the confirmation and we'll verify it.</p>
+      <form method="POST" action="/pay/${encodeURIComponent(orderId)}/bank-transfer" enctype="multipart/form-data">
+        <input type="file" name="proof" accept="image/*,.pdf" required>
+        <button class="manual" type="submit" style="width:100%;">Upload Proof of Transfer</button>
+      </form>
+    </div>
+    <p class="footnote">Questions? Just reply to your billing email.</p>
+  </div>
+  </body></html>`;
+}
+
+async function loadPayableOrder(orderId) {
+  const rec = await airtable.findByField('Order ID', orderId);
+  if (!rec) return { error: 'not_found' };
+  const f = rec.fields || {};
+  if (f['Payment Status'] === 'Paid') return { error: 'already_paid', rec, f };
+  return { rec, f };
+}
+
+// Registered before /pay/:orderId below: Express matches routes in registration order, and
+// :orderId would otherwise swallow "success"/"cancel" as if they were literal Order IDs.
+
 // Stripe redirects the browser here immediately after a successful checkout — before the webhook
 // (a separate, async server-to-server call) has necessarily landed and updated Airtable. So this
 // confirms the payment was submitted, not that it's been recorded yet, to avoid ever telling a
 // client "you're paid up" before the record actually says so.
-//
-// Registered before /pay/:orderId below: Express matches routes in registration order, and
-// :orderId would otherwise swallow "success"/"cancel" as if they were literal Order IDs.
 app.get('/pay/success', (req, res) => {
   res.send(payMessagePage({
     title: 'Payment submitted',
@@ -907,34 +1006,63 @@ app.get('/pay/cancel', (req, res) => {
   }));
 });
 
-// Looks up an order, creates a Stripe Checkout session for its outstanding amount, and redirects
-// the client's browser straight to Stripe's hosted payment page. Public (no auth) since it's
-// reached from a link in an email, but only ever exposes an order's service/amount — the same
-// information already sitting in the billing statement that linked here, nothing new.
+// The landing page itself.
 app.get('/pay/:orderId', async (req, res) => {
   try {
-    const rec = await airtable.findByField('Order ID', req.params.orderId);
-    if (!rec) {
+    const { error, f } = await loadPayableOrder(req.params.orderId);
+    if (error === 'not_found') {
       return res.status(404).send(payMessagePage({
         title: 'Order not found',
         message: 'We couldn\'t find a booking with that Order ID. Please check the link in your billing email, or reply to that email for help.',
         tone: 'error'
       }));
     }
-    const f = rec.fields || {};
-    if (f['Payment Status'] === 'Paid') {
+    if (error === 'already_paid') {
       return res.send(payMessagePage({
         title: 'Already paid',
-        message: `This order (${req.params.orderId}) is already marked as paid. If that doesn't look right, just reply to your billing email.`,
+        message: `This order (${escapeHtmlServer(req.params.orderId)}) is already marked as paid. If that doesn't look right, just reply to your billing email.`,
         tone: 'ok'
       }));
     }
+    const amount = fmtCurrency(f['Estimated Total per Visit']);
+    let notice = null;
+    if (f['Client Selected Payment Method'] === 'Bank Transfer' && !f['Received By']) {
+      notice = 'We\'ve received your bank transfer proof and are verifying it — no need to submit again.';
+    } else if (f['Client Selected Payment Method'] && !f['Received By']) {
+      notice = `You told us you'd pay by ${f['Client Selected Payment Method']} — we're waiting to confirm we've received it.`;
+    }
+    res.send(payOptionsPage({
+      orderId: req.params.orderId,
+      service: f['Service'],
+      amount,
+      stripeConfigured: stripeLib.isConfigured(),
+      notice
+    }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(payMessagePage({
+      title: 'Something went wrong',
+      message: 'We couldn\'t load this invoice right now. Please try again shortly, or reply to your billing email.',
+      tone: 'error'
+    }));
+  }
+});
+
+// Creates a Stripe Checkout session for the order's outstanding amount and redirects the client's
+// browser straight to Stripe's hosted payment page. Split out from the landing page above so the
+// landing page itself never has to talk to Stripe just to render.
+app.get('/pay/:orderId/checkout', async (req, res) => {
+  try {
+    const { error, f } = await loadPayableOrder(req.params.orderId);
+    if (error) {
+      return res.status(error === 'not_found' ? 404 : 200).send(payMessagePage(
+        error === 'not_found'
+          ? { title: 'Order not found', message: 'We couldn\'t find a booking with that Order ID.', tone: 'error' }
+          : { title: 'Already paid', message: 'This order is already marked as paid.', tone: 'ok' }
+      ));
+    }
     if (!stripeLib.isConfigured()) {
-      return res.send(payMessagePage({
-        title: 'Online payment coming soon',
-        message: `We're still setting up online payments. For now, please pay by cash, check, or bank transfer, or reply to your billing email to arrange payment for Order ${req.params.orderId}.`,
-        tone: 'info'
-      }));
+      return res.redirect(303, `/pay/${encodeURIComponent(req.params.orderId)}`);
     }
     const amount = f['Estimated Total per Visit'];
     if (typeof amount !== 'number' || amount <= 0) {
@@ -959,6 +1087,81 @@ app.get('/pay/:orderId', async (req, res) => {
     res.status(500).send(payMessagePage({
       title: 'Something went wrong',
       message: 'We couldn\'t start the payment right now. Please try again shortly, or reply to your billing email.',
+      tone: 'error'
+    }));
+  }
+});
+
+// Client declares they'll pay by Cash or Check. This only records intent — Payment Status stays
+// Pending until a staff member actually confirms the money's in hand via "Mark Paid", at which
+// point Received By captures who (see markJobPaid above).
+app.post('/pay/:orderId/method', async (req, res) => {
+  try {
+    const method = req.body && req.body.method;
+    if (!['Cash', 'Check'].includes(method)) {
+      return res.status(400).send(payMessagePage({ title: 'Invalid request', message: 'That payment method isn\'t recognized.', tone: 'error' }));
+    }
+    const { error, rec } = await loadPayableOrder(req.params.orderId);
+    if (error) {
+      return res.status(error === 'not_found' ? 404 : 200).send(payMessagePage(
+        error === 'not_found'
+          ? { title: 'Order not found', message: 'We couldn\'t find a booking with that Order ID.', tone: 'error' }
+          : { title: 'Already paid', message: 'This order is already marked as paid.', tone: 'ok' }
+      ));
+    }
+    await airtable.updateRecord(rec.id, { 'Client Selected Payment Method': method });
+    res.send(payMessagePage({
+      title: 'Got it!',
+      message: `We've noted you'll pay by ${method}. A staff member will mark this order as paid once it's received — you'll get a confirmation email at that point.`,
+      tone: 'ok'
+    }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(payMessagePage({
+      title: 'Something went wrong',
+      message: 'We couldn\'t save that just now. Please try again, or reply to your billing email.',
+      tone: 'error'
+    }));
+  }
+});
+
+// Client uploads a screenshot/photo of a bank transfer as proof. Stored as an Airtable
+// attachment on the order's own record — no separate file host needed. Still doesn't mark the
+// job Paid; staff verify the proof and confirm via "Mark Paid" like any other method.
+app.post('/pay/:orderId/bank-transfer', upload.single('proof'), async (req, res) => {
+  try {
+    const { error, rec } = await loadPayableOrder(req.params.orderId);
+    if (error) {
+      return res.status(error === 'not_found' ? 404 : 200).send(payMessagePage(
+        error === 'not_found'
+          ? { title: 'Order not found', message: 'We couldn\'t find a booking with that Order ID.', tone: 'error' }
+          : { title: 'Already paid', message: 'This order is already marked as paid.', tone: 'ok' }
+      ));
+    }
+    if (!req.file) {
+      return res.status(400).send(payMessagePage({
+        title: 'Couldn\'t use that file',
+        message: 'Please upload a photo (JPG, PNG, HEIC) or PDF of your transfer confirmation, under 8MB.',
+        tone: 'error'
+      }));
+    }
+    await airtable.uploadAttachment(
+      rec.id, 'Bank Transfer Proof',
+      req.file.buffer.toString('base64'),
+      req.file.mimetype,
+      req.file.originalname || 'transfer-proof'
+    );
+    await airtable.updateRecord(rec.id, { 'Client Selected Payment Method': 'Bank Transfer' });
+    res.send(payMessagePage({
+      title: 'Proof received',
+      message: 'Thanks! We\'ll verify your transfer and mark this order as paid shortly — you\'ll get a confirmation email at that point.',
+      tone: 'ok'
+    }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(payMessagePage({
+      title: 'Upload failed',
+      message: 'We couldn\'t save that file just now. Please try again, or reply to your billing email.',
       tone: 'error'
     }));
   }

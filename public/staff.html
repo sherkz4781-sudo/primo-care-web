@@ -71,6 +71,13 @@
   .job-card .info .badge.ongoing { background: #fef3c7; color: #92400e; }
   .job-card .info .badge.unpaid { background: #ffedd5; color: #9a3412; }
   .job-card .info .amount { font-size: 14px; font-weight: 700; color: var(--teal-dark); margin-top: 4px; }
+  .job-card .info .client-says { font-size: 12px; color: var(--teal-dark); margin-top: 6px; font-weight: 600; }
+  .job-card .info .proof-link { display: inline-block; margin-top: 8px; }
+  .job-card .info .proof-thumb {
+    width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1.5px solid var(--border);
+    display: block; transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .job-card .info .proof-thumb:hover { transform: scale(1.05); box-shadow: 0 6px 14px rgba(0,0,0,0.15); }
   button.complete {
     background: var(--green); color: #fff; border: none; border-radius: 8px;
     font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
@@ -226,10 +233,18 @@ function renderUnpaid(jobs) {
     list.innerHTML = '<div class="empty">Nothing outstanding &mdash; all completed jobs are paid up.</div>';
     return;
   }
-  var methodOptions = PAYMENT_METHODS.map(function (m) {
-    return '<option value="' + escapeHtml(m) + '">' + escapeHtml(m) + '</option>';
-  }).join('');
   list.innerHTML = jobs.map(function (j) {
+    var methodOptions = PAYMENT_METHODS.map(function (m) {
+      var selected = m === j.clientSelectedMethod ? ' selected' : '';
+      return '<option value="' + escapeHtml(m) + '"' + selected + '>' + escapeHtml(m) + '</option>';
+    }).join('');
+    var clientSays = j.clientSelectedMethod
+      ? '<div class="client-says">Client says: ' + escapeHtml(j.clientSelectedMethod) + '</div>'
+      : '';
+    var proof = j.proofUrl
+      ? '<a class="proof-link" href="' + escapeHtml(j.proofFullUrl || j.proofUrl) + '" target="_blank" rel="noopener">' +
+        '<img class="proof-thumb" src="' + escapeHtml(j.proofUrl) + '" alt="Transfer proof"></a>'
+      : '';
     return (
       '<div class="job-card" data-record-id="' + escapeHtml(j.recordId) + '">' +
         '<div class="info">' +
@@ -239,6 +254,8 @@ function renderUnpaid(jobs) {
           '<div class="line">' + escapeHtml(j.phone || '') + '</div>' +
           '<div class="amount">' + escapeHtml(fmtMoney(j.total)) + ' due</div>' +
           '<span class="badge unpaid">Pending</span>' +
+          clientSays +
+          proof +
         '</div>' +
         '<div class="pay-controls">' +
           '<select class="method">' + methodOptions + '</select>' +
