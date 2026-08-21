@@ -5,9 +5,15 @@ const crypto = require('crypto');
 const gcal = require('./lib/google');
 const airtable = require('./lib/airtable');
 const stripeLib = require('./lib/stripe');
+const anthropicLib = require('./lib/anthropic');
 const multer = require('multer');
 
 const app = express();
+// Render (and most hosts) put the app behind a reverse proxy, so without this, req.ip would
+// return the proxy's own address for every request — collapsing the chat widget's per-visitor
+// rate limit into one shared bucket for the whole site. This trusts the X-Forwarded-For header
+// the host sets, so req.ip reflects the actual visitor.
+app.set('trust proxy', true);
 
 // The Stripe webhook needs the raw, unparsed request body to verify its signature, so it's
 // registered — with its own raw-body middleware — before the global JSON parser below. Express
@@ -1434,6 +1440,74 @@ app.delete('/api/dashboard/members/:recordId', dashboardAuth, async (req, res) =
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// AI chat widget (marketing site). Answers questions about services, pricing model, and
+// policies, and points visitors to the right page — it deliberately never books, cancels, or
+// quotes an exact price itself, since those all require the identity/availability checks the
+// real booking flow already does. Keeping it read-only keeps this both safe and cheap.
+// ---------------------------------------------------------------------------
+
+const CHAT_SYSTEM_PROMPT = `You are the friendly virtual assistant on the Primo Care Cleaning Services website, a professional cleaning company serving homes and businesses in the Frisco, TX area.
+
+What Primo Care offers:
+- Residential: Standard Cleaning (routine upkeep), Deep Cleaning (thorough, detail-oriented)
+- Commercial: General Office, Medical & Healthcare Facilities, Retail, Industrial/Warehouse, Schools
+- Optional add-ons for residential: Balcony & Lanai cleaning
+
+Pricing: Custom, based on the property's actual square footage — never a flat rate. Visitors get an instant, itemized quote by filling out the form at /intake (takes about 2 minutes, no phone call needed). Recurring visits (weekly, every 2 weeks, monthly, quarterly, semi-annual, annually) are available.
+
+Booking: New clients get a quote and book their first visit at /intake. Returning clients who already have a Client ID can book another visit at /book.
+
+Cancelling or rescheduling: Self-serve at /cancel-reschedule, using the Order ID or Client ID from their confirmation email. Changes made 48 hours or more before the scheduled visit are free; changes made less than 48 hours before incur a fee of 20% of the Total Contract Price.
+
+Contact: Phone 1800-8888, email desk@primocare.com.
+
+Your job: answer questions about services, the pricing model, booking, and policies briefly and warmly (2-4 sentences). Always direct people to the actual page (/intake, /book, or /cancel-reschedule) for anything actionable — you cannot generate a price quote, place a booking, or cancel/reschedule one yourself, so never attempt to. If asked something unrelated to Primo Care or cleaning services, politely say that's outside what you can help with here. Never invent a detail you don't know — if unsure, suggest they call or email instead of guessing.`;
+
+// Simple in-memory per-IP rate limit. This calls a paid, external API, so an unbounded public
+// endpoint is a real cost-abuse risk — resets on server restart, which is fine at this scale.
+const chatRateLimits = new Map();
+const CHAT_RATE_LIMIT = 20;
+const CHAT_RATE_WINDOW_MS = 60 * 60 * 1000;
+
+function checkChatRateLimit(ip) {
+  const now = Date.now();
+  const entry = chatRateLimits.get(ip);
+  if (!entry || now > entry.resetAt) {
+    chatRateLimits.set(ip, { count: 1, resetAt: now + CHAT_RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= CHAT_RATE_LIMIT) return false;
+  entry.count += 1;
+  return true;
+}
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    if (!anthropicLib.isConfigured()) {
+      return res.json({ reply: "Our AI assistant isn't switched on just yet — for now, please use the Get a Free Quote button, or call us at 1800-8888 / email desk@primocare.com and we'll help right away." });
+    }
+    if (!checkChatRateLimit(req.ip)) {
+      return res.status(429).json({ reply: "You've sent a lot of messages in a short time — please try again in a bit, or reach us directly at 1800-8888." });
+    }
+    const incoming = Array.isArray(req.body && req.body.messages) ? req.body.messages : [];
+    // Bound both the conversation length and each message's size — keeps token cost predictable
+    // and blocks someone from pasting a huge blob to run up the bill.
+    const messages = incoming
+      .slice(-8)
+      .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    if (!messages.length || messages[messages.length - 1].role !== 'user') {
+      return res.status(400).json({ error: 'No user message to respond to.' });
+    }
+    const reply = await anthropicLib.chat(messages, CHAT_SYSTEM_PROMPT);
+    res.json({ reply });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ reply: "Sorry, something went wrong on our end. Please try again, or reach us at 1800-8888 / desk@primocare.com." });
   }
 });
 

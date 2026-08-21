@@ -127,6 +127,28 @@ without it. To add real card payments:
    payment-confirmation email staff's manual Mark Paid sends — Stripe and staff both funnel
    through the identical `markJobPaid()` path in `server.js`.
 
+## AI chat widget (homepage)
+
+A floating chat bubble on `/` answers visitor questions about services, the pricing model, and
+policies, and points them to `/intake`, `/book`, or `/cancel-reschedule` for anything actionable —
+it never generates a quote, books, or cancels anything itself. It's built, styled, and visible
+right now; without a key it just tells visitors it isn't switched on yet instead of erroring.
+
+**This is billed completely separately from any Claude subscription** — it's a pay-per-token API
+account, its own payment method, unrelated to a claude.ai plan. To turn it on:
+
+1. Create an account at [console.anthropic.com](https://console.anthropic.com) and add a payment
+   method there.
+2. Generate an API key and put it in `ANTHROPIC_API_KEY` (`.env` locally, or Render's environment
+   variables).
+3. Redeploy. No code changes — the widget starts actually replying immediately.
+
+It runs on Haiku (the cheapest model) with a capped reply length, and a built-in per-visitor rate
+limit (20 messages/hour) so the endpoint can't be abused into running up a bill. What the assistant
+knows — services, pricing model, contact info, cancellation policy — is defined in
+`CHAT_SYSTEM_PROMPT` near the bottom of `server.js`; update it there if the business details in
+this README ever change.
+
 ## Staff & dashboard logins
 
 `/staff` (job list + calendar) and `/dashboard` (business KPIs) are separate HTTP Basic Auth
