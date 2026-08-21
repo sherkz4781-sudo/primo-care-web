@@ -4,8 +4,43 @@ const path = require('path');
 const crypto = require('crypto');
 const gcal = require('./lib/google');
 const airtable = require('./lib/airtable');
+const stripeLib = require('./lib/stripe');
 
 const app = express();
+
+// The Stripe webhook needs the raw, unparsed request body to verify its signature, so it's
+// registered — with its own raw-body middleware — before the global JSON parser below. Express
+// matches middleware/routes in registration order, so a request to this exact path never reaches
+// express.json() at all; every other route is unaffected.
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  let event;
+  try {
+    event = stripeLib.constructWebhookEvent(req.body, req.headers['stripe-signature']);
+  } catch (err) {
+    console.error('Stripe webhook signature check failed:', err.message);
+    return res.status(400).send('Webhook signature verification failed.');
+  }
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const orderId = session.metadata && session.metadata.orderId;
+      if (orderId) {
+        const rec = await airtable.findByField('Order ID', orderId);
+        if (rec && (rec.fields || {})['Payment Status'] !== 'Paid') {
+          await markJobPaid(rec.id, 'Online / Card');
+        }
+      }
+    }
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Stripe webhook handling failed:', err.message);
+    // Still 200 — Stripe retries on non-2xx, and retrying won't fix an application-side bug.
+    // The failure is logged for a human to investigate instead.
+    res.json({ received: true });
+  }
+});
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -16,6 +51,13 @@ function genRefId(prefix) {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `PC-${prefix}-${ts}${rand}`;
+}
+
+// Escapes a value before it's interpolated into a server-rendered HTML response — used on the
+// few pages here that echo back a query-string/route value (e.g. an Order ID) a client's browser
+// sent, so that value can never be read as markup.
+function escapeHtmlServer(value) {
+  return String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 // Verifies the supplied identity against an Airtable record fetched by Order ID. Returns the
@@ -698,8 +740,9 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
     if (f['Email']) {
       const firstName = f['First Name'] || 'there';
       const amount = fmtCurrency(f['Estimated Total per Visit']);
+      const payUrl = `${req.protocol}://${req.get('host')}/pay/${encodeURIComponent(f['Order ID'] || '')}`;
       const subject = 'Thank You From Primo Care — Your Billing Statement';
-      const body = `Hi ${firstName},\n\nThank you for choosing Primo Care! Our team has completed your ${f['Service'] || 'cleaning'} service at ${f['Address'] || 'your property'}.\n\nBilling Statement\nOrder ID: ${f['Order ID'] || ''}\nService: ${f['Service'] || ''}\nProperty: ${f['Address'] || ''}\nAmount Due: ${amount}\n\nIf you have any questions about this statement, just reply to this email.\n\nThank you again for trusting us with your space!\n\nBest,\nPrimo Care Team`;
+      const body = `Hi ${firstName},\n\nThank you for choosing Primo Care! Our team has completed your ${f['Service'] || 'cleaning'} service at ${f['Address'] || 'your property'}.\n\nBilling Statement\nOrder ID: ${f['Order ID'] || ''}\nService: ${f['Service'] || ''}\nProperty: ${f['Address'] || ''}\nAmount Due: ${amount}\n\nPay online: ${payUrl}\n\nIf you have any questions about this statement, just reply to this email.\n\nThank you again for trusting us with your space!\n\nBest,\nPrimo Care Team`;
       const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
         <h2 style="color:#0a5c64;">Thank You From Primo Care</h2>
         <p>Hi ${firstName},</p>
@@ -710,6 +753,10 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
           <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Property</td><td>${f['Address'] || ''}</td></tr>
           <tr><td style="color:#6b7280; padding:4px 10px 4px 0; font-weight:700;">Amount Due</td><td style="font-weight:700; color:#0a5c64;">${amount}</td></tr>
         </table>
+        <p style="text-align:center; margin:20px 0;">
+          <a href="${payUrl}" style="display:inline-block; background:#0e7c86; color:#fff; text-decoration:none; font-weight:700; padding:12px 28px; border-radius:8px;">Pay Now</a>
+        </p>
+        <p>You can also pay by cash, check, or bank transfer &mdash; just let us know.</p>
         <p>If you have any questions about this statement, just reply to this email.</p>
         <p>Thank you again for trusting us with your space!</p>
         <p>Best,<br>Primo Care Team</p>
@@ -757,11 +804,49 @@ app.get('/api/staff/unpaid', staffAuth, async (req, res) => {
 
 const PAYMENT_METHODS = ['Cash', 'Online / Card', 'Check', 'Bank Transfer'];
 
-// Marks one completed job's Payment Status as Paid, recording how the client paid, and mints
-// its Transaction ID — deliberately generated here rather than at intake, since a Transaction
-// ID is a proof-of-payment reference and shouldn't exist for a job nobody's paid for yet. Also
-// sends the client an acknowledgement email confirming their payment was received and verified,
+// Marks one completed job's Payment Status as Paid, recording how the client paid, and mints its
+// Transaction ID — deliberately generated here rather than at intake, since a Transaction ID is
+// a proof-of-payment reference and shouldn't exist for a job nobody's paid for yet. Also sends
+// the client an acknowledgement email confirming their payment was received and verified,
 // separate from the billing statement that already went out when the job was marked Completed.
+// Shared by the staff-facing "Mark Paid" button and the Stripe webhook — same rules apply
+// whether a human confirms payment or Stripe does, so there's exactly one place this happens.
+async function markJobPaid(recordId, method) {
+  const transactionId = genRefId('TXN');
+  const updated = await airtable.updateRecord(recordId, {
+    'Payment Status': 'Paid',
+    'Payment Method': method,
+    'Transaction ID': transactionId
+  });
+  const f = updated.fields || {};
+
+  let emailSent = false;
+  if (f['Email']) {
+    const firstName = f['First Name'] || 'there';
+    const amount = fmtCurrency(f['Estimated Total per Visit']);
+    const subject = 'Payment Received — Thank You From Primo Care';
+    const body = `Hi ${firstName},\n\nThis confirms we've received and verified your payment for your ${f['Service'] || 'cleaning'} service at ${f['Address'] || 'your property'}.\n\nPayment Confirmation\nOrder ID: ${f['Order ID'] || ''}\nTransaction ID: ${transactionId}\nPayment Method: ${method}\nAmount Paid: ${amount}\n\nIf anything here looks off, just reply to this email.\n\nThank you for choosing Primo Care!\n\nBest,\nPrimo Care Team`;
+    const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+      <h2 style="color:#0a5c64;">Payment Received</h2>
+      <p>Hi ${firstName},</p>
+      <p>This confirms we've received and verified your payment for your <b>${f['Service'] || 'cleaning'}</b> service at <b>${f['Address'] || 'your property'}</b>.</p>
+      <table style="margin:14px 0; border-collapse:collapse; width:100%;">
+        <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Order ID</td><td>${f['Order ID'] || ''}</td></tr>
+        <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Transaction ID</td><td>${transactionId}</td></tr>
+        <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Payment Method</td><td>${method}</td></tr>
+        <tr><td style="color:#6b7280; padding:4px 10px 4px 0; font-weight:700;">Amount Paid</td><td style="font-weight:700; color:#0a5c64;">${amount}</td></tr>
+      </table>
+      <p>If anything here looks off, just reply to this email.</p>
+      <p>Thank you for choosing Primo Care!</p>
+      <p>Best,<br>Primo Care Team</p>
+    </div>`;
+    await sendConfirmationEmail({ to: f['Email'], subject, body, htmlBody });
+    emailSent = true;
+  }
+
+  return { transactionId, emailSent };
+}
+
 app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
   try {
     const { recordId, method } = req.body || {};
@@ -769,42 +854,113 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
     if (!PAYMENT_METHODS.includes(method)) {
       return res.status(400).json({ error: 'Invalid or missing payment method.' });
     }
-    const transactionId = genRefId('TXN');
-    const updated = await airtable.updateRecord(recordId, {
-      'Payment Status': 'Paid',
-      'Payment Method': method,
-      'Transaction ID': transactionId
-    });
-    const f = updated.fields || {};
-
-    let emailSent = false;
-    if (f['Email']) {
-      const firstName = f['First Name'] || 'there';
-      const amount = fmtCurrency(f['Estimated Total per Visit']);
-      const subject = 'Payment Received — Thank You From Primo Care';
-      const body = `Hi ${firstName},\n\nThis confirms we've received and verified your payment for your ${f['Service'] || 'cleaning'} service at ${f['Address'] || 'your property'}.\n\nPayment Confirmation\nOrder ID: ${f['Order ID'] || ''}\nTransaction ID: ${transactionId}\nPayment Method: ${method}\nAmount Paid: ${amount}\n\nIf anything here looks off, just reply to this email.\n\nThank you for choosing Primo Care!\n\nBest,\nPrimo Care Team`;
-      const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
-        <h2 style="color:#0a5c64;">Payment Received</h2>
-        <p>Hi ${firstName},</p>
-        <p>This confirms we've received and verified your payment for your <b>${f['Service'] || 'cleaning'}</b> service at <b>${f['Address'] || 'your property'}</b>.</p>
-        <table style="margin:14px 0; border-collapse:collapse; width:100%;">
-          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Order ID</td><td>${f['Order ID'] || ''}</td></tr>
-          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Transaction ID</td><td>${transactionId}</td></tr>
-          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Payment Method</td><td>${method}</td></tr>
-          <tr><td style="color:#6b7280; padding:4px 10px 4px 0; font-weight:700;">Amount Paid</td><td style="font-weight:700; color:#0a5c64;">${amount}</td></tr>
-        </table>
-        <p>If anything here looks off, just reply to this email.</p>
-        <p>Thank you for choosing Primo Care!</p>
-        <p>Best,<br>Primo Care Team</p>
-      </div>`;
-      await sendConfirmationEmail({ to: f['Email'], subject, body, htmlBody });
-      emailSent = true;
-    }
-
+    const { transactionId, emailSent } = await markJobPaid(recordId, method);
     res.json({ ok: true, transactionId, emailSent });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Online payments (Stripe Checkout) — the "Pay Now" link in the billing statement email.
+// ---------------------------------------------------------------------------
+
+// Small, self-contained HTML wrapper for the handful of plain messages this section shows a
+// client's browser (not the app's real UI, so no shared template — just enough styling to look
+// intentional rather than like a stack trace).
+function payMessagePage({ title, message, tone }) {
+  const color = tone === 'error' ? '#dc2626' : tone === 'ok' ? '#16a34a' : '#0a5c64';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title} - Primo Care</title>
+  <style>
+    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f7f9fa;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; padding:24px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:36px 32px; max-width:440px; text-align:center;
+      box-shadow:0 10px 30px rgba(0,0,0,0.06); }
+    h1 { font-size:20px; color:${color}; margin:0 0 12px; }
+    p { color:#374151; font-size:14.5px; line-height:1.6; margin:0; }
+    a { color:#0e7c86; }
+  </style></head><body><div class="card"><h1>${title}</h1><p>${message}</p></div></body></html>`;
+}
+
+// Stripe redirects the browser here immediately after a successful checkout — before the webhook
+// (a separate, async server-to-server call) has necessarily landed and updated Airtable. So this
+// confirms the payment was submitted, not that it's been recorded yet, to avoid ever telling a
+// client "you're paid up" before the record actually says so.
+//
+// Registered before /pay/:orderId below: Express matches routes in registration order, and
+// :orderId would otherwise swallow "success"/"cancel" as if they were literal Order IDs.
+app.get('/pay/success', (req, res) => {
+  res.send(payMessagePage({
+    title: 'Payment submitted',
+    message: `Thanks! We're confirming your payment now${req.query.orderId ? ' for Order ' + escapeHtmlServer(req.query.orderId) : ''} — you'll get an email receipt as soon as it's verified, usually within a few minutes.`,
+    tone: 'ok'
+  }));
+});
+
+app.get('/pay/cancel', (req, res) => {
+  res.send(payMessagePage({
+    title: 'Payment cancelled',
+    message: 'No charge was made. You can try again any time using the Pay Now link in your billing email, or pay by cash, check, or bank transfer instead.',
+    tone: 'info'
+  }));
+});
+
+// Looks up an order, creates a Stripe Checkout session for its outstanding amount, and redirects
+// the client's browser straight to Stripe's hosted payment page. Public (no auth) since it's
+// reached from a link in an email, but only ever exposes an order's service/amount — the same
+// information already sitting in the billing statement that linked here, nothing new.
+app.get('/pay/:orderId', async (req, res) => {
+  try {
+    const rec = await airtable.findByField('Order ID', req.params.orderId);
+    if (!rec) {
+      return res.status(404).send(payMessagePage({
+        title: 'Order not found',
+        message: 'We couldn\'t find a booking with that Order ID. Please check the link in your billing email, or reply to that email for help.',
+        tone: 'error'
+      }));
+    }
+    const f = rec.fields || {};
+    if (f['Payment Status'] === 'Paid') {
+      return res.send(payMessagePage({
+        title: 'Already paid',
+        message: `This order (${req.params.orderId}) is already marked as paid. If that doesn't look right, just reply to your billing email.`,
+        tone: 'ok'
+      }));
+    }
+    if (!stripeLib.isConfigured()) {
+      return res.send(payMessagePage({
+        title: 'Online payment coming soon',
+        message: `We're still setting up online payments. For now, please pay by cash, check, or bank transfer, or reply to your billing email to arrange payment for Order ${req.params.orderId}.`,
+        tone: 'info'
+      }));
+    }
+    const amount = f['Estimated Total per Visit'];
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).send(payMessagePage({
+        title: 'Nothing to pay',
+        message: 'This order doesn\'t have an amount due. Please reply to your billing email if you think this is a mistake.',
+        tone: 'error'
+      }));
+    }
+    const base = `${req.protocol}://${req.get('host')}`;
+    const session = await stripeLib.createCheckoutSession({
+      orderId: req.params.orderId,
+      description: `Primo Care — ${f['Service'] || 'Service'} (Order ${req.params.orderId})`,
+      amount,
+      customerEmail: f['Email'],
+      successUrl: `${base}/pay/success?orderId=${encodeURIComponent(req.params.orderId)}`,
+      cancelUrl: `${base}/pay/cancel?orderId=${encodeURIComponent(req.params.orderId)}`
+    });
+    res.redirect(303, session.url);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(payMessagePage({
+      title: 'Something went wrong',
+      message: 'We couldn\'t start the payment right now. Please try again shortly, or reply to your billing email.',
+      tone: 'error'
+    }));
   }
 });
 

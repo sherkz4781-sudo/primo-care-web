@@ -89,6 +89,28 @@ after a quiet period; the site itself auto-retries failed requests once for this
 - **The `48-hour notice` and `auto-Ongoing status` scheduled tasks from the Cowork build are not part of this app.** Those ran as Cowork scheduled tasks against the MCP connectors. If you want the same behavior here, they'd need to become a small recurring job (e.g. a cron-triggered endpoint, or a `node-cron` job inside `server.js`) — ask if you'd like this added.
 - **`node_modules/` is disposable.** Don't deploy it — hosts run `npm install` themselves from `package.json`.
 
+## Online payments (Stripe) — built in, off by default
+
+Every billing statement email already includes a **Pay Now** button. Right now, clicking it shows
+a friendly "we're still setting up online payments" page — nothing charges, nothing breaks. To
+turn on real card payments:
+
+1. Create a [Stripe](https://dashboard.stripe.com) account (or use an existing one).
+2. **Dashboard → Developers → API keys** — copy the secret key into `STRIPE_SECRET_KEY` in your
+   `.env` (or Render's environment variables). Use the `sk_test_...` key first to try it with
+   [Stripe's test card numbers](https://stripe.com/docs/testing) before going live with `sk_live_...`.
+3. **Dashboard → Developers → Webhooks → Add endpoint**, pointed at
+   `https://<your-domain>/api/stripe/webhook`, listening for the `checkout.session.completed`
+   event. Stripe shows a signing secret (`whsec_...`) once the endpoint is created — put that in
+   `STRIPE_WEBHOOK_SECRET`.
+4. Redeploy. That's it — no code changes. The next billing statement's Pay Now link opens a real
+   Stripe Checkout page, and a successful payment automatically marks the job Paid, mints a
+   Transaction ID, and sends the same payment-confirmation email staff's manual "Mark Paid" button
+   sends — Stripe and staff both funnel through the identical `markJobPaid()` path in `server.js`.
+
+Cash, check, and bank transfer keep working exactly as before via the staff "Mark Paid" button —
+Stripe only covers the "client pays online" path.
+
 ## Staff & dashboard logins
 
 `/staff` (job list + calendar) and `/dashboard` (business KPIs) are separate HTTP Basic Auth
