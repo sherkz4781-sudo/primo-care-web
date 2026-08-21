@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primo Care - Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --teal: #0e7c86;
+    --teal-dark: #0a5c64;
+    --teal-light: #e6f4f5;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --bg: #ffffff;
+    --green: #16a34a;
+    --red: #dc2626;
+    --amber: #d97706;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #f7f9fa;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header.brand {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 24px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border-radius: 14px; color: white; margin-bottom: 22px;
+  }
+  header.brand .id { display: flex; align-items: center; gap: 12px; }
+  header.brand .logo {
+    width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  header.brand h1 { margin: 0; font-size: 20px; }
+  header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+  header.brand a.staff-link {
+    background: rgba(255,255,255,0.16); color: #fff; text-decoration: none; font-weight: 700;
+    font-size: 12.5px; padding: 8px 14px; border-radius: 8px; white-space: nowrap;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  header.brand a.staff-link:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .toolbar .updated { font-size: 12.5px; color: var(--muted); }
+  button.refresh {
+    background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); font-weight: 700;
+    font-size: 12.5px; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  button.refresh:hover { background: var(--teal-light); transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+
+  .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px;
+  }
+  .kpi-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .kpi-card:hover { box-shadow: 0 10px 22px rgba(0,0,0,0.1); transform: translateY(-3px); }
+  .kpi-card .label { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .kpi-card .value { font-size: 24px; font-weight: 800; color: var(--ink); }
+  .kpi-card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .kpi-card.accent-teal .value { color: var(--teal-dark); }
+  .kpi-card.accent-green .value { color: var(--green); }
+  .kpi-card.accent-amber .value { color: var(--amber); }
+  .kpi-card.accent-red .value { color: var(--red); }
+
+  h2.section-title { font-size: 15px; color: var(--ink); margin: 0 0 12px; }
+
+  .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 26px; }
+  .panel {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+
+  .bar-row { margin-bottom: 12px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-row .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .bar-row .bar-label .name { font-weight: 600; color: var(--ink); }
+  .bar-row .bar-label .amt { color: var(--muted); }
+  .bar-track { background: var(--teal-light); border-radius: 999px; height: 9px; overflow: hidden; }
+  .bar-fill { background: linear-gradient(90deg, var(--teal), var(--teal-dark)); height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+
+  .split-row { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+  .split-bar { flex: 1; height: 14px; border-radius: 999px; overflow: hidden; display: flex; background: var(--border); }
+  .split-bar .res { background: var(--teal); }
+  .split-bar .com { background: var(--amber); }
+  .split-legend { display: flex; gap: 18px; margin-top: 10px; font-size: 12.5px; }
+  .split-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .split-legend .res-dot { background: var(--teal); }
+  .split-legend .com-dot { background: var(--amber); }
+
+  .list-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13.5px;
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-row .who { font-weight: 700; color: var(--ink); }
+  .list-row .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .badge.scheduled { background: var(--teal-light); color: var(--teal-dark); }
+  .badge.ongoing { background: #fef3c7; color: #92400e; }
+  .badge.sent { background: #dcfce7; color: #166534; }
+  .badge.notsent { background: #fef2f2; color: #991b1b; }
+
+  .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 20px; }
+
+  @media (max-width: 800px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .panel-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    header.brand { flex-direction: column; align-items: flex-start; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi-card .value { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <div class="id">
+      <div class="logo">&#128202;</div>
+      <div>
+        <h1>Primo Care &mdash; Dashboard</h1>
+        <p>Leads, bookings, revenue, and what's coming up next</p>
+      </div>
+    </div>
+    <a class="staff-link" href="/staff">&larr; Back to Staff</a>
+  </header>
+
+  <div id="errorBox"></div>
+
+  <div class="toolbar">
+    <span class="updated" id="updatedLabel">Loading&hellip;</span>
+    <button class="refresh" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <div class="panel-grid">
+    <div class="panel">
+      <h2 class="section-title">Revenue by Service</h2>
+      <div id="serviceBars"></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">Residential vs Commercial</h2>
+      <div class="split-row">
+        <div class="split-bar" id="splitBar"></div>
+      </div>
+      <div class="split-legend">
+        <span><span class="dot res-dot"></span>Residential (<span id="resCount">0</span>)</span>
+        <span><span class="dot com-dot"></span>Commercial (<span id="comCount">0</span>)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-grid">
+    <div class="panel">
+      <h2 class="section-title">Upcoming Jobs</h2>
+      <div id="upcomingList"></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">Recent Leads</h2>
+      <div id="recentLeadsList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function $(id) { return document.getElementById(id); }
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function fmtCurrency(n) {
+  return (typeof n === 'number' ? n : 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+}
+
+function kpiCard(label, value, sub, accent) {
+  return '<div class="kpi-card' + (accent ? ' accent-' + accent : '') + '">'
+    + '<div class="label">' + escapeHtml(label) + '</div>'
+    + '<div class="value">' + value + '</div>'
+    + (sub ? '<div class="sub">' + escapeHtml(sub) + '</div>' : '')
+    + '</div>';
+}
+
+function renderDashboard(d) {
+  $('kpiGrid').innerHTML = [
+    kpiCard('Total Leads', d.totalLeads, d.leadsThisMonth + ' this month'),
+    kpiCard('Proposals Sent', d.proposalsSent, d.totalLeads ? Math.round(d.proposalsSent / d.totalLeads * 100) + '% of leads' : ''),
+    kpiCard('Total Bookings', d.totalBookings, d.bookingsThisMonth + ' this month'),
+    kpiCard('Upcoming Jobs', d.upcomingJobs, 'Scheduled + Ongoing', 'teal'),
+    kpiCard('Completed Jobs', d.completedJobs, ''),
+    kpiCard('Revenue Collected', fmtCurrency(d.revenueCollected), 'From paid jobs', 'green'),
+    kpiCard('Unpaid Amount', fmtCurrency(d.unpaidAmount), d.unpaidCount + ' invoice' + (d.unpaidCount === 1 ? '' : 's'), 'amber'),
+    kpiCard('Cancelled / Rescheduled', d.cancelledJobs + ' / ' + d.rescheduledJobs, '', d.cancelledJobs ? 'red' : '')
+  ].join('');
+
+  var services = Object.keys(d.serviceTotals || {});
+  var maxTotal = Math.max.apply(null, services.map(function (s) { return d.serviceTotals[s]; }).concat([1]));
+  services.sort(function (a, b) { return d.serviceTotals[b] - d.serviceTotals[a]; });
+  $('serviceBars').innerHTML = services.length ? services.map(function (s) {
+    var amt = d.serviceTotals[s];
+    var pct = Math.max(4, Math.round(amt / maxTotal * 100));
+    return '<div class="bar-row">'
+      + '<div class="bar-label"><span class="name">' + escapeHtml(s) + '</span><span class="amt">' + fmtCurrency(amt) + '</span></div>'
+      + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;"></div></div>'
+      + '</div>';
+  }).join('') : '<div class="empty">No bookings yet</div>';
+
+  var res = (d.propertyTypeCount && d.propertyTypeCount.Residential) || 0;
+  var com = (d.propertyTypeCount && d.propertyTypeCount.Commercial) || 0;
+  var total = res + com;
+  $('resCount').textContent = res;
+  $('comCount').textContent = com;
+  $('splitBar').innerHTML = total
+    ? '<div class="res" style="width:' + (res / total * 100) + '%;"></div><div class="com" style="width:' + (com / total * 100) + '%;"></div>'
+    : '';
+
+  $('upcomingList').innerHTML = (d.upcomingList || []).length ? d.upcomingList.map(function (j) {
+    return '<div class="list-row"><div><div class="who">' + escapeHtml(j.clientName) + '</div>'
+      + '<div class="meta">' + escapeHtml(j.service) + (j.bookedDisplay ? ' &middot; ' + escapeHtml(j.bookedDisplay) : '') + '</div></div>'
+      + '<span class="badge ' + (j.status === 'Ongoing' ? 'ongoing' : 'scheduled') + '">' + escapeHtml(j.status) + '</span></div>';
+  }).join('') : '<div class="empty">Nothing scheduled</div>';
+
+  $('recentLeadsList').innerHTML = (d.recentLeads || []).length ? d.recentLeads.map(function (l) {
+    return '<div class="list-row"><div><div class="who">' + escapeHtml(l.name || 'Unnamed') + '</div>'
+      + '<div class="meta">' + escapeHtml(l.email) + '</div></div>'
+      + '<span class="badge ' + (l.proposalSent ? 'sent' : 'notsent') + '">' + (l.proposalSent ? 'Proposal Sent' : 'Not Sent') + '</span></div>';
+  }).join('') : '<div class="empty">No leads yet</div>';
+
+  $('updatedLabel').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function load() {
+  $('errorBox').innerHTML = '';
+  $('updatedLabel').textContent = 'Loading…';
+  fetch('/api/staff/dashboard')
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      if (!res.ok) throw new Error(res.data.error || 'Failed to load dashboard.');
+      renderDashboard(res.data);
+    })
+    .catch(function (err) {
+      $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(err.message) + '</div>';
+      $('updatedLabel').textContent = '';
+    });
+}
+
+$('refreshBtn').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>

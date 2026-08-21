@@ -691,6 +691,115 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
   }
 });
 
+app.get('/staff/dashboard', staffAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'staff-dashboard.html'));
+});
+
+// Aggregates business metrics from Airtable for the staff dashboard. Reads both Submissions and
+// Leads directly (no caching) since this base is small enough that a full scan on every load is
+// cheap, and staff pull this up infrequently.
+app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
+  try {
+    const [submissions, leads] = await Promise.all([
+      airtable.listAllForTable(process.env.AIRTABLE_TABLE_NAME || 'Submissions'),
+      airtable.listAllForTable('Leads')
+    ]);
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let bookingsThisMonth = 0;
+    let upcomingJobs = 0;
+    let completedJobs = 0;
+    let cancelledJobs = 0;
+    let rescheduledJobs = 0;
+    let revenueCollected = 0;
+    let unpaidAmount = 0;
+    let unpaidCount = 0;
+    const serviceTotals = {};
+    const propertyTypeCount = { Residential: 0, Commercial: 0 };
+    const upcomingList = [];
+
+    submissions.forEach(rec => {
+      const f = rec.fields || {};
+      const status = f['Status'] || '';
+      const total = typeof f['Estimated Total per Visit'] === 'number' ? f['Estimated Total per Visit'] : 0;
+      const submittedAt = f['Submitted At'] ? new Date(f['Submitted At']) : null;
+      if (submittedAt && submittedAt >= startOfMonth) bookingsThisMonth++;
+
+      if (status === 'Scheduled' || status === 'Ongoing') {
+        upcomingJobs++;
+        upcomingList.push({
+          clientName: f['Client Name'] || '',
+          service: f['Service'] || '',
+          bookedDisplay: f['Booked Date/Time'] || '',
+          bookedIso: f['Booked Start (ISO)'] || '',
+          status
+        });
+      } else if (status === 'Completed') {
+        completedJobs++;
+        if (f['Payment Status'] === 'Paid') {
+          revenueCollected += total;
+        } else {
+          unpaidAmount += total;
+          unpaidCount++;
+        }
+      } else if (status === 'Cancelled') {
+        cancelledJobs++;
+      } else if (status === 'Rescheduled') {
+        rescheduledJobs++;
+      }
+
+      const svc = f['Service'] || 'Other';
+      serviceTotals[svc] = (serviceTotals[svc] || 0) + total;
+
+      const ptype = f['Property Type'];
+      if (ptype === 'Residential' || ptype === 'Commercial') propertyTypeCount[ptype]++;
+    });
+
+    upcomingList.sort((a, b) => new Date(a.bookedIso || 0) - new Date(b.bookedIso || 0));
+
+    let leadsThisMonth = 0;
+    let proposalsSent = 0;
+    const recentLeads = [];
+    leads.forEach(rec => {
+      const f = rec.fields || {};
+      const created = rec.createdTime ? new Date(rec.createdTime) : null;
+      if (created && created >= startOfMonth) leadsThisMonth++;
+      if (f['Proposal Letter Sent']) proposalsSent++;
+      recentLeads.push({
+        name: [f['Client First Name'], f['Client Last Name']].filter(Boolean).join(' ') || f['Business Name'] || '',
+        email: f['Email'] || '',
+        proposalSent: !!f['Proposal Letter Sent'],
+        createdTime: rec.createdTime
+      });
+    });
+    recentLeads.sort((a, b) => new Date(b.createdTime || 0) - new Date(a.createdTime || 0));
+
+    res.json({
+      totalLeads: leads.length,
+      leadsThisMonth,
+      proposalsSent,
+      totalBookings: submissions.length,
+      bookingsThisMonth,
+      upcomingJobs,
+      completedJobs,
+      cancelledJobs,
+      rescheduledJobs,
+      revenueCollected,
+      unpaidAmount,
+      unpaidCount,
+      serviceTotals,
+      propertyTypeCount,
+      upcomingList: upcomingList.slice(0, 6),
+      recentLeads: recentLeads.slice(0, 6)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Primo Care web app listening on port ${PORT}`);
