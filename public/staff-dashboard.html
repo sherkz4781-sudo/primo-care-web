@@ -14,9 +14,11 @@
     --muted: #6b7280;
     --border: #e2e8f0;
     --bg: #ffffff;
+    --panel-bg: #f4f8f9;
     --green: #16a34a;
     --red: #dc2626;
     --amber: #d97706;
+    --line: #e0575b;
   }
   * { box-sizing: border-box; }
   body {
@@ -26,40 +28,41 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.5;
   }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
 
   header.brand {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 24px;
-    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-    border-radius: 14px; color: white; margin-bottom: 22px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 26px;
+    background: linear-gradient(120deg, var(--teal), var(--teal-dark));
+    border-radius: 14px; color: white; margin-bottom: 24px;
   }
   header.brand .id { display: flex; align-items: center; gap: 12px; }
   header.brand .logo {
     width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18);
     display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
   }
-  header.brand h1 { margin: 0; font-size: 20px; }
+  header.brand h1 { margin: 0; font-size: 21px; }
   header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
-  header.brand a.staff-link {
+  header.brand .actions { display: flex; align-items: center; gap: 10px; }
+  header.brand a.staff-link, header.brand button.refresh {
     background: rgba(255,255,255,0.16); color: #fff; text-decoration: none; font-weight: 700;
-    font-size: 12.5px; padding: 8px 14px; border-radius: 8px; white-space: nowrap;
+    font-size: 12.5px; padding: 9px 15px; border-radius: 8px; white-space: nowrap; border: none; cursor: pointer;
     transition: background 0.18s ease, transform 0.18s ease;
   }
-  header.brand a.staff-link:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
-
-  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-  .toolbar .updated { font-size: 12.5px; color: var(--muted); }
-  button.refresh {
-    background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); font-weight: 700;
-    font-size: 12.5px; padding: 7px 14px; border-radius: 8px; cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-  }
-  button.refresh:hover { background: var(--teal-light); transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+  header.brand a.staff-link:hover, header.brand button.refresh:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
+  header.brand button.refresh { background: #fff; color: var(--teal-dark); }
+  header.brand button.refresh:hover { background: #eef8f8; }
 
   .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+  .updated { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+
+  h2.section-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 17px; color: var(--ink); margin: 30px 0 14px;
+  }
+  h2.section-title .dot { color: var(--amber); font-size: 14px; }
 
   .kpi-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 8px;
   }
   .kpi-card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
@@ -75,31 +78,53 @@
   .kpi-card.accent-amber .value { color: var(--amber); }
   .kpi-card.accent-red .value { color: var(--red); }
 
-  h2.section-title { font-size: 15px; color: var(--ink); margin: 0 0 12px; }
+  .overview-panel {
+    background: var(--panel-bg); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px; display: grid; grid-template-columns: 1.6fr 1fr; gap: 22px;
+  }
+  .trend-card, .donut-card {
+    background: var(--bg); border-radius: 12px; padding: 18px 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  .trend-card .totals { display: flex; gap: 34px; margin-bottom: 6px; }
+  .trend-card .totals .t-label { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .trend-card .totals .t-value { font-size: 22px; font-weight: 800; color: var(--ink); }
+  .legend-row { display: flex; gap: 18px; font-size: 12px; color: var(--muted); margin: 10px 0 2px; }
+  .legend-row .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+  .legend-row .sw.bar { background: var(--teal); }
+  .legend-row .sw.line { background: var(--line); border-radius: 50%; }
 
-  .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 26px; }
+  .donut-card h3, .trend-card h3 { margin: 0 0 4px; font-size: 14.5px; color: var(--ink); }
+  .donut-legend { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .donut-legend .row { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; }
+  .donut-legend .row .name { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+  .donut-legend .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .donut-legend .count { color: var(--muted); font-weight: 600; }
+
+  .table-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  table.perf { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.perf thead th {
+    background: linear-gradient(120deg, var(--teal-dark), var(--teal));
+    color: #fff; text-align: left; padding: 12px 16px; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.3px; font-weight: 700;
+  }
+  table.perf thead th.num { text-align: right; }
+  table.perf tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); }
+  table.perf tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.perf tbody tr:hover { background: var(--teal-light); }
+  table.perf tfoot td {
+    padding: 12px 16px; font-weight: 800; color: var(--teal-dark); border-top: 2px solid var(--teal);
+  }
+  table.perf tfoot td.num { text-align: right; }
+
+  .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 26px; }
   .panel {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
     padding: 18px 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
   }
-
-  .bar-row { margin-bottom: 12px; }
-  .bar-row:last-child { margin-bottom: 0; }
-  .bar-row .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
-  .bar-row .bar-label .name { font-weight: 600; color: var(--ink); }
-  .bar-row .bar-label .amt { color: var(--muted); }
-  .bar-track { background: var(--teal-light); border-radius: 999px; height: 9px; overflow: hidden; }
-  .bar-fill { background: linear-gradient(90deg, var(--teal), var(--teal-dark)); height: 100%; border-radius: 999px; transition: width 0.5s ease; }
-
-  .split-row { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
-  .split-bar { flex: 1; height: 14px; border-radius: 999px; overflow: hidden; display: flex; background: var(--border); }
-  .split-bar .res { background: var(--teal); }
-  .split-bar .com { background: var(--amber); }
-  .split-legend { display: flex; gap: 18px; margin-top: 10px; font-size: 12.5px; }
-  .split-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
-  .split-legend .res-dot { background: var(--teal); }
-  .split-legend .com-dot { background: var(--amber); }
-
   .list-row {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
     padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13.5px;
@@ -115,14 +140,20 @@
 
   .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 20px; }
 
+  @media (max-width: 900px) {
+    .overview-panel { grid-template-columns: 1fr; }
+  }
   @media (max-width: 800px) {
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .panel-grid { grid-template-columns: 1fr; }
+    table.perf { font-size: 12.5px; }
+    table.perf thead th, table.perf tbody td, table.perf tfoot td { padding: 9px 10px; }
   }
   @media (max-width: 480px) {
     header.brand { flex-direction: column; align-items: flex-start; }
     .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
     .kpi-card .value { font-size: 20px; }
+    .trend-card .totals { gap: 20px; }
   }
 </style>
 </head>
@@ -132,46 +163,64 @@
     <div class="id">
       <div class="logo">&#128202;</div>
       <div>
-        <h1>Primo Care &mdash; Dashboard</h1>
+        <h1>Primo Care &mdash; Business Dashboard</h1>
         <p>Leads, bookings, revenue, and what's coming up next</p>
       </div>
     </div>
-    <a class="staff-link" href="/staff">&larr; Back to Staff</a>
+    <div class="actions">
+      <button class="refresh" id="refreshBtn">Refresh</button>
+      <a class="staff-link" href="/staff">&larr; Back to Staff</a>
+    </div>
   </header>
 
   <div id="errorBox"></div>
-
-  <div class="toolbar">
-    <span class="updated" id="updatedLabel">Loading&hellip;</span>
-    <button class="refresh" id="refreshBtn">Refresh</button>
-  </div>
+  <div class="updated" id="updatedLabel">Loading&hellip;</div>
 
   <div class="kpi-grid" id="kpiGrid"></div>
 
-  <div class="panel-grid">
-    <div class="panel">
-      <h2 class="section-title">Revenue by Service</h2>
-      <div id="serviceBars"></div>
-    </div>
-    <div class="panel">
-      <h2 class="section-title">Residential vs Commercial</h2>
-      <div class="split-row">
-        <div class="split-bar" id="splitBar"></div>
+  <h2 class="section-title"><span class="dot">&#9679;</span> Overview</h2>
+  <div class="overview-panel">
+    <div class="trend-card">
+      <div class="totals">
+        <div><div class="t-label">Total Bookings</div><div class="t-value" id="totalBookingsBig">&mdash;</div></div>
+        <div><div class="t-label">Total Booked Value</div><div class="t-value" id="totalValueBig">&mdash;</div></div>
       </div>
-      <div class="split-legend">
-        <span><span class="dot res-dot"></span>Residential (<span id="resCount">0</span>)</span>
-        <span><span class="dot com-dot"></span>Commercial (<span id="comCount">0</span>)</span>
+      <div class="legend-row">
+        <span><span class="sw bar"></span>Bookings</span>
+        <span><span class="sw line"></span>Booked Value</span>
       </div>
+      <div id="trendChart"></div>
     </div>
+    <div class="donut-card">
+      <h3>Job Status Breakdown</h3>
+      <div id="donutChart"></div>
+      <div class="donut-legend" id="donutLegend"></div>
+    </div>
+  </div>
+
+  <h2 class="section-title"><span class="dot">&#9679;</span> Service Performance</h2>
+  <div class="table-card">
+    <table class="perf">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th class="num">Bookings</th>
+          <th class="num">Revenue</th>
+          <th class="num">Avg / Visit</th>
+        </tr>
+      </thead>
+      <tbody id="perfBody"></tbody>
+      <tfoot id="perfFoot"></tfoot>
+    </table>
   </div>
 
   <div class="panel-grid">
     <div class="panel">
-      <h2 class="section-title">Upcoming Jobs</h2>
+      <h2 class="section-title" style="margin-top:0;">Upcoming Jobs</h2>
       <div id="upcomingList"></div>
     </div>
     <div class="panel">
-      <h2 class="section-title">Recent Leads</h2>
+      <h2 class="section-title" style="margin-top:0;">Recent Leads</h2>
       <div id="recentLeadsList"></div>
     </div>
   </div>
@@ -186,8 +235,19 @@ function escapeHtml(s) {
   });
 }
 
-function fmtCurrency(n) {
-  return (typeof n === 'number' ? n : 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+function fmtCurrency(n, opts) {
+  return (typeof n === 'number' ? n : 0).toLocaleString('en-US', Object.assign({ style: 'currency', currency: 'USD', maximumFractionDigits: 0 }, opts || {}));
+}
+
+function fmtCompact(n) {
+  if (n >= 1000) return '$' + (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
+  return '$' + Math.round(n);
+}
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  var mag = Math.pow(10, Math.floor(Math.log10(v)));
+  return Math.ceil(v / mag) * mag;
 }
 
 function kpiCard(label, value, sub, accent) {
@@ -198,37 +258,108 @@ function kpiCard(label, value, sub, accent) {
     + '</div>';
 }
 
+// Combo bar (bookings count) + line (booked value) chart, drawn as raw SVG since the rest of
+// this app has no chart library dependency.
+function comboChartSvg(months) {
+  var W = 620, H = 260, mL = 42, mR = 50, mT = 16, mB = 30;
+  var cw = W - mL - mR, ch = H - mT - mB;
+  var n = months.length || 1;
+  var maxB = niceMax(Math.max.apply(null, months.map(function (m) { return m.bookings; }).concat([1])));
+  var maxV = niceMax(Math.max.apply(null, months.map(function (m) { return m.value; }).concat([1])));
+  var slot = cw / n;
+  var barW = Math.min(38, slot * 0.42);
+  var ticks = 4, grid = '', yL = '', yR = '';
+  for (var t = 0; t <= ticks; t++) {
+    var y = mT + ch - (ch * t / ticks);
+    grid += '<line x1="' + mL + '" y1="' + y + '" x2="' + (mL + cw) + '" y2="' + y + '" stroke="#e2e8f0" stroke-width="1"/>';
+    yL += '<text x="' + (mL - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="#6b7280">' + Math.round(maxB * t / ticks) + '</text>';
+    yR += '<text x="' + (mL + cw + 8) + '" y="' + (y + 4) + '" text-anchor="start" font-size="10" fill="#6b7280">' + fmtCompact(maxV * t / ticks) + '</text>';
+  }
+  var bars = '', xLabels = '', pts = [], dots = '';
+  months.forEach(function (m, i) {
+    var cx = mL + slot * i + slot / 2;
+    var bh = (m.bookings / maxB) * ch;
+    var by = mT + ch - bh;
+    bars += '<rect x="' + (cx - barW / 2) + '" y="' + by + '" width="' + barW + '" height="' + Math.max(bh, 1) + '" rx="4" fill="url(#barGrad)"/>';
+    var ly = mT + ch - (m.value / maxV) * ch;
+    pts.push(cx + ',' + ly);
+    dots += '<circle cx="' + cx + '" cy="' + ly + '" r="4" fill="#e0575b" stroke="#fff" stroke-width="1.5"/>';
+    xLabels += '<text x="' + cx + '" y="' + (mT + ch + 20) + '" text-anchor="middle" font-size="11" fill="#6b7280">' + escapeHtml(m.label.split(' ')[0]) + '</text>';
+  });
+  var line = '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#e0575b" stroke-width="2.5"/>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">'
+    + '<defs><linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0e7c86"/><stop offset="100%" stop-color="#0a5c64"/></linearGradient></defs>'
+    + grid + bars + line + dots + yL + yR + xLabels
+    + '</svg>';
+}
+
+function donutSvg(segments) {
+  var total = segments.reduce(function (s, x) { return s + x.value; }, 0);
+  var cx = 110, cy = 110, r = 78, sw = 30;
+  var circ = 2 * Math.PI * r;
+  var acc = 0, paths = '';
+  if (!total) {
+    paths = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#e2e8f0" stroke-width="' + sw + '"/>';
+  } else {
+    segments.forEach(function (s) {
+      if (!s.value) return;
+      var len = (s.value / total) * circ;
+      paths += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + s.color + '" stroke-width="' + sw
+        + '" stroke-dasharray="' + len + ' ' + (circ - len) + '" stroke-dashoffset="' + (-acc) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"/>';
+      acc += len;
+    });
+  }
+  var top = segments.slice().sort(function (a, b) { return b.value - a.value; })[0];
+  var pct = total && top ? Math.round(top.value / total * 100) : 0;
+  return '<svg viewBox="0 0 220 220" style="width:100%;max-width:200px;height:auto;display:block;margin:0 auto;">'
+    + paths
+    + '<text x="110" y="106" text-anchor="middle" font-size="26" font-weight="800" fill="#1f2937">' + (total ? pct + '%' : '&ndash;') + '</text>'
+    + '<text x="110" y="126" text-anchor="middle" font-size="10.5" fill="#6b7280">' + (total && top ? escapeHtml(top.label) : 'No data yet') + '</text>'
+    + '</svg>';
+}
+
 function renderDashboard(d) {
   $('kpiGrid').innerHTML = [
     kpiCard('Total Leads', d.totalLeads, d.leadsThisMonth + ' this month'),
     kpiCard('Proposals Sent', d.proposalsSent, d.totalLeads ? Math.round(d.proposalsSent / d.totalLeads * 100) + '% of leads' : ''),
-    kpiCard('Total Bookings', d.totalBookings, d.bookingsThisMonth + ' this month'),
-    kpiCard('Upcoming Jobs', d.upcomingJobs, 'Scheduled + Ongoing', 'teal'),
+    kpiCard('Upcoming Jobs', d.upcomingJobs, d.scheduledJobs + ' scheduled, ' + d.ongoingJobs + ' ongoing', 'teal'),
     kpiCard('Completed Jobs', d.completedJobs, ''),
     kpiCard('Revenue Collected', fmtCurrency(d.revenueCollected), 'From paid jobs', 'green'),
     kpiCard('Unpaid Amount', fmtCurrency(d.unpaidAmount), d.unpaidCount + ' invoice' + (d.unpaidCount === 1 ? '' : 's'), 'amber'),
-    kpiCard('Cancelled / Rescheduled', d.cancelledJobs + ' / ' + d.rescheduledJobs, '', d.cancelledJobs ? 'red' : '')
+    kpiCard('Cancelled', d.cancelledJobs, '', d.cancelledJobs ? 'red' : ''),
+    kpiCard('Rescheduled', d.rescheduledJobs, '')
   ].join('');
 
-  var services = Object.keys(d.serviceTotals || {});
-  var maxTotal = Math.max.apply(null, services.map(function (s) { return d.serviceTotals[s]; }).concat([1]));
-  services.sort(function (a, b) { return d.serviceTotals[b] - d.serviceTotals[a]; });
-  $('serviceBars').innerHTML = services.length ? services.map(function (s) {
-    var amt = d.serviceTotals[s];
-    var pct = Math.max(4, Math.round(amt / maxTotal * 100));
-    return '<div class="bar-row">'
-      + '<div class="bar-label"><span class="name">' + escapeHtml(s) + '</span><span class="amt">' + fmtCurrency(amt) + '</span></div>'
-      + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;"></div></div>'
-      + '</div>';
-  }).join('') : '<div class="empty">No bookings yet</div>';
+  $('totalBookingsBig').textContent = d.totalBookings;
+  $('totalValueBig').textContent = fmtCurrency(d.totalBookedValue);
+  $('trendChart').innerHTML = comboChartSvg(d.monthlyTrend || []);
 
-  var res = (d.propertyTypeCount && d.propertyTypeCount.Residential) || 0;
-  var com = (d.propertyTypeCount && d.propertyTypeCount.Commercial) || 0;
-  var total = res + com;
-  $('resCount').textContent = res;
-  $('comCount').textContent = com;
-  $('splitBar').innerHTML = total
-    ? '<div class="res" style="width:' + (res / total * 100) + '%;"></div><div class="com" style="width:' + (com / total * 100) + '%;"></div>'
+  var statusSegments = [
+    { label: 'Scheduled', value: d.scheduledJobs, color: '#0e7c86' },
+    { label: 'Ongoing', value: d.ongoingJobs, color: '#d97706' },
+    { label: 'Completed', value: d.completedJobs, color: '#16a34a' },
+    { label: 'Cancelled', value: d.cancelledJobs, color: '#dc2626' },
+    { label: 'Rescheduled', value: d.rescheduledJobs, color: '#9ca3af' }
+  ];
+  $('donutChart').innerHTML = donutSvg(statusSegments);
+  $('donutLegend').innerHTML = statusSegments.map(function (s) {
+    return '<div class="row"><span class="name"><span class="dot" style="background:' + s.color + ';"></span>' + escapeHtml(s.label) + '</span><span class="count">' + s.value + '</span></div>';
+  }).join('');
+
+  var services = d.serviceBreakdown || [];
+  var maxRevenue = Math.max.apply(null, services.map(function (s) { return s.revenue; }).concat([1]));
+  $('perfBody').innerHTML = services.length ? services.map(function (s) {
+    var intensity = 0.08 + (s.revenue / maxRevenue) * 0.28;
+    return '<tr><td>' + escapeHtml(s.service) + '</td>'
+      + '<td class="num">' + s.bookings + '</td>'
+      + '<td class="num" style="background:rgba(14,124,134,' + intensity.toFixed(2) + ');">' + fmtCurrency(s.revenue) + '</td>'
+      + '<td class="num">' + fmtCurrency(s.avg) + '</td></tr>';
+  }).join('') : '<tr><td colspan="4" class="empty">No bookings yet</td></tr>';
+
+  var totalBookingsRow = services.reduce(function (s, x) { return s + x.bookings; }, 0);
+  var totalRevenueRow = services.reduce(function (s, x) { return s + x.revenue; }, 0);
+  $('perfFoot').innerHTML = services.length
+    ? '<tr><td>Grand Total</td><td class="num">' + totalBookingsRow + '</td><td class="num">' + fmtCurrency(totalRevenueRow) + '</td><td class="num">' + fmtCurrency(totalBookingsRow ? totalRevenueRow / totalBookingsRow : 0) + '</td></tr>'
     : '';
 
   $('upcomingList').innerHTML = (d.upcomingList || []).length ? d.upcomingList.map(function (j) {

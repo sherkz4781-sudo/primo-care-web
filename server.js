@@ -708,15 +708,27 @@ app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Last 6 calendar months (oldest first, ending with the current month), keyed the same way
+    // as each submission's Submitted-At month so records can be bucketed by simple lookup.
+    const monthBuckets = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthBuckets.push({ key: d.getFullYear() + '-' + d.getMonth(), label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), bookings: 0, value: 0 });
+    }
+    const monthByKey = {};
+    monthBuckets.forEach(m => { monthByKey[m.key] = m; });
+
     let bookingsThisMonth = 0;
-    let upcomingJobs = 0;
+    let scheduledJobs = 0;
+    let ongoingJobs = 0;
     let completedJobs = 0;
     let cancelledJobs = 0;
     let rescheduledJobs = 0;
     let revenueCollected = 0;
     let unpaidAmount = 0;
     let unpaidCount = 0;
-    const serviceTotals = {};
+    let totalBookedValue = 0;
+    const serviceStats = {};
     const propertyTypeCount = { Residential: 0, Commercial: 0 };
     const upcomingList = [];
 
@@ -724,11 +736,16 @@ app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
       const f = rec.fields || {};
       const status = f['Status'] || '';
       const total = typeof f['Estimated Total per Visit'] === 'number' ? f['Estimated Total per Visit'] : 0;
+      totalBookedValue += total;
       const submittedAt = f['Submitted At'] ? new Date(f['Submitted At']) : null;
       if (submittedAt && submittedAt >= startOfMonth) bookingsThisMonth++;
+      if (submittedAt) {
+        const bucket = monthByKey[submittedAt.getFullYear() + '-' + submittedAt.getMonth()];
+        if (bucket) { bucket.bookings++; bucket.value += total; }
+      }
 
       if (status === 'Scheduled' || status === 'Ongoing') {
-        upcomingJobs++;
+        if (status === 'Scheduled') scheduledJobs++; else ongoingJobs++;
         upcomingList.push({
           clientName: f['Client Name'] || '',
           service: f['Service'] || '',
@@ -751,13 +768,19 @@ app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
       }
 
       const svc = f['Service'] || 'Other';
-      serviceTotals[svc] = (serviceTotals[svc] || 0) + total;
+      if (!serviceStats[svc]) serviceStats[svc] = { service: svc, bookings: 0, revenue: 0 };
+      serviceStats[svc].bookings++;
+      serviceStats[svc].revenue += total;
 
       const ptype = f['Property Type'];
       if (ptype === 'Residential' || ptype === 'Commercial') propertyTypeCount[ptype]++;
     });
 
     upcomingList.sort((a, b) => new Date(a.bookedIso || 0) - new Date(b.bookedIso || 0));
+
+    const serviceBreakdown = Object.values(serviceStats)
+      .map(s => ({ ...s, avg: s.bookings ? s.revenue / s.bookings : 0 }))
+      .sort((a, b) => b.revenue - a.revenue);
 
     let leadsThisMonth = 0;
     let proposalsSent = 0;
@@ -782,14 +805,18 @@ app.get('/api/staff/dashboard', staffAuth, async (req, res) => {
       proposalsSent,
       totalBookings: submissions.length,
       bookingsThisMonth,
-      upcomingJobs,
+      totalBookedValue,
+      scheduledJobs,
+      ongoingJobs,
+      upcomingJobs: scheduledJobs + ongoingJobs,
       completedJobs,
       cancelledJobs,
       rescheduledJobs,
       revenueCollected,
       unpaidAmount,
       unpaidCount,
-      serviceTotals,
+      monthlyTrend: monthBuckets,
+      serviceBreakdown,
       propertyTypeCount,
       upcomingList: upcomingList.slice(0, 6),
       recentLeads: recentLeads.slice(0, 6)
