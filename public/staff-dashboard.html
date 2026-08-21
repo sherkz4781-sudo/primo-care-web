@@ -325,7 +325,7 @@ function renderDashboard(d) {
     kpiCard('Upcoming Jobs', d.upcomingJobs, d.scheduledJobs + ' scheduled, ' + d.ongoingJobs + ' ongoing', 'teal'),
     kpiCard('Completed Jobs', d.completedJobs, ''),
     kpiCard('Revenue Collected', fmtCurrency(d.revenueCollected), 'From paid jobs', 'green'),
-    kpiCard('Unpaid Amount', fmtCurrency(d.unpaidAmount), d.unpaidCount + ' invoice' + (d.unpaidCount === 1 ? '' : 's'), 'amber'),
+    kpiCard('Pending Payment', fmtCurrency(d.unpaidAmount), d.unpaidCount + ' invoice' + (d.unpaidCount === 1 ? '' : 's'), 'amber'),
     kpiCard('Cancelled', d.cancelledJobs, '', d.cancelledJobs ? 'red' : ''),
     kpiCard('Rescheduled', d.rescheduledJobs, '')
   ].join('');

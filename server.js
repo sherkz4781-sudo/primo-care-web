@@ -115,8 +115,7 @@ app.post('/api/submit', async (req, res) => {
         'Draft Email Created': false,
         'Client ID': clientId,
         'Order ID': orderId,
-        'Status': 'Scheduled',
-        'Payment Status': 'Unpaid'
+        'Status': 'Scheduled'
       };
       if (b.prefix) fields['Prefix'] = b.prefix;
       if (b.suffix) fields['Suffix'] = b.suffix;
@@ -601,7 +600,10 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
     const rec = await airtable.getRecord(recordId);
     const f = rec.fields || {};
 
-    await airtable.updateRecord(recordId, { 'Status': 'Completed' });
+    // Payment Status only becomes meaningful once a job is done, so it's left blank at booking
+    // time and set to Pending here — "Unpaid" is reserved for a manual override in Airtable
+    // itself, not something this app ever sets on its own.
+    await airtable.updateRecord(recordId, { 'Status': 'Completed', 'Payment Status': 'Pending' });
 
     let emailSent = false;
     if (f['Email']) {
@@ -634,14 +636,14 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
   }
 });
 
-// Lists every Completed job that isn't marked Paid yet — includes records with no Payment
-// Status at all (bookings made before this field existed) so nothing old falls through the
-// cracks. Soonest-completed isn't tracked, so this just sorts by Booked Start (ISO) like the
+// Lists every Completed job that isn't marked Paid yet (Pending is the normal state a job lands
+// in right after completion; Unpaid/blank are also included for any record set outside this
+// app). Soonest-completed isn't tracked, so this just sorts by Booked Start (ISO) like the
 // active-jobs list.
 app.get('/api/staff/unpaid', staffAuth, async (req, res) => {
   try {
     const records = await airtable.listByFormula(
-      'AND({Status}="Completed", OR({Payment Status}="Unpaid", {Payment Status}=""))',
+      'AND({Status}="Completed", OR({Payment Status}="Pending", {Payment Status}="Unpaid", {Payment Status}=""))',
       { sort: [{ field: 'Booked Start (ISO)', direction: 'asc' }] }
     );
     const jobs = records.map(rec => {
@@ -668,9 +670,9 @@ const PAYMENT_METHODS = ['Cash', 'Online / Card', 'Check', 'Bank Transfer'];
 
 // Marks one completed job's Payment Status as Paid, recording how the client paid, and mints
 // its Transaction ID — deliberately generated here rather than at intake, since a Transaction
-// ID is a proof-of-payment reference and shouldn't exist for a job nobody's paid for yet. No
-// email side-effect here — the billing statement already went out when the job was marked
-// Completed; this just records that the client settled it.
+// ID is a proof-of-payment reference and shouldn't exist for a job nobody's paid for yet. Also
+// sends the client an acknowledgement email confirming their payment was received and verified,
+// separate from the billing statement that already went out when the job was marked Completed.
 app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
   try {
     const { recordId, method } = req.body || {};
@@ -679,12 +681,38 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid or missing payment method.' });
     }
     const transactionId = genRefId('TXN');
-    await airtable.updateRecord(recordId, {
+    const updated = await airtable.updateRecord(recordId, {
       'Payment Status': 'Paid',
       'Payment Method': method,
       'Transaction ID': transactionId
     });
-    res.json({ ok: true, transactionId });
+    const f = updated.fields || {};
+
+    let emailSent = false;
+    if (f['Email']) {
+      const firstName = f['First Name'] || 'there';
+      const amount = fmtCurrency(f['Estimated Total per Visit']);
+      const subject = 'Payment Received — Thank You From Primo Care';
+      const body = `Hi ${firstName},\n\nThis confirms we've received and verified your payment for your ${f['Service'] || 'cleaning'} service at ${f['Address'] || 'your property'}.\n\nPayment Confirmation\nOrder ID: ${f['Order ID'] || ''}\nTransaction ID: ${transactionId}\nPayment Method: ${method}\nAmount Paid: ${amount}\n\nIf anything here looks off, just reply to this email.\n\nThank you for choosing Primo Care!\n\nBest,\nPrimo Care Team`;
+      const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+        <h2 style="color:#0a5c64;">Payment Received</h2>
+        <p>Hi ${firstName},</p>
+        <p>This confirms we've received and verified your payment for your <b>${f['Service'] || 'cleaning'}</b> service at <b>${f['Address'] || 'your property'}</b>.</p>
+        <table style="margin:14px 0; border-collapse:collapse; width:100%;">
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Order ID</td><td>${f['Order ID'] || ''}</td></tr>
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Transaction ID</td><td>${transactionId}</td></tr>
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Payment Method</td><td>${method}</td></tr>
+          <tr><td style="color:#6b7280; padding:4px 10px 4px 0; font-weight:700;">Amount Paid</td><td style="font-weight:700; color:#0a5c64;">${amount}</td></tr>
+        </table>
+        <p>If anything here looks off, just reply to this email.</p>
+        <p>Thank you for choosing Primo Care!</p>
+        <p>Best,<br>Primo Care Team</p>
+      </div>`;
+      await sendConfirmationEmail({ to: f['Email'], subject, body, htmlBody });
+      emailSent = true;
+    }
+
+    res.json({ ok: true, transactionId, emailSent });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
