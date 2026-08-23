@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Primo Care - Service Proposal Form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
@@ -16,14 +19,17 @@
     --bg: #ffffff;
     --amber: #f59e0b;
     --green: #16a34a;
+    --font-display: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: #f7f9fa;
     color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-body);
     line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
 
@@ -36,6 +42,7 @@
     border-radius: 14px;
     color: white;
     margin-bottom: 24px;
+    box-shadow: 0 10px 24px rgba(15,40,44,0.14);
   }
   header.brand .logo {
     width: 44px; height: 44px; border-radius: 10px;
@@ -43,7 +50,7 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 22px;
   }
-  header.brand h1 { margin: 0; font-size: 22px; letter-spacing: 0.2px; }
+  header.brand h1 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 22px; letter-spacing: -0.1px; }
   header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
 
   .card {
@@ -57,6 +64,7 @@
   }
   .card:hover { box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
   .card h2 {
+    font-family: var(--font-display); font-weight: 700;
     font-size: 15px;
     margin: 0 0 14px;
     color: var(--teal-dark);

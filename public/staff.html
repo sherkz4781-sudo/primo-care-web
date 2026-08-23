@@ -4,9 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Primo Care - Staff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
+    --font-display: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --teal: #0e7c86;
     --teal-dark: #0a5c64;
     --teal-light: #e6f4f5;
@@ -22,8 +27,9 @@
     margin: 0;
     background: #f7f9fa;
     color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-body);
     line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
 
@@ -36,7 +42,7 @@
     width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18);
     display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
   }
-  header.brand h1 { margin: 0; font-size: 20px; }
+  header.brand h1 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 20px; }
   header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
 
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -102,7 +108,7 @@
   button.pay:disabled { opacity: 0.6; cursor: default; }
   button.pay:disabled:hover { transform: none; box-shadow: 0 3px 8px rgba(217,119,6,0.25); }
 
-  h2.section-title { font-size: 15px; color: var(--ink); margin: 30px 0 12px; }
+  h2.section-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: var(--ink); margin: 30px 0 12px; }
 
   .cal-card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;

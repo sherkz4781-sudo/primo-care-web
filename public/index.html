@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Primo Care - Professional Cleaning Services</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     color-scheme: light;
-    --teal: #12a3ae;
+    --teal: #0e7c86;
     --teal-dark: #0a5c64;
     --teal-light: #e6f4f5;
     --ink: #1f2937;
@@ -17,6 +20,13 @@
     --yellow: #f5c518;
     --yellow-dark: #d9a900;
     --green: #16a34a;
+    --font-display: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --shadow-float: 0 10px 24px rgba(15,40,44,0.12);
+    --shadow-float-lg: 0 20px 44px rgba(15,40,44,0.16);
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -24,11 +34,13 @@
     margin: 0;
     background: #f7f9fa;
     color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
   a { color: inherit; }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+  h1, h2, h3, .brand-mark { font-family: var(--font-display); }
 
   /* ---- Top announcement bar ---- */
   .topbar { background: #0d1117; color: #fff; font-size: 12.5px; }
@@ -48,7 +60,7 @@
 
   .btn-yellow {
     display: inline-block; background: var(--yellow); color: #23281f !important; text-decoration: none;
-    font-weight: 800; font-size: 13.5px; letter-spacing: 0.3px; padding: 12px 22px; border-radius: 3px;
+    font-family: var(--font-display); font-weight: 700; font-size: 13.5px; letter-spacing: 0.2px; padding: 13px 24px; border-radius: var(--radius-sm);
     border: none; cursor: pointer;
     box-shadow: 0 3px 8px rgba(0,0,0,0.14);
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
@@ -56,26 +68,39 @@
   .btn-yellow:hover { background: var(--yellow-dark); transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
   .btn-outline {
     display: inline-block; background: transparent; color: var(--teal-dark) !important; text-decoration: none;
-    font-weight: 700; font-size: 12.5px; padding: 9px 18px; border-radius: 3px; border: 1.5px solid var(--teal);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    font-family: var(--font-display); font-weight: 600; font-size: 12.5px; padding: 10px 19px; border-radius: var(--radius-sm); border: 1.5px solid var(--teal);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
   }
   .btn-outline:hover { background: var(--teal-light); transform: translateY(-2px) scale(1.04); box-shadow: 0 8px 16px rgba(0,0,0,0.12); }
 
   /* ---- Hero ---- */
   header.hero {
     position: relative;
-    background:
-      linear-gradient(120deg, rgba(10,30,32,0.82), rgba(10,30,32,0.6)),
-      url('/images/hero.jpg') center 35% / cover no-repeat;
+    overflow: hidden;
     color: #fff;
     padding: 70px 20px 90px;
   }
-  .hero-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: center; max-width: 1100px; margin: 0 auto; }
+  header.hero .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(120deg, rgba(10,30,32,0.82), rgba(10,30,32,0.6)),
+      url('/images/hero.jpg') center 35% / cover no-repeat;
+    clip-path: inset(0 0 0 0);
+    animation: hero-sweep 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes hero-sweep {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    header.hero .hero-bg { animation: none; }
+  }
+  .hero-grid { position: relative; display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: center; max-width: 1100px; margin: 0 auto; }
   @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } }
-  header.hero h1 { font-size: 40px; margin: 0 0 16px; letter-spacing: -0.3px; line-height: 1.15; }
+  header.hero h1 { font-family: var(--font-display); font-weight: 700; font-size: 42px; margin: 0 0 16px; letter-spacing: -0.5px; line-height: 1.12; }
   header.hero p.lead { font-size: 16.5px; opacity: 0.92; max-width: 480px; margin: 0 0 26px; }
 
-  .quote-card { background: #fff; color: var(--ink); border-radius: 10px; overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,0.28); }
+  .quote-card { background: #fff; color: var(--ink); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float-lg); }
   .quote-card .qc-head { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: #fff; padding: 18px 22px; }
   .quote-card .qc-head b { display: block; font-size: 17px; letter-spacing: 0.4px; }
   .quote-card .qc-head span { display: block; font-size: 12.5px; opacity: 0.9; margin-top: 3px; }
@@ -87,28 +112,32 @@
   section { padding: 64px 20px; }
   section.alt { background: #fff; }
   section.grey { background: #eef1f2; }
-  h2.section-title { font-size: 26px; margin: 0 0 8px; color: var(--ink); text-align: center; }
+  h2.section-title { font-family: var(--font-display); font-weight: 700; font-size: 27px; letter-spacing: -0.3px; margin: 0 0 8px; color: var(--ink); text-align: center; }
   p.section-sub { text-align: center; color: var(--muted); font-size: 15px; max-width: 560px; margin: 0 auto 40px; }
 
   /* ---- Category photo tiles ---- */
   .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .tile-grid { grid-template-columns: 1fr; } }
-  .tile { border-radius: 8px; overflow: hidden; box-shadow: 0 6px 16px rgba(0,0,0,0.1); transition: box-shadow 0.25s ease, transform 0.25s ease; }
-  .tile:hover { box-shadow: 0 16px 32px rgba(0,0,0,0.18); transform: translateY(-3px); }
+  .tile { border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .tile:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); }
   .tile .photo {
     height: 170px; position: relative; background-size: cover; background-position: center;
     transition: transform 0.4s ease;
+  }
+  .tile .photo::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(200deg, rgba(14,124,134,0.28), rgba(10,30,32,0.06));
   }
   .tile:hover .photo { transform: scale(1.1); }
   .tile .photo.p1 { background-image: url('/images/residential-tile.jpg'); }
   .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); }
   .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); }
-  .tile .label { background: var(--teal); color: #fff; font-weight: 800; font-size: 15px; text-align: center; padding: 13px; }
+  .tile .label { background: var(--teal); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 15px; text-align: center; padding: 13px; }
 
   /* ---- 3-col About/Why/What ---- */
   .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .trio { grid-template-columns: 1fr; } }
-  .trio h3 { margin: 0 0 8px; font-size: 18px; }
+  .trio h3 { font-family: var(--font-display); font-weight: 600; margin: 0 0 8px; font-size: 18px; }
   .trio .kicker { color: var(--teal); font-weight: 800; font-size: 11.5px; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 10px; display: block; }
   .trio p { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
 
@@ -116,33 +145,37 @@
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
   .split .photo-frame {
-    height: 280px; border-radius: 8px; overflow: hidden;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.14); transition: box-shadow 0.25s ease;
+    height: 280px; border-radius: var(--radius-md); overflow: hidden;
+    box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease;
   }
-  .split .photo-frame:hover { box-shadow: 0 18px 36px rgba(0,0,0,0.22); }
+  .split .photo-frame:hover { box-shadow: var(--shadow-float-lg); }
   .split .photo-block {
     height: 100%; width: 100%; position: relative;
     background-size: cover; background-position: center;
     transition: transform 0.4s ease;
   }
+  .split .photo-block::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(200deg, rgba(14,124,134,0.24), rgba(10,30,32,0.04));
+  }
   .split .photo-frame:hover .photo-block { transform: scale(1.1); }
   .split .photo-block.a { background-image: url('/images/commercial-section.jpg'); }
   .split .photo-block.b { background-image: url('/images/residential-section.jpg'); }
-  .split h2 { font-size: 27px; margin: 0 0 6px; }
+  .split h2 { font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: -0.3px; margin: 0 0 6px; }
   .split h2 .accent { color: var(--teal); display: block; }
   .split p { color: var(--muted); font-size: 15px; margin: 14px 0 22px; }
 
   /* ---- Quote banner ---- */
   .quote-banner { background: linear-gradient(120deg, var(--teal), var(--teal-dark)); color: #fff; text-align: center; padding: 56px 20px; }
   .quote-banner .mark { font-size: 46px; opacity: 0.5; line-height: 0.6; }
-  .quote-banner p { font-size: 19px; max-width: 700px; margin: 10px auto 14px; font-weight: 600; }
+  .quote-banner p { font-family: var(--font-display); font-weight: 600; font-size: 19px; max-width: 700px; margin: 10px auto 14px; }
   .quote-banner .who { font-size: 12.5px; font-weight: 800; letter-spacing: 0.5px; opacity: 0.85; }
 
   /* ---- Testimonials ---- */
   .testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 900px) { .testimonial-grid { grid-template-columns: 1fr; } }
-  .testimonial-card { background: var(--bg); border: 1px dashed var(--border); border-radius: 10px; padding: 24px; box-shadow: 0 6px 16px rgba(0,0,0,0.06); transition: box-shadow 0.25s ease, transform 0.25s ease; }
-  .testimonial-card:hover { box-shadow: 0 12px 26px rgba(0,0,0,0.1); transform: translateY(-3px); }
+  .testimonial-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .testimonial-card:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); }
   .testimonial-card .stars { color: var(--yellow-dark); font-size: 15px; margin-bottom: 10px; }
   .testimonial-card p.quote { font-size: 14.5px; color: var(--muted); font-style: italic; margin: 0 0 14px; }
   .testimonial-card .who { font-size: 13px; font-weight: 700; color: var(--ink); }
@@ -307,6 +340,7 @@
 </nav>
 
 <header class="hero" id="top">
+  <div class="hero-bg"></div>
   <div class="hero-grid">
     <div>
       <h1>Affordable, Professional<br>Cleaning Services</h1>

@@ -900,12 +900,15 @@ function payMessagePage({ title, message, tone }) {
   const color = tone === 'error' ? '#dc2626' : tone === 'ok' ? '#16a34a' : '#0a5c64';
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title} - Primo Care</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f7f9fa;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; padding:24px; }
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; padding:24px; -webkit-font-smoothing:antialiased; }
     .card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:36px 32px; max-width:440px; text-align:center;
       box-shadow:0 10px 30px rgba(0,0,0,0.06); }
-    h1 { font-size:20px; color:${color}; margin:0 0 12px; }
+    h1 { font-family:'Sora',sans-serif; font-weight:700; font-size:20px; color:${color}; margin:0 0 12px; }
     p { color:#374151; font-size:14.5px; line-height:1.6; margin:0; }
     a { color:#0e7c86; }
     button.close-tab {
@@ -942,21 +945,25 @@ function payOptionsPage({ orderId, service, amount, stripeConfigured, notice }) 
   const esc = escapeHtmlServer;
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pay Your Invoice - Primo Care</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --teal:#0e7c86; --teal-dark:#0a5c64; --teal-light:#e6f4f5; --ink:#1f2937; --muted:#6b7280; --border:#e2e8f0; }
+    :root { --teal:#0e7c86; --teal-dark:#0a5c64; --teal-light:#e6f4f5; --ink:#1f2937; --muted:#6b7280; --border:#e2e8f0;
+      --font-display:'Sora',-apple-system,BlinkMacSystemFont,sans-serif; --font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; }
     * { box-sizing:border-box; }
-    body { margin:0; background:#f7f9fa; color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-      line-height:1.5; padding:32px 20px 60px; }
+    body { margin:0; background:#f7f9fa; color:var(--ink); font-family:var(--font-body);
+      line-height:1.5; padding:32px 20px 60px; -webkit-font-smoothing:antialiased; }
     .wrap { max-width:480px; margin:0 auto; }
-    header { background:linear-gradient(135deg,var(--teal),var(--teal-dark)); color:#fff; border-radius:14px; padding:22px 24px; margin-bottom:20px; }
-    header h1 { margin:0 0 4px; font-size:19px; }
+    header { background:linear-gradient(135deg,var(--teal),var(--teal-dark)); color:#fff; border-radius:14px; padding:22px 24px; margin-bottom:20px; box-shadow:0 10px 24px rgba(15,40,44,0.14); }
+    header h1 { font-family:var(--font-display); font-weight:700; margin:0 0 4px; font-size:19px; }
     header p { margin:0; font-size:13px; opacity:0.9; }
     .amount-row { display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.25); }
     .amount-row .label { font-size:12.5px; opacity:0.85; }
-    .amount-row .value { font-size:24px; font-weight:800; }
+    .amount-row .value { font-family:var(--font-display); font-size:24px; font-weight:800; }
     .notice { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:8px; padding:10px 14px; font-size:13px; margin-bottom:16px; }
     .card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:14px; }
-    .card h2 { font-size:14px; margin:0 0 10px; color:var(--ink); }
+    .card h2 { font-family:var(--font-display); font-weight:700; font-size:14px; margin:0 0 10px; color:var(--ink); }
     .card p.sub { font-size:12.5px; color:var(--muted); margin:0 0 12px; }
     button.pay-online {
       display:block; width:100%; background:var(--teal); color:#fff; border:none; border-radius:9px;
