@@ -142,16 +142,21 @@
     to { clip-path: inset(0 0 0 0); }
   }
   @keyframes fade-up-in {
-    from { opacity: 0; transform: translateY(22px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: scale(0.7) translateY(22px); }
+    to { opacity: 1; transform: scale(0.7) translateY(0); }
   }
-  header.hero h1, header.hero p.lead, header.hero .btn-outline, .quote-card {
+  @keyframes drop-down-in {
+    from { opacity: 0; transform: scale(1.1) translateY(-50px); }
+    to { opacity: 1; transform: scale(1.1) translateY(0); }
+  }
+  .quote-card {
     animation: fade-up-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: 0.52s;
   }
-  header.hero h1 { animation-delay: 0.2s; }
-  header.hero p.lead { animation-delay: 0.42s; }
-  header.hero .btn-outline { animation-delay: 0.64s; }
-  .quote-card { animation-delay: 0.52s; }
+  .hero-copy {
+    transform-origin: left center;
+    animation: drop-down-in 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
 
   /* ---- Scroll-triggered reveal animations ---- */
   .reveal {
@@ -184,7 +189,8 @@
   .split > div.reveal { transition-delay: 200ms; }
   @media (prefers-reduced-motion: reduce) {
     header.hero .hero-bg { animation: none; }
-    header.hero h1, header.hero p.lead, header.hero .btn-outline, .quote-card { animation: none; }
+    .hero-copy { animation: none; opacity: 1; transform: scale(1.1); }
+    .quote-card { animation: none; opacity: 1; transform: scale(0.7); }
     .reveal, .reveal-scale, .reveal-right { opacity: 1 !important; transform: none !important; transition: none !important; }
   }
   .hero-grid { position: relative; display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: center; max-width: 1100px; margin: 0 auto; }
@@ -447,7 +453,7 @@
 <header class="hero" id="top">
   <div class="hero-bg"></div>
   <div class="hero-grid">
-    <div>
+    <div class="hero-copy">
       <h1>Affordable, Professional<br>Cleaning Services</h1>
       <p class="lead">Primo Care keeps homes and businesses across the Frisco, TX area spotless &mdash; reliable staff, flexible scheduling, and pricing built around your space.</p>
       <a class="btn-outline" href="#services" style="border-color:rgba(255,255,255,0.7); color:#fff !important;">View Services</a>
