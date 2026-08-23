@@ -251,12 +251,12 @@
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
   .split .photo-frame {
-    height: 280px; border-radius: var(--radius-md); overflow: hidden;
+    border-radius: var(--radius-md); overflow: hidden;
     box-shadow: var(--shadow-float);
   }
   .split .photo-frame:hover { box-shadow: var(--shadow-float-lg); transition: box-shadow 0.25s ease; }
   .split .photo-block {
-    height: 100%; width: 100%; position: relative;
+    width: 100%; position: relative;
     background-size: cover; background-position: center;
     transition: transform 0.4s ease;
   }
@@ -265,8 +265,8 @@
     background: linear-gradient(200deg, rgba(14,124,134,0.24), rgba(10,30,32,0.04));
   }
   .split .photo-frame:hover .photo-block { transform: scale(1.1); }
-  .split .photo-block.a { background-image: url('/images/commercial-section.jpg'); }
-  .split .photo-block.b { background-image: url('/images/residential-section.jpg'); }
+  .split .photo-block.a { background-image: url('/images/commercial-section.jpg'); aspect-ratio: 1536 / 1025; }
+  .split .photo-block.b { background-image: url('/images/residential-section.jpg'); aspect-ratio: 1000 / 667; }
   .split h2 { font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: -0.3px; margin: 0 0 6px; }
   .split h2 .accent { color: var(--teal-text); display: block; }
   .split p { color: var(--muted); font-size: 15px; margin: 14px 0 22px; }
