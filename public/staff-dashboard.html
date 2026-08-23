@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Primo Care - Dashboard</title>
+<script>
+(function(){
+  try {
+    var saved = localStorage.getItem('primo-theme');
+    var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,24 +24,41 @@
     --teal: #0e7c86;
     --teal-dark: #0a5c64;
     --teal-light: #e6f4f5;
+    --teal-text: #0a5c64;
     --ink: #1f2937;
     --muted: #6b7280;
     --border: #e2e8f0;
     --bg: #ffffff;
+    --bg-page: #f7f9fa;
     --panel-bg: #f4f8f9;
     --green: #16a34a;
     --red: #dc2626;
     --amber: #d97706;
     --line: #e0575b;
   }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --teal: #14a3ae;
+    --teal-dark: #0a5c64;
+    --teal-light: #123338;
+    --teal-text: #52dbe0;
+    --ink: #e9edee;
+    --muted: #99a7aa;
+    --border: #243033;
+    --bg: #131b1e;
+    --bg-page: #0a1214;
+    --panel-bg: #0f171a;
+    --green: #22c55e;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: #f7f9fa;
+    background: var(--bg-page);
     color: var(--ink);
     font-family: var(--font-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.35s ease, color 0.35s ease;
   }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
 
@@ -56,8 +82,8 @@
     transition: background 0.18s ease, transform 0.18s ease;
   }
   header.brand a.staff-link:hover, header.brand button.refresh:hover, header.brand button.logout-btn:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
-  header.brand button.refresh { background: #fff; color: var(--teal-dark); }
-  header.brand button.refresh:hover { background: #eef8f8; }
+  header.brand button.refresh { background: var(--bg); color: var(--teal-text); }
+  header.brand button.refresh:hover { background: var(--teal-light); }
   @keyframes drop-down-in {
     from { opacity: 0; transform: translateY(-50px); }
     to { opacity: 1; transform: translateY(0); }
@@ -88,7 +114,7 @@
   .login-card label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
   .login-card input[type=text], .login-card input[type=password] {
     width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
-    font-size: 14px; color: var(--ink); background: #fff; font-family: inherit;
+    font-size: 14px; color: var(--ink); background: var(--bg); font-family: inherit;
   }
   .login-card input:focus { outline: none; border-color: var(--teal); }
   button.login-submit {
@@ -128,7 +154,7 @@
   .kpi-card .label { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
   .kpi-card .value { font-size: 24px; font-weight: 800; color: var(--ink); }
   .kpi-card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .kpi-card.accent-teal .value { color: var(--teal-dark); }
+  .kpi-card.accent-teal .value { color: var(--teal-text); }
   .kpi-card.accent-green .value { color: var(--green); }
   .kpi-card.accent-amber .value { color: var(--amber); }
   .kpi-card.accent-red .value { color: var(--red); }
@@ -175,7 +201,7 @@
   table.perf tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
   table.perf tbody tr:hover { background: var(--teal-light); }
   table.perf tfoot td {
-    padding: 12px 16px; font-weight: 800; color: var(--teal-dark); border-top: 2px solid var(--teal);
+    padding: 12px 16px; font-weight: 800; color: var(--teal-text); border-top: 2px solid var(--teal);
   }
   table.perf tfoot td.num { text-align: right; }
 
@@ -194,7 +220,7 @@
   .list-row .who { font-weight: 700; color: var(--ink); }
   .list-row .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-  .badge.scheduled { background: var(--teal-light); color: var(--teal-dark); }
+  .badge.scheduled { background: var(--teal-light); color: var(--teal-text); }
   .badge.ongoing { background: #fef3c7; color: #92400e; }
   .badge.sent { background: #dcfce7; color: #166534; }
   .badge.notsent { background: #fef2f2; color: #991b1b; }
@@ -216,6 +242,19 @@
     .kpi-card .value { font-size: 20px; }
     .trend-card .totals { gap: 20px; }
   }
+
+  .theme-toggle {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.18); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.25s ease, background 0.2s ease;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,0.3); transform: rotate(15deg); }
+  .theme-toggle svg { width: 18px; height: 18px; }
+  .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
 </style>
 </head>
 <body>
@@ -229,6 +268,10 @@
       </div>
     </div>
     <div class="actions">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      </button>
       <button class="refresh" id="refreshBtn">Refresh</button>
       <a class="staff-link" href="/dashboard/members">List of Members</a>
       <button class="logout-btn hidden" id="logoutBtn">Log Out</button>
@@ -351,9 +394,9 @@ function comboChartSvg(months) {
   var ticks = 4, grid = '', yL = '', yR = '';
   for (var t = 0; t <= ticks; t++) {
     var y = mT + ch - (ch * t / ticks);
-    grid += '<line x1="' + mL + '" y1="' + y + '" x2="' + (mL + cw) + '" y2="' + y + '" stroke="#e2e8f0" stroke-width="1"/>';
-    yL += '<text x="' + (mL - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="#6b7280">' + Math.round(maxB * t / ticks) + '</text>';
-    yR += '<text x="' + (mL + cw + 8) + '" y="' + (y + 4) + '" text-anchor="start" font-size="10" fill="#6b7280">' + fmtCompact(maxV * t / ticks) + '</text>';
+    grid += '<line x1="' + mL + '" y1="' + y + '" x2="' + (mL + cw) + '" y2="' + y + '" stroke="var(--border)" stroke-width="1"/>';
+    yL += '<text x="' + (mL - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="var(--muted)">' + Math.round(maxB * t / ticks) + '</text>';
+    yR += '<text x="' + (mL + cw + 8) + '" y="' + (y + 4) + '" text-anchor="start" font-size="10" fill="var(--muted)">' + fmtCompact(maxV * t / ticks) + '</text>';
   }
   var bars = '', xLabels = '', pts = [], dots = '';
   months.forEach(function (m, i) {
@@ -363,8 +406,8 @@ function comboChartSvg(months) {
     bars += '<rect x="' + (cx - barW / 2) + '" y="' + by + '" width="' + barW + '" height="' + Math.max(bh, 1) + '" rx="4" fill="url(#barGrad)"/>';
     var ly = mT + ch - (m.value / maxV) * ch;
     pts.push(cx + ',' + ly);
-    dots += '<circle cx="' + cx + '" cy="' + ly + '" r="4" fill="#e0575b" stroke="#fff" stroke-width="1.5"/>';
-    xLabels += '<text x="' + cx + '" y="' + (mT + ch + 20) + '" text-anchor="middle" font-size="11" fill="#6b7280">' + escapeHtml(m.label.split(' ')[0]) + '</text>';
+    dots += '<circle cx="' + cx + '" cy="' + ly + '" r="4" fill="#e0575b" stroke="var(--bg)" stroke-width="1.5"/>';
+    xLabels += '<text x="' + cx + '" y="' + (mT + ch + 20) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + escapeHtml(m.label.split(' ')[0]) + '</text>';
   });
   var line = '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#e0575b" stroke-width="2.5"/>';
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;">'
@@ -379,7 +422,7 @@ function donutSvg(segments) {
   var circ = 2 * Math.PI * r;
   var acc = 0, paths = '';
   if (!total) {
-    paths = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#e2e8f0" stroke-width="' + sw + '"/>';
+    paths = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--border)" stroke-width="' + sw + '"/>';
   } else {
     segments.forEach(function (s) {
       if (!s.value) return;
@@ -393,8 +436,8 @@ function donutSvg(segments) {
   var pct = total && top ? Math.round(top.value / total * 100) : 0;
   return '<svg viewBox="0 0 220 220" style="width:100%;max-width:200px;height:auto;display:block;margin:0 auto;">'
     + paths
-    + '<text x="110" y="106" text-anchor="middle" font-size="26" font-weight="800" fill="#1f2937">' + (total ? pct + '%' : '&ndash;') + '</text>'
-    + '<text x="110" y="126" text-anchor="middle" font-size="10.5" fill="#6b7280">' + (total && top ? escapeHtml(top.label) : 'No data yet') + '</text>'
+    + '<text x="110" y="106" text-anchor="middle" font-size="26" font-weight="800" fill="var(--ink)">' + (total ? pct + '%' : '&ndash;') + '</text>'
+    + '<text x="110" y="126" text-anchor="middle" font-size="10.5" fill="var(--muted)">' + (total && top ? escapeHtml(top.label) : 'No data yet') + '</text>'
     + '</svg>';
 }
 
@@ -536,6 +579,23 @@ $('logoutBtn').addEventListener('click', function () {
 });
 
 checkAuth();
+
+(function() {
+  var toggle = document.getElementById('themeToggle');
+  if (!toggle) return;
+  function current() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+  function reflect() {
+    var dark = current() === 'dark';
+    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+  reflect();
+  toggle.addEventListener('click', function() {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('primo-theme', next); } catch (e) {}
+    reflect();
+  });
+})();
 </script>
 </body>
 </html>

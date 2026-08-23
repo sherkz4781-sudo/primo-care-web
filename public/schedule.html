@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Primo Care - Client Schedule</title>
+<script>
+(function(){
+  try {
+    var saved = localStorage.getItem('primo-theme');
+    var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,21 +24,37 @@
     --teal: #0e7c86;
     --teal-dark: #0a5c64;
     --teal-light: #e6f4f5;
+    --teal-text: #0a5c64;
     --ink: #1f2937;
     --muted: #6b7280;
     --border: #e2e8f0;
     --bg: #ffffff;
+    --bg-page: #f7f9fa;
     --green: #16a34a;
     --red: #dc2626;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --teal: #14a3ae;
+    --teal-dark: #0a5c64;
+    --teal-light: #123338;
+    --teal-text: #52dbe0;
+    --ink: #e9edee;
+    --muted: #99a7aa;
+    --border: #243033;
+    --bg: #131b1e;
+    --bg-page: #0a1214;
+    --green: #22c55e;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: #f7f9fa;
+    background: var(--bg-page);
     color: var(--ink);
     font-family: var(--font-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.35s ease, color 0.35s ease;
   }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
 
@@ -65,7 +90,7 @@
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
   .toolbar .count { font-size: 13px; color: var(--muted); }
   button.refresh {
-    background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); font-weight: 700;
+    background: var(--bg); border: 1.5px solid var(--teal); color: var(--teal-text); font-weight: 700;
     font-size: 12.5px; padding: 7px 14px; border-radius: 8px; cursor: pointer;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
@@ -91,12 +116,12 @@
   .job-card .info .badge {
     display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.4px; padding: 2px 8px; border-radius: 999px; margin-top: 6px;
-    background: var(--teal-light); color: var(--teal-dark);
+    background: var(--teal-light); color: var(--teal-text);
   }
   .job-card .info .badge.ongoing { background: #fef3c7; color: #92400e; }
   .job-card .info .badge.unpaid { background: #ffedd5; color: #9a3412; }
-  .job-card .info .amount { font-size: 14px; font-weight: 700; color: var(--teal-dark); margin-top: 4px; }
-  .job-card .info .client-says { font-size: 12px; color: var(--teal-dark); margin-top: 6px; font-weight: 600; }
+  .job-card .info .amount { font-size: 14px; font-weight: 700; color: var(--teal-text); margin-top: 4px; }
+  .job-card .info .client-says { font-size: 12px; color: var(--teal-text); margin-top: 6px; font-weight: 600; }
   .job-card .info .proof-link { display: inline-block; margin-top: 8px; }
   .job-card .info .proof-thumb {
     width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1.5px solid var(--border);
@@ -115,7 +140,7 @@
   .pay-controls { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
   select.method {
     border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; padding: 8px 10px;
-    color: var(--ink); background: #fff; font-family: inherit;
+    color: var(--ink); background: var(--bg); font-family: inherit;
   }
   button.pay {
     background: #d97706; color: #fff; border: none; border-radius: 8px;
@@ -138,7 +163,7 @@
   .cal-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .cal-toolbar .cal-nav { display: flex; align-items: center; gap: 8px; }
   button.cal-btn {
-    background: #fff; border: 1.5px solid var(--teal); color: var(--teal-dark); font-weight: 700;
+    background: var(--bg); border: 1.5px solid var(--teal); color: var(--teal-text); font-weight: 700;
     font-size: 12.5px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
@@ -148,14 +173,14 @@
   .cal-dow { text-align: center; font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; padding-bottom: 4px; }
   .cal-day {
     border: 1px solid var(--border); border-radius: 7px; min-height: 74px;
-    padding: 5px 5px 3px; background: #fff; transition: box-shadow 0.2s ease;
+    padding: 5px 5px 3px; background: var(--bg); transition: box-shadow 0.2s ease;
   }
-  .cal-day.other-month { background: #fafbfc; }
+  .cal-day.other-month { background: var(--bg-page); }
   .cal-day.other-month .cal-num { color: var(--muted); }
   .cal-day.today { border-color: var(--teal); box-shadow: 0 0 0 1.5px var(--teal) inset; }
   .cal-num { font-size: 11.5px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
   .cal-chip {
-    display: block; background: var(--teal-light); color: var(--teal-dark); font-size: 10px;
+    display: block; background: var(--teal-light); color: var(--teal-text); font-size: 10px;
     font-weight: 600; padding: 2px 5px; border-radius: 4px; margin-bottom: 2px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
@@ -191,7 +216,7 @@
   .login-card label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
   .login-card input[type=text], .login-card input[type=password] {
     width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
-    font-size: 14px; color: var(--ink); background: #fff; font-family: inherit;
+    font-size: 14px; color: var(--ink); background: var(--bg); font-family: inherit;
   }
   .login-card input:focus { outline: none; border-color: var(--teal); }
   button.login-submit {
@@ -201,6 +226,19 @@
   }
   button.login-submit:hover { background: var(--teal-dark); transform: translateY(-1px); }
   button.login-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+  .theme-toggle {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.18); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.25s ease, background 0.2s ease;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,0.3); transform: rotate(15deg); }
+  .theme-toggle svg { width: 18px; height: 18px; }
+  .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
 </style>
 </head>
 <body>
@@ -212,6 +250,10 @@
       <p>Mark completed jobs off the schedule, and mark payments once settled</p>
     </div>
     <div class="header-actions">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      </button>
       <button class="logout-btn hidden" id="logoutBtn">Log Out</button>
     </div>
   </header>
@@ -606,6 +648,23 @@ $('logoutBtn').addEventListener('click', function () {
 });
 
 checkAuth();
+
+(function() {
+  var toggle = document.getElementById('themeToggle');
+  if (!toggle) return;
+  function current() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+  function reflect() {
+    var dark = current() === 'dark';
+    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+  reflect();
+  toggle.addEventListener('click', function() {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('primo-theme', next); } catch (e) {}
+    reflect();
+  });
+})();
 </script>
 </body>
 </html>

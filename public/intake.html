@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Primo Care - Service Proposal Form</title>
+<script>
+(function(){
+  try {
+    var saved = localStorage.getItem('primo-theme');
+    var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,24 +22,51 @@
     --teal: #0e7c86;
     --teal-dark: #0a5c64;
     --teal-light: #e6f4f5;
+    --teal-text: #0a5c64;
     --ink: #1f2937;
     --muted: #6b7280;
     --border: #e2e8f0;
     --bg: #ffffff;
+    --bg-page: #f7f9fa;
     --amber: #f59e0b;
     --green: #16a34a;
     --font-display: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --teal: #14a3ae;
+    --teal-dark: #0a5c64;
+    --teal-light: #123338;
+    --teal-text: #52dbe0;
+    --ink: #e9edee;
+    --muted: #99a7aa;
+    --border: #243033;
+    --bg: #131b1e;
+    --bg-page: #0a1214;
+    --green: #22c55e;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: #f7f9fa;
+    background: var(--bg-page);
     color: var(--ink);
     font-family: var(--font-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.35s ease, color 0.35s ease;
   }
+  .theme-toggle {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    border: none; background: rgba(255,255,255,0.18); color: #fff;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    margin-left: auto; transition: background-color 0.2s ease, transform 0.2s ease;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px) rotate(-8deg); }
+  .theme-toggle svg { width: 16px; height: 16px; }
+  .theme-toggle .icon-moon { display: none; }
+  [data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+  [data-theme="dark"] .theme-toggle .icon-moon { display: block; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
 
   header.brand {
@@ -82,12 +118,12 @@
     font-family: var(--font-display); font-weight: 700;
     font-size: 15px;
     margin: 0 0 14px;
-    color: var(--teal-dark);
+    color: var(--teal-text);
     display: flex; align-items: center; gap: 8px;
   }
   .card h2 .num {
     width: 22px; height: 22px; border-radius: 50%;
-    background: var(--teal-light); color: var(--teal-dark);
+    background: var(--teal-light); color: var(--teal-text);
     font-size: 12px; display: flex; align-items: center; justify-content: center;
     font-weight: 700;
   }
@@ -104,7 +140,7 @@
   .field { margin-bottom: 14px; }
   input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=time], select, textarea {
     width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
-    font-size: 14px; color: var(--ink); background: #fff; font-family: inherit;
+    font-size: 14px; color: var(--ink); background: var(--bg); font-family: inherit;
   }
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
 
@@ -112,19 +148,19 @@
   .choice {
     border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px;
     font-size: 13.5px; cursor: pointer; display: flex; align-items: center; gap: 7px;
-    background: #fff; user-select: none;
+    background: var(--bg); user-select: none;
   }
   .choice input { margin: 0; }
   .area-qty { width: 46px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; margin-left: 2px; }
   .others-specify { width: 180px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; margin-left: 4px; }
-  .choice.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); font-weight: 600; }
+  .choice.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-text); font-weight: 600; }
 
   .toggle-group { display: flex; gap: 10px; margin-bottom: 4px; }
   .toggle-btn {
     flex: 1; text-align: center; padding: 12px; border-radius: 10px; border: 1.5px solid var(--border);
-    cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); background: #fff;
+    cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); background: var(--bg);
   }
-  .toggle-btn.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); }
+  .toggle-btn.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-text); }
 
   .hidden { display: none !important; }
 
@@ -133,7 +169,7 @@
     padding: 14px 16px; margin-top: 4px;
   }
   .estimate-box .row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 3px 0; }
-  .estimate-box .total { font-size: 17px; font-weight: 700; color: var(--teal-dark); border-top: 1px dashed #a8d6da; margin-top: 6px; padding-top: 8px; }
+  .estimate-box .total { font-size: 17px; font-weight: 700; color: var(--teal-text); border-top: 1px dashed #a8d6da; margin-top: 6px; padding-top: 8px; }
   .estimate-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
 
   button.primary {
@@ -144,13 +180,13 @@
   }
   button.primary:hover { background: var(--teal-dark); transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 20px rgba(14,124,134,0.32); }
   button.secondary {
-    background: #fff; color: var(--teal-dark); border: 1.5px solid var(--teal);
+    background: var(--bg); color: var(--teal-text); border: 1.5px solid var(--teal);
     border-radius: 9px; padding: 11px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
   button.secondary:hover { background: var(--teal-light); transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
   button.add-property {
-    background: #fff; color: var(--teal-dark); border: 1.5px dashed var(--teal);
+    background: var(--bg); color: var(--teal-text); border: 1.5px dashed var(--teal);
     border-radius: 9px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     width: 100%; margin-bottom: 14px;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
@@ -167,12 +203,12 @@
 
   #proposalSection { display: none; }
   .proposal-header { text-align: center; margin-bottom: 18px; }
-  .proposal-header .title { font-size: 20px; font-weight: 800; color: var(--teal-dark); }
+  .proposal-header .title { font-size: 20px; font-weight: 800; color: var(--teal-text); }
   .proposal-header .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .summary-line { background: var(--teal-light); border-radius: 8px; padding: 12px 14px; font-size: 14px; margin-bottom: 16px; }
   .price-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
   .price-table td { padding: 8px 4px; font-size: 14px; border-bottom: 1px solid var(--border); }
-  .price-table tr.total td { font-weight: 800; font-size: 16px; color: var(--teal-dark); border-bottom: none; padding-top: 12px; }
+  .price-table tr.total td { font-weight: 800; font-size: 16px; color: var(--teal-text); border-bottom: none; padding-top: 12px; }
   .cta-box {
     background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: #fff;
     border-radius: 10px; padding: 16px 18px; margin: 18px 0; font-size: 14px; text-align: center;
@@ -192,7 +228,7 @@
   .grand-total-box span.label { font-size: 13px; font-weight: 600; opacity: 0.9; }
 
   .property-proposal-block { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
-  .property-proposal-block h3 { font-size: 14px; color: var(--teal-dark); margin: 0 0 8px; }
+  .property-proposal-block h3 { font-size: 14px; color: var(--teal-text); margin: 0 0 8px; }
   .ref-mini { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   .ref-mini b { color: var(--ink); }
 
@@ -222,7 +258,7 @@
   .status-pill.ok { background: #dcfce7; color: #166534; }
   .slot-btn {
     display: inline-block; padding: 8px 12px; margin: 4px 6px 0 0; border-radius: 7px;
-    border: 1.5px solid var(--teal); background: #fff; color: var(--teal-dark);
+    border: 1.5px solid var(--teal); background: var(--bg); color: var(--teal-text);
     font-size: 13px; font-weight: 600; cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
@@ -244,7 +280,7 @@
 
   .footer-note { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 20px; }
   .edit-link { text-align: center; margin-top: 10px; }
-  .edit-link a { color: var(--teal-dark); font-size: 13px; cursor: pointer; text-decoration: underline; }
+  .edit-link a { color: var(--teal-text); font-size: 13px; cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -256,6 +292,10 @@
       <h1>Primo Care</h1>
       <p>Professional Cleaning Services &mdash; Service Request &amp; Proposal</p>
     </div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+    </button>
   </header>
 
   <div id="formSection">
@@ -318,7 +358,7 @@
       </div>
 
       <div id="refIdsBox" style="background:#f7f9fa;border:1px dashed var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;">
-        <b style="color:var(--teal-dark);">Save these reference numbers</b> — you'll need your Client ID and each property's Order ID to cancel or reschedule.
+        <b style="color:var(--teal-text);">Save these reference numbers</b> — you'll need your Client ID and each property's Order ID to cancel or reschedule.
         <div style="margin-top:6px;">Client ID (shared across all your properties): <b id="refClientId"></b></div>
       </div>
 
@@ -347,16 +387,16 @@
   <div id="thankYouSection" class="hidden">
     <div class="card" style="text-align:center;width:100%;">
       <div style="font-size:44px;margin-bottom:8px;">&#127881;</div>
-      <h2 style="margin:0 0 14px;color:var(--teal-dark);font-size:24px;">Thank You!</h2>
+      <h2 style="margin:0 0 14px;color:var(--teal-text);font-size:24px;">Thank You!</h2>
       <p id="thankYouMessage" style="margin:0 auto 26px;max-width:440px;color:var(--ink);font-size:17px;line-height:1.5;"></p>
       <button class="primary" id="closePageBtn">Close Page</button>
       <div id="closeFallbackLink" class="hidden" style="margin-top:14px;">
-        <a href="/" style="color:var(--teal-dark);font-size:13px;text-decoration:underline;">&larr; Or return to our homepage</a>
+        <a href="/" style="color:var(--teal-text);font-size:13px;text-decoration:underline;">&larr; Or return to our homepage</a>
       </div>
     </div>
   </div>
 
-  <div class="footer-note">Primo Care Cleaning Services &middot; <a href="/cancel-reschedule" style="color:var(--teal-dark);">Manage an existing booking</a></div>
+  <div class="footer-note">Primo Care Cleaning Services &middot; <a href="/cancel-reschedule" style="color:var(--teal-text);">Manage an existing booking</a></div>
 </div>
 
 <script>
@@ -1554,6 +1594,23 @@
       body: JSON.stringify({ orderIds: orderIds, to: state.client.email, subject: 'Your Primo Care Cleaning Proposal (' + state.properties.length + ' Propert' + (state.properties.length === 1 ? 'y' : 'ies') + ')', body: plain, htmlBody: html })
     });
   }
+})();
+
+(function() {
+  var toggle = document.getElementById('themeToggle');
+  if (!toggle) return;
+  function current() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+  function reflect() {
+    var dark = current() === 'dark';
+    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+  reflect();
+  toggle.addEventListener('click', function() {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('primo-theme', next); } catch (e) {}
+    reflect();
+  });
 })();
 </script>
 </body>
