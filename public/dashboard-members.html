@@ -54,6 +54,12 @@
     transition: background 0.18s ease, transform 0.18s ease;
   }
   header.brand a.back-link:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
+  header.brand button.logout-btn {
+    background: rgba(255,255,255,0.16); color: #fff; border: none; font-weight: 700;
+    font-size: 12.5px; padding: 9px 15px; border-radius: 8px; white-space: nowrap; cursor: pointer;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  header.brand button.logout-btn:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
   @keyframes drop-down-in {
     from { opacity: 0; transform: translateY(-50px); }
     to { opacity: 1; transform: translateY(0); }
@@ -81,6 +87,16 @@
 
   .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
   .toast { background: #ecfdf3; color: #166534; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+  .hidden { display: none !important; }
+  .login-wrap { max-width: 360px; margin: 40px auto; }
+  .login-card .field { margin-bottom: 14px; }
+  button.login-submit {
+    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    font-weight: 700; font-size: 14px; padding: 11px 16px; cursor: pointer; margin-top: 4px;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  button.login-submit:hover { background: var(--teal-dark); transform: translateY(-1px); }
+  button.login-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
 
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
   .field { display: flex; flex-direction: column; gap: 5px; }
@@ -175,45 +191,66 @@
         <p>Add and manage staff and admin accounts</p>
       </div>
     </div>
-    <a class="back-link" href="/dashboard">&larr; Back to Dashboard</a>
+    <div class="header-actions" style="display:flex; gap:8px; align-items:center;">
+      <a class="back-link" href="/dashboard">&larr; Back to Dashboard</a>
+      <button class="logout-btn hidden" id="logoutBtn">Log Out</button>
+    </div>
   </header>
 
-  <div id="errorBox"></div>
-  <div id="toastBox"></div>
-
-  <div class="card">
-    <h2 class="section-title">Add New Member</h2>
-    <form id="addForm">
-      <div class="form-grid">
-        <div class="field">
-          <label for="fullName">Full Name</label>
-          <input type="text" id="fullName" placeholder="Jane Doe">
-        </div>
-        <div class="field">
-          <label for="username">Username <span style="color:var(--red);">*</span></label>
-          <input type="text" id="username" placeholder="jane" required>
-        </div>
-        <div class="field">
-          <label for="password">Password <span style="color:var(--red);">*</span></label>
-          <input type="password" id="password" placeholder="At least 6 characters" required minlength="6">
-        </div>
-        <div class="field">
-          <label for="role">Role <span style="color:var(--red);">*</span></label>
-          <select id="role" required>
-            <option value="">Select a role&hellip;</option>
-            <option value="Staff">Staff &mdash; access to /staff only</option>
-            <option value="Admin">Admin &mdash; access to /staff and /dashboard</option>
-          </select>
-        </div>
+  <div id="loginWrap" class="login-wrap hidden">
+    <div class="card login-card">
+      <h2 class="section-title" style="text-align:center;">Log In</h2>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="loginUsername" autocomplete="username">
       </div>
-      <div class="hint" style="margin-bottom:14px;">Staff members can only access the job list and calendar. Admins can access both the staff page and this dashboard.</div>
-      <button class="primary" type="submit" id="addBtn">Add Member</button>
-    </form>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password">
+      </div>
+      <div id="loginError" class="error-box hidden"></div>
+      <button class="login-submit" id="loginBtn">Log In</button>
+    </div>
   </div>
 
-  <div class="card">
-    <h2 class="section-title">Company Members</h2>
-    <div id="membersTableWrap"></div>
+  <div id="mainContent" class="hidden">
+    <div id="errorBox"></div>
+    <div id="toastBox"></div>
+
+    <div class="card">
+      <h2 class="section-title">Add New Member</h2>
+      <form id="addForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="fullName">Full Name</label>
+            <input type="text" id="fullName" placeholder="Jane Doe">
+          </div>
+          <div class="field">
+            <label for="username">Username <span style="color:var(--red);">*</span></label>
+            <input type="text" id="username" placeholder="jane" required>
+          </div>
+          <div class="field">
+            <label for="password">Password <span style="color:var(--red);">*</span></label>
+            <input type="password" id="password" placeholder="At least 6 characters" required minlength="6">
+          </div>
+          <div class="field">
+            <label for="role">Role <span style="color:var(--red);">*</span></label>
+            <select id="role" required>
+              <option value="">Select a role&hellip;</option>
+              <option value="Staff">Staff &mdash; access to /schedule only</option>
+              <option value="Admin">Admin &mdash; access to /schedule and /dashboard</option>
+            </select>
+          </div>
+        </div>
+        <div class="hint" style="margin-bottom:14px;">Staff members can only access the job list and calendar. Admins can access both the schedule page and this dashboard.</div>
+        <button class="primary" type="submit" id="addBtn">Add Member</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Company Members</h2>
+      <div id="membersTableWrap"></div>
+    </div>
   </div>
 </div>
 
@@ -248,8 +285,8 @@
       <div class="field">
         <label for="newRole">New Role</label>
         <select id="newRole" required>
-          <option value="Staff">Staff &mdash; access to /staff only</option>
-          <option value="Admin">Admin &mdash; access to /staff and /dashboard</option>
+          <option value="Staff">Staff &mdash; access to /schedule only</option>
+          <option value="Admin">Admin &mdash; access to /schedule and /dashboard</option>
         </select>
       </div>
       <div class="field">
@@ -477,7 +514,68 @@ $('roleForm').addEventListener('submit', function (e) {
     });
 });
 
-loadMembers();
+// ---- Login gate ----
+function showLoggedOut() {
+  $('mainContent').classList.add('hidden');
+  $('logoutBtn').classList.add('hidden');
+  $('loginWrap').classList.remove('hidden');
+}
+
+function showLoggedIn() {
+  $('loginWrap').classList.add('hidden');
+  $('mainContent').classList.remove('hidden');
+  $('logoutBtn').classList.remove('hidden');
+  loadMembers();
+}
+
+function checkAuth() {
+  fetch('/api/whoami')
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+    .then(function () { showLoggedIn(); })
+    .catch(function () { showLoggedOut(); });
+}
+
+function attemptLogin() {
+  var username = $('loginUsername').value.trim();
+  var password = $('loginPassword').value;
+  if (!username || !password) return;
+  $('loginBtn').disabled = true;
+  $('loginBtn').textContent = 'Logging in…';
+  $('loginError').classList.add('hidden');
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password })
+  })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      $('loginBtn').disabled = false;
+      $('loginBtn').textContent = 'Log In';
+      if (!res.ok) {
+        $('loginError').textContent = (res.data && res.data.error) || 'Login failed.';
+        $('loginError').classList.remove('hidden');
+        return;
+      }
+      $('loginPassword').value = '';
+      showLoggedIn();
+    })
+    .catch(function () {
+      $('loginBtn').disabled = false;
+      $('loginBtn').textContent = 'Log In';
+      $('loginError').textContent = 'Something went wrong. Please try again.';
+      $('loginError').classList.remove('hidden');
+    });
+}
+
+$('loginBtn').addEventListener('click', attemptLogin);
+$('loginPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') attemptLogin(); });
+$('loginUsername').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('loginPassword').focus(); });
+
+$('logoutBtn').addEventListener('click', function () {
+  fetch('/api/logout', { method: 'POST' }).then(function () { showLoggedOut(); });
+});
+
+checkAuth();
 </script>
 </body>
 </html>

@@ -566,14 +566,80 @@ app.get('/cancel-reschedule', (req, res) => {
 // Staff-only: job completion
 // ---------------------------------------------------------------------------
 
-// HTTP Basic Auth gate for everything under /staff and /api/staff. Credentials live in env vars,
-// never in code. Compared with timingSafeEqual so a slow string compare can't leak how many
+// Session-cookie gate for everything under /schedule, /dashboard, and their /api/staff +
+// /api/dashboard data routes. Credentials (env-var break-glass accounts, or Members-table
+// accounts) live server-side only; the browser just holds a signed, expiring session token —
+// there's no server-side session store to manage, so this survives a redeploy/restart fine
+// (existing sessions are simply invalidated, same as a Basic Auth browser cache would have
+// been cleared). Compared with timingSafeEqual so a slow string compare can't leak how many
 // characters matched.
 function safeEqual(a, b) {
   const bufA = Buffer.from(String(a));
   const bufB = Buffer.from(String(b));
   if (bufA.length !== bufB.length) return false;
   return crypto.timingSafeEqual(bufA, bufB);
+}
+
+// Falls back to a random secret generated at boot if SESSION_SECRET isn't set, so the app never
+// refuses to start — but every existing session is invalidated on every restart in that case
+// (fine for local dev; set SESSION_SECRET in Render's environment for real deployments so staff
+// don't get logged out every time the app redeploys).
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+if (!process.env.SESSION_SECRET) {
+  console.warn('SESSION_SECRET is not set — using a random per-boot secret. Every login will be invalidated on the next restart/redeploy. Set SESSION_SECRET in your environment to keep sessions across restarts.');
+}
+const SESSION_COOKIE = 'pc_session';
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours — roughly a work shift.
+
+function signSession(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  return body + '.' + sig;
+}
+
+// Returns the decoded { u, r, n, exp } payload for a valid, unexpired, correctly-signed token,
+// or null for anything else (missing, tampered, expired, malformed) — callers treat all of
+// those identically, same as a wrong password.
+function verifySession(token) {
+  if (!token) return null;
+  const parts = String(token).split('.');
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  if (sig.length !== expectedSig.length || !safeEqual(sig, expectedSig)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!payload.exp || Date.now() > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// No cookie-parser dependency in this app — cookies are rare enough (just this one) that a
+// tiny manual parse is simpler than adding a package for it.
+function parseCookies(req) {
+  const header = req.headers.cookie || '';
+  const map = {};
+  header.split(';').forEach(part => {
+    const idx = part.indexOf('=');
+    if (idx === -1) return;
+    const key = part.slice(0, idx).trim();
+    if (!key) return;
+    map[key] = decodeURIComponent(part.slice(idx + 1).trim());
+  });
+  return map;
+}
+
+function setSessionCookie(res, payload) {
+  const token = signSession(payload);
+  const maxAgeSec = Math.floor(SESSION_TTL_MS / 1000);
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax${secure}`);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
 }
 
 // Parses "user1:pass1,user2:pass2" into a { username: password } map. Used for STAFF_USERS (any
@@ -616,45 +682,72 @@ async function findMember(username) {
   return { recordId: rec.id, username: f['Username'] || '', password: f['Password'] || '', fullName: f['Full Name'] || '', role: f['Role'] || '' };
 }
 
-// Builds a Basic Auth middleware that accepts either a break-glass env-var login, or a Members
-// table account whose Role is in allowedRoles. Staff role can only pass the staffAuth gate;
-// Admin role passes both — that's the entire access model, driven by one field per person.
-function makeRoleAuth(breakGlassUsers, allowedRoles, realm) {
-  return async function (req, res, next) {
-    const header = req.headers.authorization || '';
-    const [scheme, encoded] = header.split(' ');
-    if (scheme === 'Basic' && encoded) {
-      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-      const sep = decoded.indexOf(':');
-      const reqUser = sep === -1 ? decoded : decoded.slice(0, sep);
-      const reqPass = sep === -1 ? '' : decoded.slice(sep + 1);
-
-      const breakGlassPass = breakGlassUsers[reqUser];
-      if (breakGlassPass && safeEqual(reqPass, breakGlassPass)) {
-        req.member = { username: reqUser, role: 'Admin', fullName: reqUser };
-        return next();
-      }
-
-      try {
-        const member = await findMember(reqUser);
-        if (member && member.password && allowedRoles.includes(member.role) && safeEqual(reqPass, member.password)) {
-          req.member = member;
-          return next();
-        }
-      } catch (err) {
-        console.error('Member lookup failed during auth:', err.message);
-      }
+// Builds a session-cookie-checking middleware for API routes: valid, unexpired session with a
+// role in allowedRoles passes; anything else gets a 401 JSON response (never HTML) so the
+// page's own JS can show the login form instead of the browser's native auth prompt. Staff role
+// only passes the staffAuth gate; Admin passes both — same access model as before, just checked
+// against a session token instead of a Basic Auth header on every request.
+function makeRoleAuth(allowedRoles) {
+  return function (req, res, next) {
+    const session = verifySession(parseCookies(req)[SESSION_COOKIE]);
+    if (session && allowedRoles.includes(session.r)) {
+      req.member = { username: session.u, role: session.r, fullName: session.n };
+      return next();
     }
-    res.set('WWW-Authenticate', 'Basic realm="' + realm + '"');
-    return res.status(401).send('Authentication required.');
+    return res.status(401).json({ error: 'not_authenticated' });
   };
 }
 
-const staffAuth = makeRoleAuth(BREAK_GLASS_STAFF, ['Admin', 'Staff'], 'Primo Care Staff');
-const dashboardAuth = makeRoleAuth(BREAK_GLASS_DASHBOARD, ['Admin'], 'Primo Care Dashboard');
+const staffAuth = makeRoleAuth(['Admin', 'Staff']);
+const dashboardAuth = makeRoleAuth(['Admin']);
 
-app.get('/staff', staffAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'staff.html'));
+// Single login endpoint for both /schedule and /dashboard: checks the submitted credentials
+// against both break-glass env-var lists and the Members table, and issues one shared session
+// cookie carrying whatever role the account actually has. Per-route access is then just
+// "does this role appear in this route's allowedRoles" — identical semantics to the old
+// Basic Auth gates, just evaluated from a cookie instead of a header.
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
+  }
+
+  const breakGlassPass = BREAK_GLASS_STAFF[username] || BREAK_GLASS_DASHBOARD[username];
+  if (breakGlassPass && safeEqual(password, breakGlassPass)) {
+    setSessionCookie(res, { u: username, r: 'Admin', n: username, exp: Date.now() + SESSION_TTL_MS });
+    return res.json({ ok: true, role: 'Admin', fullName: username });
+  }
+
+  try {
+    const member = await findMember(username);
+    if (member && member.password && MEMBER_ROLES.includes(member.role) && safeEqual(password, member.password)) {
+      setSessionCookie(res, { u: member.username, r: member.role, n: member.fullName, exp: Date.now() + SESSION_TTL_MS });
+      return res.json({ ok: true, role: member.role, fullName: member.fullName });
+    }
+  } catch (err) {
+    console.error('Member lookup failed during login:', err.message);
+  }
+  return res.status(401).json({ error: 'Incorrect username or password.' });
+});
+
+app.post('/api/logout', (req, res) => {
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+// Lets a page's own JS check "am I logged in, and as what role" on load, so it can decide
+// whether to show the login form or the real content.
+app.get('/api/whoami', (req, res) => {
+  const session = verifySession(parseCookies(req)[SESSION_COOKIE]);
+  if (!session) return res.status(401).json({ error: 'not_authenticated' });
+  res.json({ username: session.u, role: session.r, fullName: session.n });
+});
+
+// The page itself is always servable now (no server-side gate) — its own JS calls /api/whoami
+// on load and shows a login form in place of the real content when that comes back 401. Only
+// the data endpoints below stay behind staffAuth/dashboardAuth.
+app.get('/schedule', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'schedule.html'));
 });
 
 // Lists every booking that's still Scheduled or Ongoing (i.e. not yet Completed/Cancelled/
@@ -1204,7 +1297,7 @@ app.post('/pay/:orderId/bank-transfer', upload.single('proof'), async (req, res)
   }
 });
 
-app.get('/dashboard', dashboardAuth, (req, res) => {
+app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'staff-dashboard.html'));
 });
 
@@ -1344,12 +1437,12 @@ app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Member management (admin-only) — add/list/remove login accounts for /staff and /dashboard.
+// Member management (admin-only) — add/list/remove login accounts for /schedule and /dashboard.
 // ---------------------------------------------------------------------------
 
 const MEMBER_ROLES = ['Admin', 'Staff'];
 
-app.get('/dashboard/members', dashboardAuth, (req, res) => {
+app.get('/dashboard/members', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard-members.html'));
 });
 

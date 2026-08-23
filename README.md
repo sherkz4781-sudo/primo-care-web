@@ -98,10 +98,10 @@ client picks how they'll pay:
   session for the exact amount due.
 - **Cash or Check** — one click records which one the client intends to use. This is just a
   stated intent, not a confirmed payment — `Payment Status` stays `Pending` until a staff member
-  actually has the money in hand and clicks **Mark Paid** on `/staff`.
+  actually has the money in hand and clicks **Mark Paid** on `/schedule`.
 - **Bank Transfer** — the client uploads a screenshot/photo of their transfer confirmation
   (stored as an Airtable attachment on the order, no separate file host needed). Staff see that
-  image right on the "Awaiting Payment" card on `/staff` before confirming — so Mark Paid there
+  image right on the "Awaiting Payment" card on `/schedule` before confirming — so Mark Paid there
   means "verified against real proof," not just trusting the client's word.
 
 **Every "Mark Paid" — however the payment arrived — records who confirmed it.** The `Received By`
@@ -151,13 +151,18 @@ this README ever change.
 
 ## Staff & dashboard logins
 
-`/staff` (job list + calendar) and `/dashboard` (business KPIs) are separate HTTP Basic Auth
-logins, role-driven by a **Members** table in Airtable:
+`/schedule` (job list + calendar) and `/dashboard` (business KPIs) each show a branded Log In
+form — username and password, no browser popup — backed by a signed session cookie, role-driven
+by a **Members** table in Airtable:
 
 - Go to **`/dashboard/members`** (Admin login required) to add, view, or remove accounts.
 - Each member has a Username, Password, Full Name, and Role (`Admin` or `Staff`).
-- **Staff** role unlocks `/staff` only. **Admin** role unlocks both `/staff` and `/dashboard`
-  (including the members page itself, so only admins can manage other accounts).
+- **Staff** role unlocks `/schedule` only. **Admin** role unlocks both `/schedule` and
+  `/dashboard` (including the members page itself, so only admins can manage other accounts).
+- Sessions last 12 hours and are cleared with the **Log Out** button in the header. Set
+  `SESSION_SECRET` in your environment (any long random string) so logins survive a
+  redeploy/restart — without it, the app still works, but a fresh secret is generated on every
+  boot and everyone gets logged out.
 - **Removing a member or changing their role requires the owner's credentials, entered fresh,
   every time.** Any Admin can view the list or add someone, but clicking Remove or Edit Role
   opens a prompt for an owner username/password that must match a `DASHBOARD_USERS` break-glass

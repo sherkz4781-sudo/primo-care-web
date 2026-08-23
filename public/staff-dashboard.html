@@ -50,12 +50,12 @@
   header.brand h1 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 21px; }
   header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
   header.brand .actions { display: flex; align-items: center; gap: 10px; }
-  header.brand a.staff-link, header.brand button.refresh {
+  header.brand a.staff-link, header.brand button.refresh, header.brand button.logout-btn {
     background: rgba(255,255,255,0.16); color: #fff; text-decoration: none; font-weight: 700;
     font-size: 12.5px; padding: 9px 15px; border-radius: 8px; white-space: nowrap; border: none; cursor: pointer;
     transition: background 0.18s ease, transform 0.18s ease;
   }
-  header.brand a.staff-link:hover, header.brand button.refresh:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
+  header.brand a.staff-link:hover, header.brand button.refresh:hover, header.brand button.logout-btn:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
   header.brand button.refresh { background: #fff; color: var(--teal-dark); }
   header.brand button.refresh:hover { background: #eef8f8; }
   @keyframes drop-down-in {
@@ -77,6 +77,27 @@
   }
 
   .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
+  .hidden { display: none !important; }
+  .login-wrap { max-width: 360px; margin: 40px auto; }
+  .login-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 26px 24px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  }
+  .login-card h2 { font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 0 0 18px; text-align: center; color: var(--ink); }
+  .login-card .field { margin-bottom: 14px; }
+  .login-card label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
+  .login-card input[type=text], .login-card input[type=password] {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; color: var(--ink); background: #fff; font-family: inherit;
+  }
+  .login-card input:focus { outline: none; border-color: var(--teal); }
+  button.login-submit {
+    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    font-weight: 700; font-size: 14px; padding: 11px 16px; cursor: pointer; margin-top: 4px;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+  button.login-submit:hover { background: var(--teal-dark); transform: translateY(-1px); }
+  button.login-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
   .updated { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
 
   h2.section-title {
@@ -210,58 +231,77 @@
     <div class="actions">
       <button class="refresh" id="refreshBtn">Refresh</button>
       <a class="staff-link" href="/dashboard/members">List of Members</a>
+      <button class="logout-btn hidden" id="logoutBtn">Log Out</button>
     </div>
   </header>
 
-  <div id="errorBox"></div>
-  <div class="updated" id="updatedLabel">Loading&hellip;</div>
-
-  <div class="kpi-grid" id="kpiGrid"></div>
-
-  <h2 class="section-title"><span class="dot">&#9679;</span> Overview</h2>
-  <div class="overview-panel">
-    <div class="trend-card">
-      <div class="totals">
-        <div><div class="t-label">Total Bookings</div><div class="t-value" id="totalBookingsBig">&mdash;</div></div>
-        <div><div class="t-label">Total Booked Value</div><div class="t-value" id="totalValueBig">&mdash;</div></div>
+  <div id="loginWrap" class="login-wrap hidden">
+    <div class="login-card">
+      <h2>Log In</h2>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="loginUsername" autocomplete="username">
       </div>
-      <div class="legend-row">
-        <span><span class="sw bar"></span>Bookings</span>
-        <span><span class="sw line"></span>Booked Value</span>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password">
       </div>
-      <div id="trendChart"></div>
-    </div>
-    <div class="donut-card">
-      <h3>Job Status Breakdown</h3>
-      <div id="donutChart"></div>
-      <div class="donut-legend" id="donutLegend"></div>
+      <div id="loginError" class="error-box hidden"></div>
+      <button class="login-submit" id="loginBtn">Log In</button>
     </div>
   </div>
 
-  <h2 class="section-title"><span class="dot">&#9679;</span> Service Performance</h2>
-  <div class="table-card">
-    <table class="perf">
-      <thead>
-        <tr>
-          <th>Service</th>
-          <th class="num">Bookings</th>
-          <th class="num">Revenue</th>
-          <th class="num">Avg / Visit</th>
-        </tr>
-      </thead>
-      <tbody id="perfBody"></tbody>
-      <tfoot id="perfFoot"></tfoot>
-    </table>
-  </div>
+  <div id="mainContent" class="hidden">
+    <div id="errorBox"></div>
+    <div class="updated" id="updatedLabel">Loading&hellip;</div>
 
-  <div class="panel-grid">
-    <div class="panel">
-      <h2 class="section-title" style="margin-top:0;">Upcoming Jobs</h2>
-      <div id="upcomingList"></div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <h2 class="section-title"><span class="dot">&#9679;</span> Overview</h2>
+    <div class="overview-panel">
+      <div class="trend-card">
+        <div class="totals">
+          <div><div class="t-label">Total Bookings</div><div class="t-value" id="totalBookingsBig">&mdash;</div></div>
+          <div><div class="t-label">Total Booked Value</div><div class="t-value" id="totalValueBig">&mdash;</div></div>
+        </div>
+        <div class="legend-row">
+          <span><span class="sw bar"></span>Bookings</span>
+          <span><span class="sw line"></span>Booked Value</span>
+        </div>
+        <div id="trendChart"></div>
+      </div>
+      <div class="donut-card">
+        <h3>Job Status Breakdown</h3>
+        <div id="donutChart"></div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
     </div>
-    <div class="panel">
-      <h2 class="section-title" style="margin-top:0;">Recent Leads</h2>
-      <div id="recentLeadsList"></div>
+
+    <h2 class="section-title"><span class="dot">&#9679;</span> Service Performance</h2>
+    <div class="table-card">
+      <table class="perf">
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th class="num">Bookings</th>
+            <th class="num">Revenue</th>
+            <th class="num">Avg / Visit</th>
+          </tr>
+        </thead>
+        <tbody id="perfBody"></tbody>
+        <tfoot id="perfFoot"></tfoot>
+      </table>
+    </div>
+
+    <div class="panel-grid">
+      <div class="panel">
+        <h2 class="section-title" style="margin-top:0;">Upcoming Jobs</h2>
+        <div id="upcomingList"></div>
+      </div>
+      <div class="panel">
+        <h2 class="section-title" style="margin-top:0;">Recent Leads</h2>
+        <div id="recentLeadsList"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -433,7 +473,69 @@ function load() {
 }
 
 $('refreshBtn').addEventListener('click', load);
-load();
+
+// ---- Login gate ----
+function showLoggedOut() {
+  $('mainContent').classList.add('hidden');
+  $('logoutBtn').classList.add('hidden');
+  $('loginWrap').classList.remove('hidden');
+}
+
+function showLoggedIn() {
+  $('loginWrap').classList.add('hidden');
+  $('mainContent').classList.remove('hidden');
+  $('logoutBtn').classList.remove('hidden');
+  load();
+}
+
+function checkAuth() {
+  fetch('/api/whoami')
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+    .then(function () { showLoggedIn(); })
+    .catch(function () { showLoggedOut(); });
+}
+
+function attemptLogin() {
+  var username = $('loginUsername').value.trim();
+  var password = $('loginPassword').value;
+  if (!username || !password) return;
+  $('loginBtn').disabled = true;
+  $('loginBtn').textContent = 'Logging in…';
+  $('loginError').classList.add('hidden');
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password })
+  })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      $('loginBtn').disabled = false;
+      $('loginBtn').textContent = 'Log In';
+      if (!res.ok) {
+        $('loginError').textContent = (res.data && res.data.error) || 'Login failed.';
+        $('loginError').classList.remove('hidden');
+        return;
+      }
+      $('loginPassword').value = '';
+      showLoggedIn();
+    })
+    .catch(function () {
+      $('loginBtn').disabled = false;
+      $('loginBtn').textContent = 'Log In';
+      $('loginError').textContent = 'Something went wrong. Please try again.';
+      $('loginError').classList.remove('hidden');
+    });
+}
+
+$('loginBtn').addEventListener('click', attemptLogin);
+$('loginPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') attemptLogin(); });
+$('loginUsername').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('loginPassword').focus(); });
+
+$('logoutBtn').addEventListener('click', function () {
+  fetch('/api/logout', { method: 'POST' }).then(function () { showLoggedOut(); });
+});
+
+checkAuth();
 </script>
 </body>
 </html>
