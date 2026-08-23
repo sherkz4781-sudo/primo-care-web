@@ -146,42 +146,42 @@
     to { opacity: 1; transform: translateY(0); }
   }
   header.hero h1, header.hero p.lead, header.hero .btn-outline, .quote-card {
-    animation: fade-up-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: fade-up-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  header.hero h1 { animation-delay: 0.15s; }
-  header.hero p.lead { animation-delay: 0.32s; }
-  header.hero .btn-outline { animation-delay: 0.48s; }
-  .quote-card { animation-delay: 0.4s; }
+  header.hero h1 { animation-delay: 0.2s; }
+  header.hero p.lead { animation-delay: 0.42s; }
+  header.hero .btn-outline { animation-delay: 0.64s; }
+  .quote-card { animation-delay: 0.52s; }
 
   /* ---- Scroll-triggered reveal animations ---- */
   .reveal {
     opacity: 0; transform: translateY(42px);
-    transition: opacity 1.15s cubic-bezier(0.22,1,0.36,1), transform 1.15s cubic-bezier(0.22,1,0.36,1);
+    transition: opacity 1.7s cubic-bezier(0.22,1,0.36,1), transform 1.7s cubic-bezier(0.22,1,0.36,1), background-color 0.35s ease, border-color 0.35s ease;
   }
   .reveal.in-view { opacity: 1; transform: translateY(0); }
   .reveal-scale {
     opacity: 0; transform: scale(0.88) translateY(24px);
-    transition: opacity 1.25s cubic-bezier(0.22,1,0.36,1), transform 1.25s cubic-bezier(0.22,1,0.36,1);
+    transition: opacity 1.8s cubic-bezier(0.22,1,0.36,1), transform 1.8s cubic-bezier(0.22,1,0.36,1);
   }
   .reveal-scale.in-view { opacity: 1; transform: scale(1) translateY(0); }
   .reveal-right {
     opacity: 0; transform: translateX(70px);
-    transition: opacity 1.15s cubic-bezier(0.22,1,0.36,1), transform 1.15s cubic-bezier(0.22,1,0.36,1);
+    transition: opacity 1.7s cubic-bezier(0.22,1,0.36,1), transform 1.7s cubic-bezier(0.22,1,0.36,1);
   }
   .reveal-right.in-view { opacity: 1; transform: translateX(0); }
   .tile-grid .tile:nth-child(1) { transition-delay: 0ms; }
-  .tile-grid .tile:nth-child(2) { transition-delay: 150ms; }
-  .tile-grid .tile:nth-child(3) { transition-delay: 300ms; }
+  .tile-grid .tile:nth-child(2) { transition-delay: 220ms; }
+  .tile-grid .tile:nth-child(3) { transition-delay: 440ms; }
   .trio > div:nth-child(1) { transition-delay: 0ms; }
-  .trio > div:nth-child(2) { transition-delay: 150ms; }
-  .trio > div:nth-child(3) { transition-delay: 300ms; }
+  .trio > div:nth-child(2) { transition-delay: 220ms; }
+  .trio > div:nth-child(3) { transition-delay: 440ms; }
   .testimonial-grid .testimonial-card:nth-child(1) { transition-delay: 0ms; }
-  .testimonial-grid .testimonial-card:nth-child(2) { transition-delay: 150ms; }
-  .testimonial-grid .testimonial-card:nth-child(3) { transition-delay: 300ms; }
+  .testimonial-grid .testimonial-card:nth-child(2) { transition-delay: 220ms; }
+  .testimonial-grid .testimonial-card:nth-child(3) { transition-delay: 440ms; }
   .quote-banner > *:nth-child(1) { transition-delay: 0ms; }
-  .quote-banner > *:nth-child(2) { transition-delay: 150ms; }
-  .quote-banner > *:nth-child(3) { transition-delay: 300ms; }
-  .split > div.reveal { transition-delay: 140ms; }
+  .quote-banner > *:nth-child(2) { transition-delay: 220ms; }
+  .quote-banner > *:nth-child(3) { transition-delay: 440ms; }
+  .split > div.reveal { transition-delay: 200ms; }
   @media (prefers-reduced-motion: reduce) {
     header.hero .hero-bg { animation: none; }
     header.hero h1, header.hero p.lead, header.hero .btn-outline, .quote-card { animation: none; }
@@ -210,8 +210,8 @@
   /* ---- Category photo tiles ---- */
   .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .tile-grid { grid-template-columns: 1fr; } }
-  .tile { border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease; }
-  .tile:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); }
+  .tile { border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); }
+  .tile:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); transition: box-shadow 0.25s ease, transform 0.25s ease; }
   .tile .photo {
     height: 170px; position: relative; background-size: cover; background-position: center;
     transition: transform 0.4s ease;
@@ -225,13 +225,13 @@
   .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); }
   .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); }
   .tile .label {
-    background: rgba(10,30,32,0.08);
-    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
-    box-shadow: inset 0 5px 8px -6px rgba(10,30,32,0.25);
+    background: transparent;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: inset 0 5px 8px -6px rgba(0,0,0,0.15);
     color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 14px; text-align: center; padding: 9px;
-    transition: background-color 0.25s ease, color 0.25s ease;
+    transition: backdrop-filter 0.25s ease, color 0.25s ease;
   }
-  .tile:hover .label { background: rgba(10,30,32,0.14); }
+  .tile:hover .label { backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); }
 
   /* ---- 3-col About/Why/What ---- */
   .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; max-width: 1000px; margin: 0 auto; }
@@ -245,9 +245,9 @@
   @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
   .split .photo-frame {
     height: 280px; border-radius: var(--radius-md); overflow: hidden;
-    box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease;
+    box-shadow: var(--shadow-float);
   }
-  .split .photo-frame:hover { box-shadow: var(--shadow-float-lg); }
+  .split .photo-frame:hover { box-shadow: var(--shadow-float-lg); transition: box-shadow 0.25s ease; }
   .split .photo-block {
     height: 100%; width: 100%; position: relative;
     background-size: cover; background-position: center;
@@ -273,8 +273,8 @@
   /* ---- Testimonials ---- */
   .testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 900px) { .testimonial-grid { grid-template-columns: 1fr; } }
-  .testimonial-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease, background-color 0.35s ease, border-color 0.35s ease; }
-  .testimonial-card:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); }
+  .testimonial-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; box-shadow: var(--shadow-float); }
+  .testimonial-card:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); transition: box-shadow 0.25s ease, transform 0.25s ease; }
   .testimonial-card .stars { color: var(--yellow-dark); font-size: 15px; margin-bottom: 10px; }
   .testimonial-card p.quote { font-size: 14.5px; color: var(--muted); font-style: italic; margin: 0 0 14px; }
   .testimonial-card .who { font-size: 13px; font-weight: 700; color: var(--ink); }
