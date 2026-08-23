@@ -219,7 +219,7 @@
   .tile { position: relative; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); }
   .tile:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); transition: box-shadow 0.25s ease, transform 0.25s ease; }
   .tile .photo {
-    height: 170px; position: relative; background-size: cover; background-position: center;
+    position: relative; background-size: cover; background-position: center;
     transition: transform 0.4s ease;
   }
   .tile .photo::after {
@@ -227,9 +227,9 @@
     background: linear-gradient(200deg, rgba(14,124,134,0.28), rgba(10,30,32,0.06));
   }
   .tile:hover .photo { transform: scale(1.1); }
-  .tile .photo.p1 { background-image: url('/images/residential-tile.jpg'); }
-  .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); }
-  .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); }
+  .tile .photo.p1 { background-image: url('/images/residential-tile.jpg'); aspect-ratio: 800 / 550; }
+  .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); aspect-ratio: 1200 / 800; }
+  .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); aspect-ratio: 1200 / 1028; }
   .tile .label {
     position: absolute; left: 0; right: 0; bottom: 0;
     background: transparent;
