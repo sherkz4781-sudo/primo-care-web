@@ -164,6 +164,11 @@
     transition: opacity 1.25s cubic-bezier(0.22,1,0.36,1), transform 1.25s cubic-bezier(0.22,1,0.36,1);
   }
   .reveal-scale.in-view { opacity: 1; transform: scale(1) translateY(0); }
+  .reveal-right {
+    opacity: 0; transform: translateX(70px);
+    transition: opacity 1.15s cubic-bezier(0.22,1,0.36,1), transform 1.15s cubic-bezier(0.22,1,0.36,1);
+  }
+  .reveal-right.in-view { opacity: 1; transform: translateX(0); }
   .tile-grid .tile:nth-child(1) { transition-delay: 0ms; }
   .tile-grid .tile:nth-child(2) { transition-delay: 150ms; }
   .tile-grid .tile:nth-child(3) { transition-delay: 300ms; }
@@ -180,7 +185,7 @@
   @media (prefers-reduced-motion: reduce) {
     header.hero .hero-bg { animation: none; }
     header.hero h1, header.hero p.lead, header.hero .btn-outline, .quote-card { animation: none; }
-    .reveal, .reveal-scale { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .reveal, .reveal-scale, .reveal-right { opacity: 1 !important; transform: none !important; transition: none !important; }
   }
   .hero-grid { position: relative; display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: center; max-width: 1100px; margin: 0 auto; }
   @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } }
@@ -205,7 +210,7 @@
   /* ---- Category photo tiles ---- */
   .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .tile-grid { grid-template-columns: 1fr; } }
-  .tile { position: relative; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .tile { border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease; }
   .tile:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); }
   .tile .photo {
     height: 170px; position: relative; background-size: cover; background-position: center;
@@ -220,14 +225,13 @@
   .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); }
   .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); }
   .tile .label {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    background: rgba(10,30,32,0.32);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 15px; text-align: center; padding: 13px;
-    border-top: 1px solid rgba(255,255,255,0.18);
-    transition: background-color 0.25s ease;
+    background: rgba(10,30,32,0.08);
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+    box-shadow: inset 0 5px 8px -6px rgba(10,30,32,0.25);
+    color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 14px; text-align: center; padding: 9px;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
-  .tile:hover .label { background: rgba(10,30,32,0.48); }
+  .tile:hover .label { background: rgba(10,30,32,0.14); }
 
   /* ---- 3-col About/Why/What ---- */
   .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; max-width: 1000px; margin: 0 auto; }
@@ -484,19 +488,19 @@
 
 <section class="grey">
   <div class="trio">
-    <div class="reveal">
+    <div class="reveal-right">
       <span class="kicker">About Us</span>
       <h3>Who We Are</h3>
       <p>Primo Care is a professional cleaning company serving homes and businesses across the Frisco, TX area &mdash; built around reliable staff and pricing that fits your space, not a flat rate.</p>
       <a class="btn-outline" href="#about">LEARN MORE</a>
     </div>
-    <div class="reveal">
+    <div class="reveal-right">
       <span class="kicker">Why Choose Us</span>
       <h3>Trained &amp; Trusted</h3>
       <p>Vetted, trained staff, eco-friendly products, and flexible scheduling &mdash; every plan is custom-built around your property's actual size and needs.</p>
       <a class="btn-outline" href="#why">LEARN MORE</a>
     </div>
-    <div class="reveal">
+    <div class="reveal-right">
       <span class="kicker">What We Do</span>
       <h3>Our Services</h3>
       <p>From routine residential housekeeping to recurring commercial contracts for offices, clinics, and retail spaces &mdash; weekly through annual.</p>
@@ -800,7 +804,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
 })();
 
 (function() {
-  var els = document.querySelectorAll('.reveal, .reveal-scale');
+  var els = document.querySelectorAll('.reveal, .reveal-scale, .reveal-right');
   if (!els.length) return;
   if (!('IntersectionObserver' in window)) {
     els.forEach(function(el) { el.classList.add('in-view'); });
