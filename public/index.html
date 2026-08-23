@@ -155,28 +155,28 @@
 
   /* ---- Scroll-triggered reveal animations ---- */
   .reveal {
-    opacity: 0; transform: translateY(30px);
-    transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1), transform 0.75s cubic-bezier(0.22,1,0.36,1);
+    opacity: 0; transform: translateY(42px);
+    transition: opacity 1.15s cubic-bezier(0.22,1,0.36,1), transform 1.15s cubic-bezier(0.22,1,0.36,1);
   }
   .reveal.in-view { opacity: 1; transform: translateY(0); }
   .reveal-scale {
-    opacity: 0; transform: scale(0.92) translateY(16px);
-    transition: opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1);
+    opacity: 0; transform: scale(0.88) translateY(24px);
+    transition: opacity 1.25s cubic-bezier(0.22,1,0.36,1), transform 1.25s cubic-bezier(0.22,1,0.36,1);
   }
   .reveal-scale.in-view { opacity: 1; transform: scale(1) translateY(0); }
   .tile-grid .tile:nth-child(1) { transition-delay: 0ms; }
-  .tile-grid .tile:nth-child(2) { transition-delay: 120ms; }
-  .tile-grid .tile:nth-child(3) { transition-delay: 240ms; }
+  .tile-grid .tile:nth-child(2) { transition-delay: 150ms; }
+  .tile-grid .tile:nth-child(3) { transition-delay: 300ms; }
   .trio > div:nth-child(1) { transition-delay: 0ms; }
-  .trio > div:nth-child(2) { transition-delay: 120ms; }
-  .trio > div:nth-child(3) { transition-delay: 240ms; }
+  .trio > div:nth-child(2) { transition-delay: 150ms; }
+  .trio > div:nth-child(3) { transition-delay: 300ms; }
   .testimonial-grid .testimonial-card:nth-child(1) { transition-delay: 0ms; }
-  .testimonial-grid .testimonial-card:nth-child(2) { transition-delay: 130ms; }
-  .testimonial-grid .testimonial-card:nth-child(3) { transition-delay: 260ms; }
+  .testimonial-grid .testimonial-card:nth-child(2) { transition-delay: 150ms; }
+  .testimonial-grid .testimonial-card:nth-child(3) { transition-delay: 300ms; }
   .quote-banner > *:nth-child(1) { transition-delay: 0ms; }
-  .quote-banner > *:nth-child(2) { transition-delay: 120ms; }
-  .quote-banner > *:nth-child(3) { transition-delay: 240ms; }
-  .split > div.reveal { transition-delay: 100ms; }
+  .quote-banner > *:nth-child(2) { transition-delay: 150ms; }
+  .quote-banner > *:nth-child(3) { transition-delay: 300ms; }
+  .split > div.reveal { transition-delay: 140ms; }
   @media (prefers-reduced-motion: reduce) {
     header.hero .hero-bg { animation: none; }
     header.hero h1, header.hero p.lead, header.hero .btn-outline, .quote-card { animation: none; }
@@ -205,7 +205,7 @@
   /* ---- Category photo tiles ---- */
   .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1000px; margin: 0 auto; }
   @media (max-width: 800px) { .tile-grid { grid-template-columns: 1fr; } }
-  .tile { border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease; }
+  .tile { position: relative; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-float); transition: box-shadow 0.25s ease, transform 0.25s ease; }
   .tile:hover { box-shadow: var(--shadow-float-lg); transform: translateY(-3px); }
   .tile .photo {
     height: 170px; position: relative; background-size: cover; background-position: center;
@@ -219,7 +219,15 @@
   .tile .photo.p1 { background-image: url('/images/residential-tile.jpg'); }
   .tile .photo.p2 { background-image: url('/images/commercial-tile.jpg'); }
   .tile .photo.p3 { background-image: url('/images/industrial-tile.jpg'); }
-  .tile .label { background: var(--teal); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 15px; text-align: center; padding: 13px; }
+  .tile .label {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: rgba(10,30,32,0.32);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 15px; text-align: center; padding: 13px;
+    border-top: 1px solid rgba(255,255,255,0.18);
+    transition: background-color 0.25s ease;
+  }
+  .tile:hover .label { background: rgba(10,30,32,0.48); }
 
   /* ---- 3-col About/Why/What ---- */
   .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; max-width: 1000px; margin: 0 auto; }
@@ -800,10 +808,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
   }
   var io = new IntersectionObserver(function(entries) {
     entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('in-view');
-        io.unobserve(entry.target);
-      }
+      entry.target.classList.toggle('in-view', entry.isIntersecting);
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   els.forEach(function(el) { io.observe(el); });
