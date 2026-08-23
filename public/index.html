@@ -157,6 +157,16 @@
     transform-origin: left center;
     animation: drop-down-in 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
+  @keyframes text-drop-in {
+    from { opacity: 0; transform: translateY(-26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero-copy h1, .hero-copy p.lead, .hero-copy .btn-outline {
+    animation: text-drop-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .hero-copy h1 { animation-delay: 0.4s; }
+  .hero-copy p.lead { animation-delay: 0.62s; }
+  .hero-copy .btn-outline { animation-delay: 0.84s; }
 
   /* ---- Scroll-triggered reveal animations ---- */
   .reveal {
@@ -190,6 +200,7 @@
   @media (prefers-reduced-motion: reduce) {
     header.hero .hero-bg { animation: none; }
     .hero-copy { animation: none; opacity: 1; transform: scale(1.1); }
+    .hero-copy h1, .hero-copy p.lead, .hero-copy .btn-outline { animation: none; opacity: 1; transform: none; }
     .quote-card { animation: none; opacity: 1; transform: scale(0.7); }
     .reveal, .reveal-scale, .reveal-right { opacity: 1 !important; transform: none !important; transition: none !important; }
   }
