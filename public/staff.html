@@ -37,6 +37,7 @@
     display: flex; align-items: center; gap: 12px; padding: 22px 24px;
     background: linear-gradient(135deg, var(--teal), var(--teal-dark));
     border-radius: 14px; color: white; margin-bottom: 22px;
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
   header.brand .logo {
     width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18);
@@ -44,6 +45,22 @@
   }
   header.brand h1 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 20px; }
   header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+  @keyframes drop-down-in {
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes text-drop-in {
+    from { opacity: 0; transform: translateY(-26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  header.brand h1, header.brand p {
+    animation: text-drop-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  header.brand h1 { animation-delay: 0.8s; }
+  header.brand p { animation-delay: 1.3s; }
+  @media (prefers-reduced-motion: reduce) {
+    header.brand, header.brand h1, header.brand p, .job-card, .cal-card { animation: none; opacity: 1; transform: none; }
+  }
 
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
   .toolbar .count { font-size: 13px; color: var(--muted); }
@@ -59,6 +76,8 @@
     padding: 16px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
     box-shadow: 0 4px 14px rgba(0,0,0,0.05);
     transition: box-shadow 0.25s ease;
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.3s;
   }
   .job-card:hover { box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
   @media (max-width: 560px) {
@@ -113,6 +132,8 @@
   .cal-card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
     padding: 16px 18px; margin-bottom: 26px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.3s;
   }
   .cal-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .cal-toolbar .cal-nav { display: flex; align-items: center; gap: 8px; }

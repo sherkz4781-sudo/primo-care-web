@@ -40,6 +40,7 @@
     display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 26px;
     background: linear-gradient(120deg, var(--teal), var(--teal-dark));
     border-radius: 14px; color: white; margin-bottom: 24px;
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
   header.brand .id { display: flex; align-items: center; gap: 12px; }
   header.brand .logo {
@@ -57,6 +58,23 @@
   header.brand a.staff-link:hover, header.brand button.refresh:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
   header.brand button.refresh { background: #fff; color: var(--teal-dark); }
   header.brand button.refresh:hover { background: #eef8f8; }
+  @keyframes drop-down-in {
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes text-drop-in {
+    from { opacity: 0; transform: translateY(-26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  header.brand h1, header.brand p {
+    animation: text-drop-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  header.brand h1 { animation-delay: 0.8s; }
+  header.brand p { animation-delay: 1.3s; }
+  @media (prefers-reduced-motion: reduce) {
+    header.brand, header.brand h1, header.brand p,
+    .kpi-card, .trend-card, .donut-card, .table-card, .panel { animation: none; opacity: 1; transform: none; }
+  }
 
   .error-box { background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
   .updated { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
@@ -75,8 +93,17 @@
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
     padding: 16px 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
     transition: box-shadow 0.25s ease, transform 0.25s ease;
+    animation: fade-in-only 1.4s ease both;
   }
   .kpi-card:hover { box-shadow: 0 10px 22px rgba(0,0,0,0.1); transform: translateY(-3px); }
+  @keyframes fade-in-only {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .kpi-grid .kpi-card:nth-child(1) { animation-delay: 0.3s; }
+  .kpi-grid .kpi-card:nth-child(2) { animation-delay: 0.42s; }
+  .kpi-grid .kpi-card:nth-child(3) { animation-delay: 0.54s; }
+  .kpi-grid .kpi-card:nth-child(4) { animation-delay: 0.66s; }
   .kpi-card .label { font-size: 12px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
   .kpi-card .value { font-size: 24px; font-weight: 800; color: var(--ink); }
   .kpi-card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
@@ -92,6 +119,8 @@
   .trend-card, .donut-card {
     background: var(--bg); border-radius: 12px; padding: 18px 20px;
     box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.5s;
   }
   .trend-card .totals { display: flex; gap: 34px; margin-bottom: 6px; }
   .trend-card .totals .t-label { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
@@ -111,6 +140,8 @@
   .table-card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
     overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.65s;
   }
   table.perf { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   table.perf thead th {
@@ -131,6 +162,8 @@
   .panel {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
     padding: 18px 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.8s;
   }
   .list-row {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;

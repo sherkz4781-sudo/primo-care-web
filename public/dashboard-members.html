@@ -39,6 +39,7 @@
     display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 26px;
     background: linear-gradient(120deg, var(--teal), var(--teal-dark));
     border-radius: 14px; color: white; margin-bottom: 24px;
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
   header.brand .id { display: flex; align-items: center; gap: 12px; }
   header.brand .logo {
@@ -53,10 +54,28 @@
     transition: background 0.18s ease, transform 0.18s ease;
   }
   header.brand a.back-link:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
+  @keyframes drop-down-in {
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes text-drop-in {
+    from { opacity: 0; transform: translateY(-26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  header.brand h1, header.brand p {
+    animation: text-drop-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  header.brand h1 { animation-delay: 0.8s; }
+  header.brand p { animation-delay: 1.3s; }
+  @media (prefers-reduced-motion: reduce) {
+    header.brand, header.brand h1, header.brand p, .card { animation: none; opacity: 1; transform: none; }
+  }
 
   .card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
     padding: 20px 22px; margin-bottom: 22px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.3s;
   }
   .card h2.section-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin: 0 0 16px; }
 
