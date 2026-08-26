@@ -477,6 +477,72 @@
   var state = { client: {}, properties: [] };
   var propertyCount = 0;
 
+  // --- Google Maps address pin picker ---------------------------------------------------
+  // Stays fully inactive (address field behaves exactly as a plain text input) until
+  // GOOGLE_MAPS_API_KEY is set on the server — no code changes needed once it's added.
+  var mapPins = {};          // idx -> "lat,lng" string, included in the property payload on submit
+  var mapState = {};         // idx -> { map, marker, autocomplete }
+  var mapsReady = false;
+  var pendingMapIdx = [];
+
+  function loadGoogleMaps(){
+    fetch('/api/config').then(function(r){ return r.json(); }).then(function(cfg){
+      if(!cfg || !cfg.mapsApiKey) return;
+      window.__initGoogleMaps = function(){
+        mapsReady = true;
+        pendingMapIdx.forEach(function(idx){ initAddressMap(idx); });
+        pendingMapIdx = [];
+      };
+      var s = document.createElement('script');
+      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(cfg.mapsApiKey) + '&libraries=places&callback=__initGoogleMaps';
+      s.async = true;
+      s.defer = true;
+      document.head.appendChild(s);
+    }).catch(function(){ /* maps feature simply stays inactive */ });
+  }
+
+  // Attaches Places autocomplete + a draggable pin map to one property card's address field.
+  // Queued via pendingMapIdx if the Maps script hasn't finished loading yet.
+  function initAddressMap(idx){
+    if(!mapsReady){ pendingMapIdx.push(idx); return; }
+    var input = $('address_' + idx);
+    var wrap = $('mapPinWrap_' + idx);
+    var canvas = $('mapCanvas_' + idx);
+    if(!input || !wrap || !canvas) return;
+
+    var defaultCenter = { lat: 14.5995, lng: 120.9842 };
+    var map = new google.maps.Map(canvas, {
+      center: defaultCenter, zoom: 12, streetViewControl: false, mapTypeControl: false, fullscreenControl: false
+    });
+    var marker = new google.maps.Marker({ map: map, draggable: true, position: defaultCenter, visible: false });
+
+    function setPin(lat, lng){
+      mapPins[idx] = lat.toFixed(6) + ',' + lng.toFixed(6);
+      marker.setPosition({ lat: lat, lng: lng });
+      marker.setVisible(true);
+      map.setCenter({ lat: lat, lng: lng });
+      map.setZoom(17);
+      wrap.classList.remove('hidden');
+    }
+
+    marker.addListener('dragend', function(){
+      var pos = marker.getPosition();
+      setPin(pos.lat(), pos.lng());
+    });
+
+    var autocomplete = new google.maps.places.Autocomplete(input, { fields: ['formatted_address', 'geometry'] });
+    autocomplete.addListener('place_changed', function(){
+      var place = autocomplete.getPlace();
+      if(!place.geometry || !place.geometry.location) return; // typed + Enter without picking a suggestion
+      if(place.formatted_address) input.value = place.formatted_address;
+      setPin(place.geometry.location.lat(), place.geometry.location.lng());
+    });
+
+    mapState[idx] = { map: map, marker: marker, autocomplete: autocomplete };
+  }
+
+  loadGoogleMaps();
+
   function $(id){ return document.getElementById(id); }
 
   // Render's free tier spins the server down after inactivity, so the very first request after
@@ -525,7 +591,11 @@
 
       + '<div class="field" style="margin-top:14px;">'
       + '<label>Address <span class="req">*</span></label>'
-      + '<input type="text" id="address_' + idx + '" placeholder="123 Main St, City, State">'
+      + '<input type="text" id="address_' + idx + '" placeholder="123 Main St, City, State" autocomplete="off">'
+      + '<div class="map-pin-wrap hidden" id="mapPinWrap_' + idx + '">'
+      + '<div id="mapCanvas_' + idx + '" style="height:220px;border-radius:10px;overflow:hidden;margin-top:8px;border:1px solid var(--border);"></div>'
+      + '<div class="estimate-note" style="margin-top:4px;">Drag the pin to fine-tune your exact location — this is what shows up on our calendar.</div>'
+      + '</div>'
       + '</div>'
       + '<div class="grid2">'
       + '<div class="field">'
@@ -888,6 +958,7 @@
     $('balconySize_' + idx).addEventListener('input', function(){ updateEstimate(idx); });
     $('lanaiSize_' + idx).addEventListener('input', function(){ updateEstimate(idx); });
 
+    initAddressMap(idx);
     updateEstimate(idx);
   }
 
@@ -907,6 +978,8 @@
     if(card && card.getAttribute('data-locked')) return; // safety guard — shouldn't be reachable
     if(card) card.remove();
     delete propertyTypes[idx];
+    delete mapPins[idx];
+    delete mapState[idx];
     refreshCombinedEstimate();
   }
 
@@ -1032,7 +1105,7 @@
     }
 
     return {
-      idx: idx, address: address, zip: zip, sqft: sizeVal, sizeUnit: sizeUnit, sqftEquiv: sqftEquiv,
+      idx: idx, address: address, mapPin: mapPins[idx] || '', zip: zip, sqft: sizeVal, sizeUnit: sizeUnit, sqftEquiv: sqftEquiv,
       propertyType: propertyType, areas: areas, areaQuantities: areaQuantities, othersSpecify: othersSpecify,
       areasFormatted: propertyType === 'residential' ? formatAreasWithQty(areas, areaQuantities) : '',
       service: service, rate: rate, total: total, addonNote: addonNote,

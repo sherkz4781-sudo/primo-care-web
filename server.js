@@ -116,6 +116,23 @@ async function deleteBookingEvent(rec, orderId) {
   }
 }
 
+// Builds a clickable Google Maps link from the "lat,lng" pin a client dropped on /intake's
+// address autocomplete, for splicing into a calendar event description. Returns '' (filtered
+// out by the .filter(Boolean) callers already use) if the property has no stored pin — either
+// because it predates this feature or the client typed an address without picking a suggestion.
+function mapPinLine(fields) {
+  const pin = fields && fields['Map Pin (Lat,Lng)'];
+  return pin ? `Map pin: https://www.google.com/maps?q=${pin}` : '';
+}
+
+// Public config for client-side scripts — safe to expose since a Maps JS API key is meant to be
+// embedded in the browser and is restricted by HTTP referrer in Google Cloud Console, not kept
+// secret. Returns an empty key (feature inactive, address field behaves as plain text) until
+// GOOGLE_MAPS_API_KEY is set.
+app.get('/api/config', (req, res) => {
+  res.json({ mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '' });
+});
+
 // ---------------------------------------------------------------------------
 // Intake form endpoints
 // ---------------------------------------------------------------------------
@@ -171,6 +188,7 @@ app.post('/api/submit', async (req, res) => {
       };
       if (b.prefix) fields['Prefix'] = b.prefix;
       if (b.suffix) fields['Suffix'] = b.suffix;
+      if (p.mapPin) fields['Map Pin (Lat,Lng)'] = p.mapPin;
       const combinedAddonSqft = (p.balconySqftEquiv || 0) + (p.lanaiSqftEquiv || 0);
       if (combinedAddonSqft) fields['Balcony-Lanai Size (sq ft)'] = combinedAddonSqft;
       if (p.addonNote) fields['Balcony-Lanai Add-on'] = p.addonNote;
@@ -215,6 +233,7 @@ app.post('/api/book', async (req, res) => {
       `Client: ${b.firstName} ${b.lastName} — ${b.phone} — ${b.email}`,
       `Order ID: ${b.orderId}`,
       `Property: ${b.address} (${b.sqft} sq ft)`,
+      mapPinLine(rec.fields),
       `Service: ${b.service}`,
       b.isSubscription ? `Schedule: ${b.freqName} for ${b.durationMonths} month(s)` : ''
     ].filter(Boolean).join('<br>');
@@ -338,6 +357,7 @@ app.post('/api/book-verified', async (req, res) => {
       `Client: ${clientLine}`,
       `Order ID: ${orderId}`,
       `Property: ${f['Address'] || ''} (${f['Property Size'] || ''} ${f['Property Size Unit'] || 'sq ft'})`,
+      mapPinLine(f),
       `Service: ${f['Service'] || ''}`,
       isSubscription ? `Schedule: ${freqName} for ${duration} month(s)` : ''
     ].filter(Boolean).join('<br>');
@@ -506,6 +526,7 @@ app.post('/api/reschedule/submit', async (req, res) => {
       `Client: ${clientLine}`,
       `Order ID: ${orderId}`,
       `Property: ${f['Address'] || ''} (${f['Property Size'] || ''} sq ft)`,
+      mapPinLine(f),
       `Service: ${f['Service'] || ''}`,
       isSubscription ? `Schedule: ${freqName} for ${duration} month(s)` : ''
     ].filter(Boolean).join('<br>');
