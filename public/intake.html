@@ -520,9 +520,13 @@
       mapPins[idx] = lat.toFixed(6) + ',' + lng.toFixed(6);
       marker.setPosition({ lat: lat, lng: lng });
       marker.setVisible(true);
+      // The map is built while its container is display:none (hidden until a place is picked),
+      // so it renders zero-size/blank until a resize event tells it to re-measure — a well-known
+      // Google Maps gotcha with maps inside initially-hidden containers.
+      wrap.classList.remove('hidden');
+      google.maps.event.trigger(map, 'resize');
       map.setCenter({ lat: lat, lng: lng });
       map.setZoom(17);
-      wrap.classList.remove('hidden');
     }
 
     marker.addListener('dragend', function(){
