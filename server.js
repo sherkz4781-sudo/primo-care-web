@@ -6,6 +6,7 @@ const gcal = require('./lib/google');
 const airtable = require('./lib/airtable');
 const stripeLib = require('./lib/stripe');
 const anthropicLib = require('./lib/anthropic');
+const twilioLib = require('./lib/twilio');
 const multer = require('multer');
 
 const app = express();
@@ -133,6 +134,32 @@ app.get('/api/config', (req, res) => {
   res.json({ mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '' });
 });
 
+// Sends one SMS reminder via Twilio — called by the primo-care-48hr-notice scheduled task's
+// same-day "~2 hours before" pass (separate from its 48hr email reminder), for clients who
+// opted in on /intake. Gated by a shared secret (not client-facing auth — there's no logged-in
+// user in this flow) since this relays real texts through your Twilio account; without that
+// gate, anyone who found this URL could spam-text arbitrary numbers on your bill. Returns
+// {sent:false} rather than erroring when Twilio isn't configured, so the scheduled task's SMS
+// pass can no-op without failing the run.
+app.post('/api/internal/send-sms', async (req, res) => {
+  try {
+    const secret = req.headers['x-internal-secret'];
+    if (!process.env.INTERNAL_API_SECRET || secret !== process.env.INTERNAL_API_SECRET) {
+      return res.status(403).json({ error: 'Forbidden.' });
+    }
+    if (!twilioLib.isConfigured()) {
+      return res.json({ sent: false, reason: 'Twilio is not configured.' });
+    }
+    const { to, body } = req.body || {};
+    if (!to || !body) return res.status(400).json({ error: 'Missing to/body.' });
+    await twilioLib.sendSms(to, body);
+    res.json({ sent: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Intake form endpoints
 // ---------------------------------------------------------------------------
@@ -173,6 +200,7 @@ app.post('/api/submit', async (req, res) => {
         'Last Name': lastName,
         'Email': b.email,
         'Contact Number': b.phone,
+        'SMS Opt-In': !!b.smsOptIn,
         'Address': p.address,
         'Zip Code': p.zip,
         'Property Type': p.propertyType === 'residential' ? 'Residential' : 'Commercial',
@@ -1584,7 +1612,7 @@ Booking: New clients get a quote and book their first visit at /intake. Returnin
 
 Cancelling or rescheduling: Self-serve at /cancel-reschedule, using the Order ID or Client ID from their confirmation email. Changes made 48 hours or more before the scheduled visit are free; changes made less than 48 hours before incur a fee of 20% of the Total Contract Price.
 
-Contact: Phone 1800-8888, email desk@primocare.com.
+Contact: Phone +63 917 625 3896, email desk@primocare.com.
 
 Your job: answer questions about services, the pricing model, booking, and policies briefly and warmly (2-4 sentences). Always direct people to the actual page (/intake, /book, or /cancel-reschedule) for anything actionable — you cannot generate a price quote, place a booking, or cancel/reschedule one yourself, so never attempt to. If asked something unrelated to Primo Care or cleaning services, politely say that's outside what you can help with here. Never invent a detail you don't know — if unsure, suggest they call or email instead of guessing.`;
 
@@ -1609,10 +1637,10 @@ function checkChatRateLimit(ip) {
 app.post('/api/chat', async (req, res) => {
   try {
     if (!anthropicLib.isConfigured()) {
-      return res.json({ reply: "Our AI assistant isn't switched on just yet — for now, please use the Get a Free Quote button, or call us at 1800-8888 / email desk@primocare.com and we'll help right away." });
+      return res.json({ reply: "Our AI assistant isn't switched on just yet — for now, please use the Get a Free Quote button, or call us at +63 917 625 3896 / email desk@primocare.com and we'll help right away." });
     }
     if (!checkChatRateLimit(req.ip)) {
-      return res.status(429).json({ reply: "You've sent a lot of messages in a short time — please try again in a bit, or reach us directly at 1800-8888." });
+      return res.status(429).json({ reply: "You've sent a lot of messages in a short time — please try again in a bit, or reach us directly at +63 917 625 3896." });
     }
     const incoming = Array.isArray(req.body && req.body.messages) ? req.body.messages : [];
     // Bound both the conversation length and each message's size — keeps token cost predictable
@@ -1628,7 +1656,7 @@ app.post('/api/chat', async (req, res) => {
     res.json({ reply });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ reply: "Sorry, something went wrong on our end. Please try again, or reach us at 1800-8888 / desk@primocare.com." });
+    res.status(500).json({ reply: "Sorry, something went wrong on our end. Please try again, or reach us at +63 917 625 3896 / desk@primocare.com." });
   }
 });
 

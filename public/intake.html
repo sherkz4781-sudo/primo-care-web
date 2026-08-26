@@ -332,13 +332,14 @@
       <div class="grid2">
         <div class="field">
           <label>Phone Number <span class="req">*</span></label>
-          <input type="tel" id="phone" placeholder="(555) 123-4567">
+          <input type="tel" id="phone" placeholder="0917 123 4567">
         </div>
         <div class="field">
           <label>Email <span class="req">*</span></label>
           <input type="email" id="email" placeholder="jane@example.com">
         </div>
       </div>
+      <label class="choice" style="margin-top:4px;"><input type="checkbox" id="smsOptIn"> Text me a reminder before my scheduled cleaning</label>
       <div class="estimate-note">Your Client ID is issued once and reused every time you book with us &mdash; it always matches this name on our records.</div>
     </div>
 
@@ -548,6 +549,10 @@
   loadGoogleMaps();
 
   function $(id){ return document.getElementById(id); }
+
+  $('smsOptIn').addEventListener('change', function(){
+    this.closest('.choice').classList.toggle('active', this.checked);
+  });
 
   // Render's free tier spins the server down after inactivity, so the very first request after
   // a lull can fail outright ("Failed to fetch") before the container finishes waking up. If the
@@ -1005,7 +1010,7 @@
   // a later "+ Add Another Property" round trip can't silently change the name a Client ID is
   // tied to.
   function lockClientInfo(){
-    ['prefix','firstName','lastName','suffix','phone','email'].forEach(function(id){
+    ['prefix','firstName','lastName','suffix','phone','email','smsOptIn'].forEach(function(id){
       var el = $(id);
       if(el) el.disabled = true;
     });
@@ -1158,16 +1163,17 @@
 
     var prefix = $('prefix').value;
     var suffix = $('suffix').value.trim();
+    var smsOptIn = $('smsOptIn').checked;
 
     return fetchJsonWithRetry('/api/submit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email,
+        prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, smsOptIn: smsOptIn,
         properties: newProps
       })
     }).then(function(data){
       if(data.error) throw new Error(data.error);
-      state.client = { prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, clientId: data.clientId };
+      state.client = { prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, smsOptIn: smsOptIn, clientId: data.clientId };
       lockClientInfo();
       newProps.forEach(function(p, i){
         var r0 = data.properties[i];
