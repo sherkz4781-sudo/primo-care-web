@@ -390,6 +390,14 @@
       <div style="font-size:44px;margin-bottom:8px;">&#127881;</div>
       <h2 style="margin:0 0 14px;color:var(--teal-text);font-size:24px;">Thank You!</h2>
       <p id="thankYouMessage" style="margin:0 auto 26px;max-width:440px;color:var(--ink);font-size:17px;line-height:1.5;"></p>
+      <div id="referralBox" class="hidden" style="background:#f7f9fa;border:1px dashed var(--border);border-radius:10px;padding:16px 18px;margin:0 auto 24px;max-width:440px;text-align:left;">
+        <b style="color:var(--teal-text);">Know someone who needs a clean?</b>
+        <p style="margin:8px 0;font-size:13.5px;color:var(--ink);">Share your link &mdash; when they book with us and their first visit is completed, you get $10 off your next one.</p>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="referralLink" readonly style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;background:var(--bg);color:var(--ink);">
+          <button type="button" id="copyReferralBtn" style="padding:8px 14px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;">Copy</button>
+        </div>
+      </div>
       <button class="primary" id="closePageBtn">Close Page</button>
       <div id="closeFallbackLink" class="hidden" style="margin-top:14px;">
         <a href="/" style="color:var(--teal-text);font-size:13px;text-decoration:underline;">&larr; Or return to our homepage</a>
@@ -476,6 +484,9 @@
   }
 
   var state = { client: {}, properties: [] };
+  // ?ref=<Client ID> on the URL means this visitor arrived via another client's referral link
+  // (shared from the "Know someone who needs a clean?" box shown after a successful submit).
+  var referredByClientId = new URLSearchParams(window.location.search).get('ref') || '';
   var propertyCount = 0;
 
   // --- Google Maps address pin picker ---------------------------------------------------
@@ -1169,6 +1180,7 @@
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, smsOptIn: smsOptIn,
+        referredBy: referredByClientId,
         properties: newProps
       })
     }).then(function(data){
@@ -1178,6 +1190,11 @@
       newProps.forEach(function(p, i){
         var r0 = data.properties[i];
         p.orderId = r0.orderId;
+        // The server is the source of truth for the final total — it's the one that applies a
+        // referral credit (if this client had one available), which this client-side estimate
+        // has no way to know about in advance.
+        if(typeof r0.total === 'number') p.total = r0.total;
+        p.discountApplied = !!r0.discountApplied;
         state.properties.push(p);
         lockPropertyCard(p.idx);
       });
@@ -1403,6 +1420,9 @@
     if(p.frequencies && p.frequencies.length){
       rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">Subscription requested: ' + p.frequencies.join(', ') + ' for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '</td></tr>';
     }
+    if(p.discountApplied){
+      rows += '<tr><td colspan="2" style="font-size:12.5px;color:var(--green);font-weight:600;">&#10003; $10 referral credit applied</td></tr>';
+    }
     rows += '<tr class="total"><td>Estimated total per visit</td><td style="text-align:right;">' + fmt(p.total) + '</td></tr>';
 
     var isSubscription = !!(p.frequencies && p.frequencies.length && p.subscriptionDuration);
@@ -1578,8 +1598,26 @@
     renderMessageParts($('thankYouMessage'), parts);
     $('proposalSection').style.display = 'none';
     $('thankYouSection').classList.remove('hidden');
+    if(state.client.clientId){
+      $('referralLink').value = window.location.origin + '/intake?ref=' + encodeURIComponent(state.client.clientId);
+      $('referralBox').classList.remove('hidden');
+    }
     window.scrollTo({top:0, behavior:'smooth'});
   }
+
+  $('copyReferralBtn').addEventListener('click', function(){
+    var btn = this;
+    var input = $('referralLink');
+    input.select();
+    (navigator.clipboard && navigator.clipboard.writeText
+      ? navigator.clipboard.writeText(input.value)
+      : Promise.reject()
+    ).catch(function(){ document.execCommand('copy'); }).then(function(){
+      var original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function(){ btn.textContent = original; }, 1800);
+    });
+  });
 
   // Browsers only allow script-initiated window.close() on tabs opened by script, so a tab the
   // client navigated to directly often won't actually close. Attempt it, then fall back to

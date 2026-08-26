@@ -137,6 +137,15 @@
   button.complete:hover { background: #15803d; transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 16px rgba(22,163,74,0.32); }
   button.complete:disabled { opacity: 0.6; cursor: default; }
   button.complete:disabled:hover { transform: none; box-shadow: 0 3px 8px rgba(22,163,74,0.25); }
+  button.start-job {
+    background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    font-weight: 700; font-size: 13px; padding: 10px 16px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(14,124,134,0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  button.start-job:hover { background: var(--teal-dark); transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 16px rgba(14,124,134,0.32); }
+  button.start-job:disabled { opacity: 0.6; cursor: default; }
+  button.start-job:disabled:hover { transform: none; box-shadow: 0 3px 8px rgba(14,124,134,0.25); }
   .pay-controls { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
   select.method {
     border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; padding: 8px 10px;
@@ -323,6 +332,9 @@ function renderJobs(jobs) {
   $('countLabel').textContent = jobs.length + ' job' + (jobs.length === 1 ? '' : 's');
   list.innerHTML = jobs.map(function (j) {
     var badgeClass = j.status === 'Ongoing' ? 'badge ongoing' : 'badge';
+    var actionBtn = j.hasBeforePhoto
+      ? '<button class="complete">Mark Completed</button>'
+      : '<button class="start-job">Start Job (Before Photo)</button>';
     return (
       '<div class="job-card" data-record-id="' + escapeHtml(j.recordId) + '">' +
         '<div class="info">' +
@@ -332,11 +344,39 @@ function renderJobs(jobs) {
           '<div class="line">' + escapeHtml(j.bookedDisplay || 'Not yet scheduled') + '</div>' +
           '<div class="line">' + escapeHtml(j.phone || '') + '</div>' +
           '<span class="' + badgeClass + '">' + escapeHtml(j.status) + '</span>' +
+          (j.hasBeforePhoto ? '<div class="line" style="color:var(--green);font-weight:600;">&#10003; Before photo added</div>' : '') +
         '</div>' +
-        '<button class="complete" data-order-id="' + escapeHtml(j.orderId) + '">Mark Completed</button>' +
+        actionBtn +
       '</div>'
     );
   }).join('');
+}
+
+// Opens the device's file/camera picker, and on selection POSTs it as multipart/form-data to
+// `url` alongside recordId. Shared by the Start Job (before photo) and Mark Completed (after
+// photo) actions below — same upload shape, different endpoint/field name.
+function pickPhotoAndUpload(url, recordId, onDone) {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', function () {
+    var file = input.files && input.files[0];
+    document.body.removeChild(input);
+    if (!file) { onDone(new Error('cancelled')); return; }
+    var formData = new FormData();
+    formData.append('recordId', recordId);
+    formData.append('photo', file);
+    fetch(url, { method: 'POST', body: formData })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        onDone(null, data);
+      })
+      .catch(function (err) { onDone(err); });
+  });
+  input.click();
 }
 
 function fmtMoney(total) {
@@ -412,36 +452,56 @@ function loadJobs() {
 }
 
 document.addEventListener('click', function (e) {
+  if (e.target.classList.contains('start-job')) {
+    var startBtn = e.target;
+    var startCard = startBtn.closest('.job-card');
+    var startRecordId = startCard.getAttribute('data-record-id');
+    var startClientName = startCard.querySelector('b') ? startCard.querySelector('b').textContent : 'Client';
+    $('errorBox').innerHTML = '';
+    startBtn.disabled = true;
+    startBtn.textContent = 'Uploading...';
+    pickPhotoAndUpload('/api/staff/start-job', startRecordId, function (err) {
+      if (err) {
+        startBtn.disabled = false;
+        startBtn.textContent = 'Start Job (Before Photo)';
+        if (err.message !== 'cancelled') {
+          $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(err.message) + '</div>';
+        }
+        return;
+      }
+      $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(startClientName) + ' — before photo added.</div>';
+      loadJobs();
+    });
+    return;
+  }
+
   if (e.target.classList.contains('complete')) {
     var btn = e.target;
     var card = btn.closest('.job-card');
     var recordId = card.getAttribute('data-record-id');
     var clientName = card.querySelector('b') ? card.querySelector('b').textContent : 'Client';
     var confirmed = window.confirm(
-      'Mark ' + clientName + '’s job as completed?\n\nThis will send them a billing statement email right away.'
+      'Mark ' + clientName + '’s job as completed?\n\nYou\'ll be asked for an after photo next, then this sends them a billing statement email right away.'
     );
     if (!confirmed) return;
-    btn.disabled = true;
-    btn.textContent = 'Marking...';
     $('errorBox').innerHTML = '';
-    fetch('/api/staff/complete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recordId: recordId })
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.error) throw new Error(data.error);
-        $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(clientName) + ' marked completed' +
-          (data.emailSent ? ' — billing statement emailed.' : ' — no email on file, statement not sent.') + '</div>';
-        card.remove();
-        loadJobs();
-      })
-      .catch(function (err) {
-        $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(err.message) + '</div>';
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    pickPhotoAndUpload('/api/staff/complete', recordId, function (err, data) {
+      if (err) {
         btn.disabled = false;
         btn.textContent = 'Mark Completed';
-      });
+        if (err.message !== 'cancelled') {
+          $('errorBox').innerHTML = '<div class="error-box">' + escapeHtml(err.message) + '</div>';
+        }
+        return;
+      }
+      $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(clientName) + ' marked completed' +
+        (data.emailSent ? ' — billing statement emailed.' : ' — no email on file, statement not sent.') +
+        (data.referralCreditAwarded ? ' A $10 referral credit was just earned by whoever referred them.' : '') + '</div>';
+      card.remove();
+      loadJobs();
+    });
     return;
   }
 

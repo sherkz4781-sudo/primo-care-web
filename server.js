@@ -57,6 +57,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const CAL_TIMEZONE = gcal.CAL_TIMEZONE;
 
+// Shared multipart-upload handler — used by the staff before/after job photo routes and by the
+// client-facing bank-transfer proof upload further down.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /^image\/(png|jpe?g|webp|heic|heif)$|^application\/pdf$/.test(file.mimetype))
+});
+
 // ---- ID generation (moved server-side so a client can't forge/replay reference numbers) ----
 function genRefId(prefix) {
   const ts = Date.now().toString(36).toUpperCase();
@@ -189,9 +197,33 @@ app.post('/api/submit', async (req, res) => {
       clientId = genRefId('CLI');
     }
 
+    // Referral discount — if this submitting client has an unused $10 credit (earned by a
+    // previous referral of theirs whose referred client's first job was completed — see
+    // /api/staff/complete), apply it to the first property in this submission only. Computed
+    // from the grand total here, not the per-sqft Rate Card, so the core pricing engine used by
+    // intake/booking/rescheduling is untouched.
+    let availableCredit = null;
+    try {
+      const credits = await airtable.listAllForTable('Referral Credits', {
+        formula: `AND({Referrer Client ID}="${String(clientId).replace(/"/g, '\\"')}", {Used}=FALSE())`
+      });
+      availableCredit = credits[0] || null;
+    } catch (err) {
+      console.error('Referral credit lookup failed (continuing without applying one):', err.message);
+    }
+
+    const referredBy = (b.referredBy || '').trim();
     const results = [];
+    let creditConsumed = false;
     for (const p of properties) {
       const orderId = genRefId('ORD');
+      let total = p.total;
+      let discountApplied = false;
+      if (availableCredit && !creditConsumed) {
+        total = Math.max(0, (p.total || 0) - 10);
+        discountApplied = true;
+        creditConsumed = true;
+      }
 
       const fields = {
         'Client Name': fullName,
@@ -208,7 +240,7 @@ app.post('/api/submit', async (req, res) => {
         'Property Size Unit': p.sizeUnit === 'sqm' ? 'sq m' : 'sq ft',
         'Areas / Facility Type': p.propertyType === 'residential' ? (p.areasFormatted || (p.areas || []).join(', ')) : p.service,
         'Service': p.service,
-        'Estimated Total per Visit': p.total,
+        'Estimated Total per Visit': total,
         'Draft Email Created': false,
         'Client ID': clientId,
         'Order ID': orderId,
@@ -217,6 +249,7 @@ app.post('/api/submit', async (req, res) => {
       if (b.prefix) fields['Prefix'] = b.prefix;
       if (b.suffix) fields['Suffix'] = b.suffix;
       if (p.mapPin) fields['Map Pin (Lat,Lng)'] = p.mapPin;
+      if (referredBy) fields['Referred By (Client ID)'] = referredBy;
       const combinedAddonSqft = (p.balconySqftEquiv || 0) + (p.lanaiSqftEquiv || 0);
       if (combinedAddonSqft) fields['Balcony-Lanai Size (sq ft)'] = combinedAddonSqft;
       if (p.addonNote) fields['Balcony-Lanai Add-on'] = p.addonNote;
@@ -225,7 +258,10 @@ app.post('/api/submit', async (req, res) => {
       if (p.subscriptionDuration) fields['Duration'] = p.subscriptionDuration;
 
       const rec = await airtable.createRecord(fields);
-      results.push({ orderId, recordId: rec.id });
+      if (discountApplied) {
+        await airtable.updateRecordForTable('Referral Credits', availableCredit.id, { 'Used': true, 'Used On Order ID': orderId });
+      }
+      results.push({ orderId, recordId: rec.id, total, discountApplied });
     }
 
     res.json({ clientId, properties: results });
@@ -818,7 +854,8 @@ app.get('/api/staff/jobs', staffAuth, async (req, res) => {
         propertyType: f['Property Type'] || '',
         service: f['Service'] || '',
         bookedDisplay: f['Booked Date/Time'] || '',
-        status: f['Status'] || ''
+        status: f['Status'] || '',
+        hasBeforePhoto: Array.isArray(f['Before Photo']) && f['Before Photo'].length > 0
       };
     });
     res.json({ jobs });
@@ -869,19 +906,55 @@ function fmtCurrency(total) {
     : (total || 'N/A');
 }
 
+// Attaches the "before" photo staff capture when they physically start a job on /schedule.
+// Required before a job can later be marked Complete (enforced by /schedule only revealing the
+// "Mark Complete" action once this has succeeded, and by this route requiring the file). Doesn't
+// touch Status — that's still owned by the separate auto-ongoing-status scheduled task
+// (time-based, not tied to a staff action).
+app.post('/api/staff/start-job', staffAuth, upload.single('photo'), async (req, res) => {
+  try {
+    const { recordId } = req.body || {};
+    if (!recordId) return res.status(400).json({ error: 'Missing recordId.' });
+    if (!req.file) return res.status(400).json({ error: 'Please attach a before photo to start this job.' });
+
+    await airtable.uploadAttachment(
+      recordId, 'Before Photo',
+      req.file.buffer.toString('base64'),
+      req.file.mimetype,
+      req.file.originalname || 'before-photo'
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Marks one booking Completed and emails the client a billing statement for that visit. Trusts
 // the recordId as given — unlike the public booking/cancel/reschedule endpoints, this route is
 // already gated by staffAuth, so there's no need for the identity-verification dance used on
 // the public-facing side. The billing email reuses the amount locked in at booking time
 // (Estimated Total per Visit), so — like the cancel/reschedule confirmations — there's no new
-// pricing judgment call here, and it sends for real rather than staying a draft.
-app.post('/api/staff/complete', staffAuth, async (req, res) => {
+// pricing judgment call here, and it sends for real rather than staying a draft. Requires an
+// "after" photo (mirrors the before-photo requirement on /api/staff/start-job) — embedded
+// directly in the billing email as proof-of-work.
+app.post('/api/staff/complete', staffAuth, upload.single('photo'), async (req, res) => {
   try {
     const { recordId } = req.body || {};
     if (!recordId) return res.status(400).json({ error: 'Missing recordId.' });
+    if (!req.file) return res.status(400).json({ error: 'Please attach an after photo to mark this job complete.' });
 
     const rec = await airtable.getRecord(recordId);
     const f = rec.fields || {};
+
+    const afterPhotoResult = await airtable.uploadAttachment(
+      recordId, 'After Photo',
+      req.file.buffer.toString('base64'),
+      req.file.mimetype,
+      req.file.originalname || 'after-photo'
+    );
+    const afterPhotoAttachment = (afterPhotoResult.fields && afterPhotoResult.fields['After Photo'] || [])[0];
+    const afterPhotoUrl = afterPhotoAttachment ? afterPhotoAttachment.url : null;
 
     // Payment Status only becomes meaningful once a job is done, so it's left blank at booking
     // time and set to Pending here — "Unpaid" is reserved for a manual override in Airtable
@@ -895,6 +968,14 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
       const payUrl = `${req.protocol}://${req.get('host')}/pay/${encodeURIComponent(f['Order ID'] || '')}`;
       const subject = 'Thank You From Primo Care — Your Billing Statement';
       const body = `Hi ${firstName},\n\nThank you for choosing Primo Care! Our team has completed your ${f['Service'] || 'cleaning'} service at ${f['Address'] || 'your property'}.\n\nBilling Statement\nOrder ID: ${f['Order ID'] || ''}\nService: ${f['Service'] || ''}\nProperty: ${f['Address'] || ''}\nAmount Due: ${amount}\n\nPay online: ${payUrl}\n\nIf you have any questions about this statement, just reply to this email.\n\nThank you again for trusting us with your space!\n\nBest,\nPrimo Care Team`;
+      // Airtable's attachment URL is a signed link that expires after a few hours — fine here
+      // since most email clients (Gmail included) fetch and cache remote images the first time
+      // a message is opened, which for a billing email sent moments ago will be well within
+      // that window. A client who never opens the email until days later could see a broken
+      // image; low risk, not worth proxying/re-hosting the photo for.
+      const photoBlock = afterPhotoUrl
+        ? `<p style="text-align:center; margin:20px 0;"><img src="${afterPhotoUrl}" alt="After photo" style="max-width:100%; border-radius:10px; border:1px solid #e2e8f0;"></p>`
+        : '';
       const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
         <h2 style="color:#0a5c64;">Thank You From Primo Care</h2>
         <p>Hi ${firstName},</p>
@@ -905,6 +986,7 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
           <tr><td style="color:#6b7280; padding:4px 10px 4px 0;">Property</td><td>${f['Address'] || ''}</td></tr>
           <tr><td style="color:#6b7280; padding:4px 10px 4px 0; font-weight:700;">Amount Due</td><td style="font-weight:700; color:#0a5c64;">${amount}</td></tr>
         </table>
+        ${photoBlock}
         <p style="text-align:center; margin:20px 0;">
           <a href="${payUrl}" style="display:inline-block; background:#0e7c86; color:#fff; text-decoration:none; font-weight:700; padding:12px 28px; border-radius:8px;">Pay Now</a>
         </p>
@@ -917,7 +999,60 @@ app.post('/api/staff/complete', staffAuth, async (req, res) => {
       emailSent = true;
     }
 
-    res.json({ ok: true, emailSent });
+    // Review request — separate email from the billing statement above (asking to be paid and
+    // asking for a review in the same breath reads as tone-deaf), sent once ever per client
+    // rather than after every visit, so a weekly/monthly recurring client isn't asked repeatedly.
+    // Stays inactive until GOOGLE_REVIEW_LINK is set, same "wired but inactive" pattern used
+    // elsewhere in this app.
+    let reviewRequested = false;
+    const reviewLink = process.env.GOOGLE_REVIEW_LINK;
+    if (f['Email'] && reviewLink) {
+      let alreadyAsked = false;
+      if (f['Client ID']) {
+        const clientRecords = await airtable.findAllByField('Client ID', f['Client ID']);
+        alreadyAsked = clientRecords.some(r => (r.fields || {})['Review Requested']);
+      }
+      if (!alreadyAsked) {
+        const firstName = f['First Name'] || 'there';
+        const subject = 'How did we do? Quick favor from Primo Care';
+        const body = `Hi ${firstName},\n\nThanks again for choosing Primo Care! If you have a minute, a quick Google review would mean a lot to our small team and helps other folks in the area find us.\n\nLeave a review: ${reviewLink}\n\nThank you!\n\nBest,\nPrimo Care Team`;
+        const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+          <h2 style="color:#0a5c64;">How did we do?</h2>
+          <p>Hi ${firstName},</p>
+          <p>Thanks again for choosing Primo Care! If you have a minute, a quick Google review would mean a lot to our small team and helps other folks in the area find us.</p>
+          <p style="text-align:center; margin:20px 0;">
+            <a href="${reviewLink}" style="display:inline-block; background:#0e7c86; color:#fff; text-decoration:none; font-weight:700; padding:12px 28px; border-radius:8px;">Leave a Review</a>
+          </p>
+          <p>Thank you!</p>
+          <p>Best,<br>Primo Care Team</p>
+        </div>`;
+        await sendConfirmationEmail({ to: f['Email'], subject, body, htmlBody });
+        await airtable.updateRecord(recordId, { 'Review Requested': true });
+        reviewRequested = true;
+      }
+    }
+
+    // Referral credit — if this client arrived via another client's referral link (see
+    // 'Referred By (Client ID)', set at /api/submit time), and this is the FIRST job of theirs
+    // ever completed, award the referrer a $10 credit. Checked against every record under this
+    // client's Client ID (not just this one) so a multi-property client's second-ever completion
+    // doesn't also trigger it.
+    let referralCreditAwarded = false;
+    if (f['Referred By (Client ID)'] && f['Client ID']) {
+      const clientRecords = await airtable.findAllByField('Client ID', f['Client ID']);
+      const completedCount = clientRecords.filter(r => (r.fields || {})['Status'] === 'Completed').length;
+      if (completedCount === 1) { // just this one — this was their first
+        await airtable.createRecordForTable('Referral Credits', {
+          'Referrer Client ID': f['Referred By (Client ID)'],
+          'Referred Client ID': f['Client ID'],
+          'Earned At': new Date().toISOString(),
+          'Used': false
+        });
+        referralCreditAwarded = true;
+      }
+    }
+
+    res.json({ ok: true, emailSent, reviewRequested, referralCreditAwarded });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -1027,13 +1162,9 @@ app.post('/api/staff/mark-paid', staffAuth, async (req, res) => {
 // confirm in person; Bank Transfer additionally takes a screenshot as proof. None of the manual
 // options mark a job Paid by themselves — that still only happens when staff confirm receipt
 // (or, for Stripe, when the webhook confirms a real charge) via the shared markJobPaid() above.
+// (`upload`, used here and by the staff before/after photo routes above, is declared near the
+// top of the file since both sections need it.)
 // ---------------------------------------------------------------------------
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => cb(null, /^image\/(png|jpe?g|webp|heic|heif)$|^application\/pdf$/.test(file.mimetype))
-});
 
 // Small, self-contained HTML wrapper for the handful of plain messages this section shows a
 // client's browser (not the app's real UI, so no shared template — just enough styling to look
