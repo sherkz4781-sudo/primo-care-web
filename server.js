@@ -72,6 +72,11 @@ function genRefId(prefix) {
   return `PC-${prefix}-${ts}${rand}`;
 }
 
+// Self-serve client login accounts for the /account portal — separate from the internal
+// Staff-Members table further down. Declared here (not alongside Staff-Members) since
+// /api/submit, defined next, needs it too.
+const CLIENT_MEMBERS_TABLE = 'Client Members';
+
 // Escapes a value before it's interpolated into a server-rendered HTML response — used on the
 // few pages here that echo back a query-string/route value (e.g. an Order ID) a client's browser
 // sent, so that value can never be read as markup.
@@ -173,24 +178,26 @@ app.post('/api/internal/send-sms', async (req, res) => {
 // ---------------------------------------------------------------------------
 
 // Accepts one client + an array of properties (one client can book multiple properties in a
-// single submission). A Client ID is resolved server-side (reused if this name already has one
+// single submission). A Client ID is resolved server-side (reused if this email already has one
 // on file, minted fresh otherwise — never trusted from the client, same as Order ID) and shared
 // across every property record created here; each property gets its own fresh Order ID so it
-// can be individually cancelled/rescheduled later. Transaction ID is intentionally NOT minted
-// here — it's a proof-of-payment reference, so it's only generated once staff actually confirm
-// the client paid (see /api/staff/mark-paid).
+// can be individually cancelled/rescheduled later. Matched by email rather than name since two
+// different clients can share a name but never an email. Transaction ID is intentionally NOT
+// minted here — it's a proof-of-payment reference, so it's only generated once staff actually
+// confirm the client paid (see /api/staff/mark-paid).
 app.post('/api/submit', async (req, res) => {
   try {
     const b = req.body || {};
     const firstName = (b.firstName || '').trim();
     const lastName = (b.lastName || '').trim();
     const fullName = `${firstName} ${lastName}`;
+    const email = (b.email || '').trim();
     const properties = Array.isArray(b.properties) ? b.properties : [];
     if (!properties.length) return res.status(400).json({ error: 'At least one property is required.' });
 
     let clientId;
     try {
-      const existing = await airtable.findClientIdByName(fullName);
+      const existing = email ? await airtable.findClientIdByEmail(email) : null;
       clientId = (existing && existing.fields && existing.fields['Client ID']) || genRefId('CLI');
     } catch (err) {
       console.error('Client ID lookup failed, minting a new one:', err.message);
@@ -262,6 +269,54 @@ app.post('/api/submit', async (req, res) => {
         await airtable.updateRecordForTable('Referral Credits', availableCredit.id, { 'Used': true, 'Used On Order ID': orderId });
       }
       results.push({ orderId, recordId: rec.id, total, discountApplied });
+    }
+
+    // Client portal auto-enrollment — the first time a given email submits, create a pending
+    // (unverified, no password yet) Client Members record so the account already exists once
+    // the account-setup email/login flow ships. Matched by email, same key as the Client ID
+    // lookup above. Never re-created on later submissions, even if this client never finishes
+    // verifying — that's a "resend" concern for the setup-email phase, not this one. A failure
+    // here is logged but never fails the booking itself, same treatment as the referral-credit
+    // lookup above.
+    if (email) {
+      try {
+        const escaped = email.replace(/"/g, '\\"').toLowerCase();
+        const existingMember = await airtable.listAllForTable(CLIENT_MEMBERS_TABLE, {
+          formula: `LOWER({Email}) = "${escaped}"`
+        });
+        if (!existingMember.length) {
+          await airtable.createRecordForTable(CLIENT_MEMBERS_TABLE, {
+            'Email': email,
+            'Client ID': clientId,
+            'Full Name': fullName,
+            'Verified': false,
+            'Account Created At': new Date().toISOString()
+          });
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+          await sendAccountSetupEmail({ to: email, firstName: firstName || 'there', baseUrl });
+        }
+      } catch (err) {
+        console.error('Client Members auto-enrollment failed (booking still succeeded):', err.message);
+      }
+    }
+
+    // Auto-un-hide: if this client had previously removed one of these addresses from their
+    // saved-properties list (see /api/client/properties/hide — e.g. a rental they'd moved out
+    // of), booking it again is a clear signal it's relevant once more. Un-hide it rather than
+    // leaving it silently missing from /account next time they check.
+    if (email) {
+      try {
+        const member = await findClientMemberByEmail(email);
+        if (member && member.hiddenProperties.length) {
+          const submittedKeys = new Set(properties.map(p => String(p.address || '').trim().toLowerCase()));
+          const stillHidden = member.hiddenProperties.filter(a => !submittedKeys.has(String(a).trim().toLowerCase()));
+          if (stillHidden.length !== member.hiddenProperties.length) {
+            await airtable.updateRecordForTable(CLIENT_MEMBERS_TABLE, member.recordId, { 'Hidden Properties': JSON.stringify(stillHidden) });
+          }
+        }
+      } catch (err) {
+        console.error('Auto-unhide check failed (booking still succeeded):', err.message);
+      }
     }
 
     res.json({ clientId, properties: results });
@@ -744,8 +799,8 @@ function parseCredentialList(raw) {
   return map;
 }
 
-// Break-glass accounts that always work regardless of what's in the Members table — protects
-// against ever being locked out if Airtable is briefly unreachable, or the Members table is
+// Break-glass accounts that always work regardless of what's in the Staff-Members table — protects
+// against ever being locked out if Airtable is briefly unreachable, or the Staff-Members table is
 // accidentally emptied. Not shown anywhere in the UI; just env vars.
 const BREAK_GLASS_STAFF = parseCredentialList(process.env.STAFF_USERS);
 if (process.env.STAFF_USERNAME && process.env.STAFF_PASSWORD) {
@@ -753,9 +808,9 @@ if (process.env.STAFF_USERNAME && process.env.STAFF_PASSWORD) {
 }
 const BREAK_GLASS_DASHBOARD = parseCredentialList(process.env.DASHBOARD_USERS);
 
-const MEMBERS_TABLE = 'Members';
+const MEMBERS_TABLE = 'Staff-Members';
 
-// Looks up one login account by username in the Members table. Returns null if not found —
+// Looks up one login account by username in the Staff-Members table. Returns null if not found —
 // callers treat that the same as a wrong password (never reveal which one was wrong).
 async function findMember(username) {
   if (!username) return null;
@@ -787,7 +842,7 @@ const staffAuth = makeRoleAuth(['Admin', 'Staff']);
 const dashboardAuth = makeRoleAuth(['Admin']);
 
 // Single login endpoint for both /schedule and /dashboard: checks the submitted credentials
-// against both break-glass env-var lists and the Members table, and issues one shared session
+// against both break-glass env-var lists and the Staff-Members table, and issues one shared session
 // cookie carrying whatever role the account actually has. Per-route access is then just
 // "does this role appear in this route's allowedRoles" — identical semantics to the old
 // Basic Auth gates, just evaluated from a cookie instead of a header.
@@ -826,6 +881,337 @@ app.get('/api/whoami', (req, res) => {
   const session = verifySession(parseCookies(req)[SESSION_COOKIE]);
   if (!session) return res.status(401).json({ error: 'not_authenticated' });
   res.json({ username: session.u, role: session.r, fullName: session.n });
+});
+
+// ---------------------------------------------------------------------------
+// Client portal (self-serve accounts)
+// ---------------------------------------------------------------------------
+// The Client Members record itself is created back in /api/submit (auto-enrollment: unverified,
+// no password yet) the moment someone books for the first time. This section covers the rest of
+// that record's lifecycle — the "set up your account" email link, verifying it, and setting a
+// password. Login/the /account dashboard come in a later phase; kept deliberately separate from
+// the Staff-Members session system above regardless — its own table, and eventually its own
+// cookie and role, so a client account can never reach /schedule or /dashboard even by accident.
+
+// Hashes a client-chosen password with scrypt (Node's built-in crypto, no new dependency —
+// matches this app's habit of hand-rolling auth rather than pulling in bcrypt). Unlike the
+// Staff-Members table's plaintext passwords (fine there: a small, admin-provisioned set),
+// clients pick these themselves and likely reuse them elsewhere, so they're salted and hashed.
+// Stored as "salt:hash", both hex.
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false;
+  const [salt, hash] = stored.split(':');
+  const hashBuf = Buffer.from(hash, 'hex');
+  const candidateBuf = crypto.scryptSync(password, salt, 64);
+  if (hashBuf.length !== candidateBuf.length) return false;
+  return crypto.timingSafeEqual(hashBuf, candidateBuf);
+}
+
+// Thin wrapper around the existing signSession/verifySession HMAC scheme for single-purpose,
+// non-cookie links (the account-setup email). Reuses the same secret and signature format, but
+// requires a matching `t` (type) field, so a token minted for this purpose can never be replayed
+// as a staff session cookie, or vice versa.
+function signPurposeToken(payload, ttlMs, purpose) {
+  return signSession({ ...payload, t: purpose, exp: Date.now() + ttlMs });
+}
+function verifyPurposeToken(token, purpose) {
+  const payload = verifySession(token);
+  if (!payload || payload.t !== purpose) return null;
+  return payload;
+}
+const ACCOUNT_SETUP_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours to click the email link
+
+async function findClientMemberByEmail(email) {
+  if (!email) return null;
+  const escaped = String(email).replace(/"/g, '\\"').toLowerCase();
+  const records = await airtable.listAllForTable(CLIENT_MEMBERS_TABLE, { formula: `LOWER({Email}) = "${escaped}"` });
+  const rec = records[0];
+  if (!rec) return null;
+  const f = rec.fields || {};
+  let hiddenProperties = [];
+  try { hiddenProperties = JSON.parse(f['Hidden Properties'] || '[]'); } catch { hiddenProperties = []; }
+  return { recordId: rec.id, email: f['Email'] || '', clientId: f['Client ID'] || '', fullName: f['Full Name'] || '', passwordHash: f['Password Hash'] || '', verified: !!f['Verified'], hiddenProperties };
+}
+
+// Sends the "set up your account" email — called once, right after /api/submit creates the
+// pending Client Members record. Failure here is logged but never fails the booking itself,
+// same non-fatal treatment as the rest of that auto-enrollment step.
+async function sendAccountSetupEmail({ to, firstName, baseUrl }) {
+  const token = signPurposeToken({ email: to }, ACCOUNT_SETUP_TOKEN_TTL_MS, 'client-verify');
+  const setupUrl = `${baseUrl}/create-account?token=${encodeURIComponent(token)}`;
+  const subject = 'Set up your Primo Care account';
+  const body = `Hi ${firstName},\n\nThanks for booking with Primo Care! We've started an account for you so next time you can see your order history and book your properties again without filling out the form from scratch.\n\nSet up your password: ${setupUrl}\n\nThis link expires in 24 hours.\n\nBest,\nPrimo Care Team`;
+  const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+    <h2 style="color:#0a5c64;">Set up your account</h2>
+    <p>Hi ${firstName},</p>
+    <p>Thanks for booking with Primo Care! We've started an account for you so next time you can see your order history and book your properties again without filling out the form from scratch.</p>
+    <p style="text-align:center; margin:20px 0;">
+      <a href="${setupUrl}" style="display:inline-block; background:#0e7c86; color:#fff; text-decoration:none; font-weight:700; padding:12px 28px; border-radius:8px;">Set Up Your Password</a>
+    </p>
+    <p style="color:#6b7280;font-size:13px;">This link expires in 24 hours.</p>
+    <p>Best,<br>Primo Care Team</p>
+  </div>`;
+  await sendConfirmationEmail({ to, subject, body, htmlBody });
+}
+
+// Sends a "reset your password" email — reuses the exact same token purpose and /create-account
+// page as the original setup email, since resetting is really just "set a (new) password" either
+// way; only the email copy differs.
+async function sendPasswordResetEmail({ to, firstName, baseUrl }) {
+  const token = signPurposeToken({ email: to }, ACCOUNT_SETUP_TOKEN_TTL_MS, 'client-verify');
+  const resetUrl = `${baseUrl}/create-account?token=${encodeURIComponent(token)}`;
+  const subject = 'Reset your Primo Care password';
+  const body = `Hi ${firstName},\n\nWe received a request to reset your Primo Care account password. Set a new one here:\n\n${resetUrl}\n\nThis link expires in 24 hours. If you didn't request this, you can safely ignore this email.\n\nBest,\nPrimo Care Team`;
+  const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
+    <h2 style="color:#0a5c64;">Reset your password</h2>
+    <p>Hi ${firstName},</p>
+    <p>We received a request to reset your Primo Care account password. Set a new one below.</p>
+    <p style="text-align:center; margin:20px 0;">
+      <a href="${resetUrl}" style="display:inline-block; background:#0e7c86; color:#fff; text-decoration:none; font-weight:700; padding:12px 28px; border-radius:8px;">Reset Your Password</a>
+    </p>
+    <p style="color:#6b7280;font-size:13px;">This link expires in 24 hours. If you didn't request this, you can safely ignore this email.</p>
+    <p>Best,<br>Primo Care Team</p>
+  </div>`;
+  await sendConfirmationEmail({ to, subject, body, htmlBody });
+}
+
+// Kicks off a password reset. Always responds ok regardless of whether the email matched an
+// account, so this can't be used to check which emails have a Primo Care account — same
+// never-reveal-which-part-was-wrong pattern used by findVerifiedRecord elsewhere in this app. An
+// account that never finished initial setup (Verified still false) gets the original setup email
+// resent instead of a "reset" email, since it never had a password to reset in the first place.
+app.post('/api/client/forgot-password', async (req, res) => {
+  try {
+    const email = ((req.body && req.body.email) || '').trim();
+    if (email) {
+      const member = await findClientMemberByEmail(email);
+      if (member) {
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const firstName = (member.fullName || 'there').split(' ')[0];
+        if (member.verified) {
+          await sendPasswordResetEmail({ to: member.email, firstName, baseUrl });
+        } else {
+          await sendAccountSetupEmail({ to: member.email, firstName, baseUrl });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Forgot-password request failed:', err.message);
+  }
+  res.json({ ok: true });
+});
+
+// GET so /create-account's page JS can validate the token and greet the client by email before
+// showing the password form — separate from the POST that actually sets the password, so a
+// simple page load never mutates anything. Also reports whether this account was already
+// verified, so the page can tell a first-time setup link apart from a password-reset link and
+// adjust its copy — both land on the exact same form either way.
+app.get('/api/client/verify-token', async (req, res) => {
+  const payload = verifyPurposeToken(req.query.token, 'client-verify');
+  if (!payload) return res.status(400).json({ error: 'This link is invalid or has expired.' });
+  const member = await findClientMemberByEmail(payload.email);
+  res.json({ email: payload.email, isReset: !!(member && member.verified) });
+});
+
+// Sets the client's password for the first time and marks the account Verified — this single
+// step does double duty as both "verify this email" and "create your account", since the only
+// way to reach it is by clicking the link sent to that address.
+app.post('/api/client/create-account', async (req, res) => {
+  try {
+    const { token, password } = req.body || {};
+    const payload = verifyPurposeToken(token, 'client-verify');
+    if (!payload) return res.status(400).json({ error: 'This link is invalid or has expired.' });
+    if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+
+    const member = await findClientMemberByEmail(payload.email);
+    if (!member) return res.status(404).json({ error: 'Account not found.' });
+
+    await airtable.updateRecordForTable(CLIENT_MEMBERS_TABLE, member.recordId, {
+      'Password Hash': hashPassword(password),
+      'Verified': true
+    });
+    // Log them straight in — they just proved they own the inbox and picked a password, no
+    // reason to make them find the login page and re-enter it immediately after.
+    setClientSessionCookie(res, { u: member.email, r: 'Client', n: member.fullName, cid: member.clientId, exp: Date.now() + CLIENT_SESSION_TTL_MS });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/create-account', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'create-account.html'));
+});
+
+// Own cookie name, TTL, and role — kept fully independent of the Staff-Members session above so
+// the two can coexist in the same browser (e.g. an admin who also books their own cleaning) and
+// so a client session can never be mistaken for a staff one even under the shared HMAC secret.
+// Longer-lived than the 12-hour staff session on purpose: this is a "stay logged in" convenience
+// for repeat bookings, not a work-shift session.
+const CLIENT_SESSION_COOKIE = 'pc_client_session';
+const CLIENT_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function setClientSessionCookie(res, payload) {
+  const token = signSession(payload);
+  const maxAgeSec = Math.floor(CLIENT_SESSION_TTL_MS / 1000);
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${CLIENT_SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax${secure}`);
+}
+function clearClientSessionCookie(res) {
+  res.setHeader('Set-Cookie', `${CLIENT_SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
+}
+
+// Session-cookie gate for the /account dashboard's data routes, once those ship — same
+// 401-JSON-not-native-prompt pattern as staffAuth/dashboardAuth, just against the client
+// cookie/role instead.
+function clientAuth(req, res, next) {
+  const session = verifySession(parseCookies(req)[CLIENT_SESSION_COOKIE]);
+  if (session && session.r === 'Client') {
+    req.clientSession = { email: session.u, clientId: session.cid, fullName: session.n };
+    return next();
+  }
+  return res.status(401).json({ error: 'not_authenticated' });
+}
+
+app.post('/api/client/login', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+
+    const member = await findClientMemberByEmail(email);
+    if (!member || !member.verified || !member.passwordHash || !verifyPassword(password, member.passwordHash)) {
+      return res.status(401).json({ error: 'Incorrect email or password.' });
+    }
+
+    setClientSessionCookie(res, { u: member.email, r: 'Client', n: member.fullName, cid: member.clientId, exp: Date.now() + CLIENT_SESSION_TTL_MS });
+    res.json({ ok: true, fullName: member.fullName });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/client/logout', (req, res) => {
+  clearClientSessionCookie(res);
+  res.json({ ok: true });
+});
+
+// Lets a page's own JS check "am I logged in as a client" on load — same purpose as the staff
+// /api/whoami, just against the client cookie.
+app.get('/api/client/whoami', (req, res) => {
+  const session = verifySession(parseCookies(req)[CLIENT_SESSION_COOKIE]);
+  if (!session || session.r !== 'Client') return res.status(401).json({ error: 'not_authenticated' });
+  res.json({ email: session.u, fullName: session.n });
+});
+
+app.get('/client/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'client-login.html'));
+});
+
+// Lists every booking under this client's Client ID, most recent first — the /account
+// dashboard's order history.
+app.get('/api/client/orders', clientAuth, async (req, res) => {
+  try {
+    const records = await airtable.findAllByField('Client ID', req.clientSession.clientId);
+    const orders = records
+      .map(rec => {
+        const f = rec.fields || {};
+        return {
+          orderId: f['Order ID'] || '',
+          address: f['Address'] || '',
+          service: f['Service'] || '',
+          propertyType: f['Property Type'] || '',
+          status: f['Status'] || '',
+          bookedDateTime: f['Booked Date/Time'] || '',
+          submittedAt: f['Submitted At'] || '',
+          total: f['Estimated Total per Visit'] || 0,
+          subscription: f['Subscription'] || ''
+        };
+      })
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    res.json({ orders });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Distinct properties this client has booked before (deduped by address, most-recently-seen
+// details winning) — backs the /account dashboard's saved-properties list and the "book this
+// property again" flow. Excludes any address the client has hidden (e.g. moved out of a
+// rental) — that's a per-client display preference on the Client Members record, and never
+// touches the underlying Submissions records, so Order History is unaffected either way.
+app.get('/api/client/properties', clientAuth, async (req, res) => {
+  try {
+    const [records, member] = await Promise.all([
+      airtable.findAllByField('Client ID', req.clientSession.clientId),
+      findClientMemberByEmail(req.clientSession.email)
+    ]);
+    const hidden = new Set((member && member.hiddenProperties || []).map(a => String(a).trim().toLowerCase()));
+    const byAddress = new Map();
+    records
+      .slice()
+      .sort((a, b) => new Date((a.fields || {})['Submitted At'] || 0) - new Date((b.fields || {})['Submitted At'] || 0))
+      .forEach(rec => {
+        const f = rec.fields || {};
+        const key = String(f['Address'] || '').trim().toLowerCase();
+        if (!key || hidden.has(key)) return;
+        byAddress.set(key, {
+          address: f['Address'] || '',
+          zip: f['Zip Code'] || '',
+          propertyType: f['Property Type'] || '',
+          sqft: f['Property Size'] || '',
+          sizeUnit: f['Property Size Unit'] || '',
+          areas: f['Areas / Facility Type'] || '',
+          service: f['Service'] || '',
+          phone: f['Contact Number'] || '',
+          mapPin: f['Map Pin (Lat,Lng)'] || ''
+        });
+      });
+    res.json({ properties: Array.from(byAddress.values()) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Hides one address from this client's saved-properties/rebook list — for a renter who's moved
+// out, say. Purely a display preference on their Client Members record; the underlying
+// Submissions records (and Order History) are untouched, so nothing about their booking history
+// is lost or hidden.
+app.post('/api/client/properties/hide', clientAuth, async (req, res) => {
+  try {
+    const address = ((req.body && req.body.address) || '').trim();
+    if (!address) return res.status(400).json({ error: 'Missing address.' });
+
+    const member = await findClientMemberByEmail(req.clientSession.email);
+    if (!member) return res.status(404).json({ error: 'Account not found.' });
+
+    const key = address.toLowerCase();
+    const already = member.hiddenProperties.some(a => String(a).trim().toLowerCase() === key);
+    if (!already) {
+      const updated = member.hiddenProperties.concat([address]);
+      await airtable.updateRecordForTable(CLIENT_MEMBERS_TABLE, member.recordId, { 'Hidden Properties': JSON.stringify(updated) });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// The page itself is always servable — its own JS calls /api/client/whoami on load and redirects
+// to /client/login if that comes back 401, same "page always loads, data routes stay gated"
+// pattern as /schedule.
+app.get('/account', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'account.html'));
 });
 
 // The page itself is always servable now (no server-side gate) — its own JS calls /api/whoami

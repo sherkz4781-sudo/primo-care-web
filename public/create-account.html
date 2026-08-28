@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primo Care - Set Up Your Account</title>
+<script>
+(function(){
+  try {
+    var saved = localStorage.getItem('primo-theme');
+    var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {}
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --font-display: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --teal: #0e7c86;
+    --teal-dark: #0a5c64;
+    --teal-light: #e6f4f5;
+    --teal-text: #0a5c64;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --bg: #ffffff;
+    --bg-page: #f7f9fa;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --teal: #14a3ae;
+    --teal-dark: #0a5c64;
+    --teal-light: #123338;
+    --teal-text: #52dbe0;
+    --ink: #e9edee;
+    --muted: #99a7aa;
+    --border: #243033;
+    --bg: #131b1e;
+    --bg-page: #0a1214;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg-page);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.35s ease, color 0.35s ease;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 24px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border-radius: 14px;
+    color: white;
+    margin-bottom: 24px;
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  header.brand .logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  header.brand h1 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 21px; letter-spacing: 0.2px; }
+  header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+  @keyframes drop-down-in {
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes text-drop-in {
+    from { opacity: 0; transform: translateY(-26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  header.brand h1, header.brand p {
+    animation: text-drop-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  header.brand h1 { animation-delay: 0.8s; }
+  header.brand p { animation-delay: 1.3s; }
+  @media (prefers-reduced-motion: reduce) {
+    header.brand, header.brand h1, header.brand p, .card { animation: none; opacity: 1; transform: none; }
+  }
+
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 22px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.3s;
+  }
+
+  label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
+  .field { margin-bottom: 14px; }
+  input[type=email], input[type=password] {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; color: var(--ink); background: var(--bg); font-family: inherit;
+  }
+  input[disabled] { color: var(--muted); background: var(--bg-page); }
+  input:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+  .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  .primary {
+    background: var(--teal); color: #fff; border: none; border-radius: 9px;
+    padding: 13px 20px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%;
+    box-shadow: 0 3px 8px rgba(14,124,134,0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .primary:hover { background: var(--teal-dark); transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 20px rgba(14,124,134,0.32); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:disabled:hover { transform: none; box-shadow: none; }
+
+  .result-box { margin-top: 16px; font-size: 13.5px; padding: 12px 14px; border-radius: 8px; display: none; }
+  .result-box.err { background: #fef2f2; color: #991b1b; display: block; }
+
+  .state { display: none; }
+  .state.active { display: block; }
+  .center-note { text-align: center; color: var(--muted); font-size: 13.5px; padding: 10px 0; }
+  .success-icon {
+    width: 52px; height: 52px; border-radius: 50%; background: var(--teal-light); color: var(--teal-text);
+    display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 14px;
+  }
+  .success-title { text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 0 0 6px; }
+  .success-body { text-align: center; color: var(--muted); font-size: 13.5px; margin: 0; }
+
+  .footer-note { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 20px; }
+
+  .theme-toggle {
+    margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.18); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.25s ease, background 0.2s ease;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,0.3); transform: rotate(15deg); }
+  .theme-toggle svg { width: 18px; height: 18px; }
+  .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="brand">
+    <div class="logo">&#128273;</div>
+    <div>
+      <h1>Primo Care</h1>
+      <p id="pageSubtitle">Set Up Your Account</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+    </button>
+  </header>
+
+  <div class="card">
+
+    <div class="state active" id="stateLoading">
+      <p class="center-note">Checking your link&hellip;</p>
+    </div>
+
+    <div class="state" id="stateInvalid">
+      <div class="result-box err" style="display:block;" id="invalidMsg">This link is invalid or has expired.</div>
+      <p class="hint">Account-setup links expire 24 hours after your booking. Reply to your confirmation email and we'll help you out.</p>
+    </div>
+
+    <div class="state" id="stateForm">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" disabled>
+      </div>
+      <div class="field">
+        <label>Password <span style="color:#dc2626;">*</span></label>
+        <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Confirm Password <span style="color:#dc2626;">*</span></label>
+        <input type="password" id="confirmPassword" placeholder="Re-enter your password" autocomplete="new-password">
+      </div>
+      <button class="primary" id="submitBtn">Create My Account</button>
+      <div class="result-box err" id="formError" style="display:none;"></div>
+    </div>
+
+    <div class="state" id="stateSuccess">
+      <div class="success-icon">&#10003;</div>
+      <p class="success-title" id="successTitle">You're all set!</p>
+      <p class="success-body" id="successBody">Your Primo Care account is ready and you're now logged in.</p>
+      <a href="/account" class="primary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:18px;">Go to My Account</a>
+    </div>
+
+  </div>
+
+  <div class="footer-note">Primo Care Cleaning Services</div>
+</div>
+
+<script>
+  function $(id) { return document.getElementById(id); }
+  function showState(id) {
+    ['stateLoading', 'stateInvalid', 'stateForm', 'stateSuccess'].forEach(function(s) {
+      $(s).classList.toggle('active', s === id);
+    });
+  }
+
+  var token = new URLSearchParams(window.location.search).get('token');
+  var isReset = false;
+  var submitLabel = 'Create My Account';
+
+  if (!token) {
+    showState('stateInvalid');
+  } else {
+    fetch('/api/client/verify-token?token=' + encodeURIComponent(token))
+      .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(res) {
+        if (!res.ok) {
+          $('invalidMsg').textContent = res.data.error || 'This link is invalid or has expired.';
+          showState('stateInvalid');
+          return;
+        }
+        $('email').value = res.data.email;
+        isReset = !!res.data.isReset;
+        if (isReset) {
+          submitLabel = 'Reset My Password';
+          document.title = 'Primo Care - Reset Your Password';
+          $('pageSubtitle').textContent = 'Reset Your Password';
+          $('submitBtn').textContent = submitLabel;
+          $('successTitle').textContent = 'Password reset!';
+          $('successBody').textContent = "Your Primo Care password has been reset and you're now logged in.";
+        }
+        showState('stateForm');
+      })
+      .catch(function() {
+        $('invalidMsg').textContent = 'Something went wrong checking your link. Please try again.';
+        showState('stateInvalid');
+      });
+  }
+
+  $('submitBtn').addEventListener('click', function() {
+    var password = $('password').value;
+    var confirmPassword = $('confirmPassword').value;
+    var errBox = $('formError');
+    errBox.style.display = 'none';
+
+    if (password.length < 8) {
+      errBox.textContent = 'Password must be at least 8 characters.';
+      errBox.style.display = 'block';
+      return;
+    }
+    if (password !== confirmPassword) {
+      errBox.textContent = 'Passwords do not match.';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    $('submitBtn').disabled = true;
+    $('submitBtn').textContent = isReset ? 'Resetting…' : 'Creating account…';
+
+    fetch('/api/client/create-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, password: password })
+    })
+      .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(res) {
+        if (!res.ok) {
+          errBox.textContent = res.data.error || 'Something went wrong. Please try again.';
+          errBox.style.display = 'block';
+          $('submitBtn').disabled = false;
+          $('submitBtn').textContent = submitLabel;
+          return;
+        }
+        showState('stateSuccess');
+      })
+      .catch(function() {
+        errBox.textContent = 'Something went wrong. Please try again.';
+        errBox.style.display = 'block';
+        $('submitBtn').disabled = false;
+        $('submitBtn').textContent = submitLabel;
+      });
+  });
+
+  (function() {
+    var toggle = document.getElementById('themeToggle');
+    if (!toggle) return;
+    function current() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+    function reflect() {
+      var dark = current() === 'dark';
+      toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+    reflect();
+    toggle.addEventListener('click', function() {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('primo-theme', next); } catch (e) {}
+      reflect();
+    });
+  })();
+</script>
+</body>
+</html>

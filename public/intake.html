@@ -300,6 +300,11 @@
 
   <div id="formSection">
 
+    <div class="card hidden" id="rebookBanner" style="background:var(--teal-light);border-color:var(--teal);">
+      <div style="font-weight:700;color:var(--teal-text);font-size:14px;">Booking again for <span id="rebookAddress"></span></div>
+      <div style="font-size:12.5px;color:var(--teal-text);margin-top:4px;">We've filled in your details below from your last booking &mdash; review and adjust anything that's changed, including re-selecting your Areas to Clean.</div>
+    </div>
+
     <div class="card">
       <h2><span class="num">1</span> Client Information</h2>
       <div class="grid2">
@@ -340,7 +345,7 @@
         </div>
       </div>
       <label class="choice" style="margin-top:4px;"><input type="checkbox" id="smsOptIn"> Text me a reminder before my scheduled cleaning</label>
-      <div class="estimate-note">Your Client ID is issued once and reused every time you book with us &mdash; it always matches this name on our records.</div>
+      <div class="estimate-note">Your Client ID is issued once and reused every time you book with us &mdash; it always matches this email on our records.</div>
     </div>
 
     <div id="propertiesContainer"></div>
@@ -1016,6 +1021,58 @@
   $('propertiesContainer').insertAdjacentHTML('afterend', rateTableHtml());
   $('rateCardWrap').insertAdjacentHTML('afterend', combinedEstimateHtml());
   refreshCombinedEstimate();
+
+  // /account hands off this client's info via sessionStorage (same-tab only, read once) rather
+  // than a URL param — address/phone/pin have no business in a shareable link or browser
+  // history. Two callers: "Book This Property Again" includes a `property` payload and this
+  // pre-fills the first property card (idx 0, already created by addProperty() above) too;
+  // "+ Add a Property" omits it, leaving a blank card and just saving the client a re-typed
+  // name/phone/email. Deliberately leaves the residential "Areas to Clean" checkboxes for the
+  // client to re-pick on a rebook, since the only record of those is a formatted display string,
+  // not the original selections — round-tripping that back into exact checkbox state isn't worth
+  // the fragility.
+  (function applyAccountPrefill(){
+    if(new URLSearchParams(window.location.search).get('prefill') !== '1') return;
+    var raw;
+    try { raw = sessionStorage.getItem('primo-account-handoff'); sessionStorage.removeItem('primo-account-handoff'); } catch(e){ return; }
+    if(!raw) return;
+    var data;
+    try { data = JSON.parse(raw); } catch(e){ return; }
+    if(!data) return;
+
+    if(data.firstName) $('firstName').value = data.firstName;
+    if(data.lastName) $('lastName').value = data.lastName;
+    if(data.phone) $('phone').value = data.phone;
+    if(data.email) $('email').value = data.email;
+
+    var p = data.property;
+    if(p){
+      var idx = 0;
+      if(p.propertyType === 'commercial') $('btnCommercial_' + idx).click();
+      if(p.address) $('address_' + idx).value = p.address;
+      if(p.mapPin) mapPins[idx] = p.mapPin;
+      if(p.zip) $('zip_' + idx).value = p.zip;
+      if(p.sqft) $('sqft_' + idx).value = p.sqft;
+      if(p.sizeUnit){
+        $('sizeUnit_' + idx).value = p.sizeUnit;
+        $('sizeUnit_' + idx).dispatchEvent(new Event('change'));
+      }
+      if(p.service){
+        if(p.propertyType === 'commercial'){
+          $('facilityType_' + idx).value = p.service;
+          $('facilityType_' + idx).dispatchEvent(new Event('change'));
+        } else {
+          var radio = document.querySelector('input[name="resService_' + idx + '"][value="' + p.service + '"]');
+          if(radio) radio.click();
+        }
+      }
+      updateEstimate(idx);
+      if(p.address){
+        $('rebookAddress').textContent = p.address;
+        $('rebookBanner').classList.remove('hidden');
+      }
+    }
+  })();
 
   // Locks the shared Client Information fields once the first property has been submitted, so
   // a later "+ Add Another Property" round trip can't silently change the name a Client ID is

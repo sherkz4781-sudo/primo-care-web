@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primo Care - Client Login</title>
+<script>
+(function(){
+  try {
+    var saved = localStorage.getItem('primo-theme');
+    var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {}
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --font-display: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --teal: #0e7c86;
+    --teal-dark: #0a5c64;
+    --teal-light: #e6f4f5;
+    --teal-text: #0a5c64;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --border: #e2e8f0;
+    --bg: #ffffff;
+    --bg-page: #f7f9fa;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --teal: #14a3ae;
+    --teal-dark: #0a5c64;
+    --teal-light: #123338;
+    --teal-text: #52dbe0;
+    --ink: #e9edee;
+    --muted: #99a7aa;
+    --border: #243033;
+    --bg: #131b1e;
+    --bg-page: #0a1214;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg-page);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.35s ease, color 0.35s ease;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 24px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    border-radius: 14px;
+    color: white;
+    margin-bottom: 24px;
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  header.brand .logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  header.brand h1 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 21px; letter-spacing: 0.2px; }
+  header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+  @keyframes drop-down-in {
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes text-drop-in {
+    from { opacity: 0; transform: translateY(-26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  header.brand h1, header.brand p {
+    animation: text-drop-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  header.brand h1 { animation-delay: 0.8s; }
+  header.brand p { animation-delay: 1.3s; }
+  @media (prefers-reduced-motion: reduce) {
+    header.brand, header.brand h1, header.brand p, .card { animation: none; opacity: 1; transform: none; }
+  }
+
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 22px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: 0.3s;
+  }
+
+  label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
+  .field { margin-bottom: 14px; }
+  input[type=email], input[type=password] {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; color: var(--ink); background: var(--bg); font-family: inherit;
+  }
+  input:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+
+  .primary {
+    background: var(--teal); color: #fff; border: none; border-radius: 9px;
+    padding: 13px 20px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%;
+    box-shadow: 0 3px 8px rgba(14,124,134,0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .primary:hover { background: var(--teal-dark); transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 20px rgba(14,124,134,0.32); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:disabled:hover { transform: none; box-shadow: none; }
+
+  .result-box { margin-top: 16px; font-size: 13.5px; padding: 12px 14px; border-radius: 8px; }
+  .result-box.err { background: #fef2f2; color: #991b1b; }
+
+  .state { display: none; }
+  .state.active { display: block; }
+  .success-icon {
+    width: 52px; height: 52px; border-radius: 50%; background: var(--teal-light); color: var(--teal-text);
+    display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 14px;
+  }
+  .success-title { text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 18px; margin: 0 0 6px; }
+  .success-body { text-align: center; color: var(--muted); font-size: 13.5px; margin: 0; }
+
+  .footer-note { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 20px; }
+
+  .theme-toggle {
+    margin-left: auto; width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.18); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.25s ease, background 0.2s ease;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,0.3); transform: rotate(15deg); }
+  .theme-toggle svg { width: 18px; height: 18px; }
+  .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="brand">
+    <div class="logo">&#128100;</div>
+    <div>
+      <h1>Primo Care</h1>
+      <p>Client Login</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+    </button>
+  </header>
+
+  <div class="card">
+
+    <div class="state active" id="stateForm">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="jane@example.com" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Your password" autocomplete="current-password">
+      </div>
+      <button class="primary" id="loginBtn">Log In</button>
+      <div class="result-box err" id="formError" style="display:none;"></div>
+      <p style="text-align:center;margin:14px 0 0;">
+        <a href="#" id="forgotLink" style="color:var(--teal-text);font-size:13px;font-weight:600;text-decoration:none;">Forgot password?</a>
+      </p>
+      <p class="hint" style="font-size:11.5px;color:var(--muted);margin-top:10px;text-align:center;">Your account is created automatically the first time you book. Check your email for a "Set up your Primo Care account" link.</p>
+    </div>
+
+    <div class="state" id="stateForgot">
+      <p style="font-size:13.5px;color:var(--muted);margin:0 0 14px;">Enter your email and we'll send you a link to reset your password.</p>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="forgotEmail" placeholder="jane@example.com" autocomplete="username">
+      </div>
+      <button class="primary" id="forgotBtn">Send Reset Link</button>
+      <div class="result-box err" id="forgotError" style="display:none;"></div>
+      <p style="text-align:center;margin:14px 0 0;">
+        <a href="#" id="backToLoginLink" style="color:var(--teal-text);font-size:13px;font-weight:600;text-decoration:none;">&larr; Back to login</a>
+      </p>
+    </div>
+
+    <div class="state" id="stateForgotSent">
+      <div class="success-icon">&#9993;</div>
+      <p class="success-title">Check your email</p>
+      <p class="success-body">If that email has a Primo Care account, we've sent a link to reset your password. It expires in 24 hours.</p>
+    </div>
+
+    <div class="state" id="stateSuccess">
+      <div class="success-icon">&#10003;</div>
+      <p class="success-title" id="welcomeMsg">Welcome back!</p>
+      <p class="success-body">You're logged in.</p>
+      <a href="/account" class="primary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:18px;">Go to My Account</a>
+    </div>
+
+  </div>
+
+  <div class="footer-note">Primo Care Cleaning Services</div>
+</div>
+
+<script>
+  function $(id) { return document.getElementById(id); }
+  function showState(id) {
+    ['stateForm', 'stateForgot', 'stateForgotSent', 'stateSuccess'].forEach(function(s) {
+      $(s).classList.toggle('active', s === id);
+    });
+  }
+
+  $('loginBtn').addEventListener('click', function() {
+    var email = $('email').value.trim();
+    var password = $('password').value;
+    var errBox = $('formError');
+    errBox.style.display = 'none';
+
+    if (!email || !password) {
+      errBox.textContent = 'Please enter your email and password.';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    $('loginBtn').disabled = true;
+    $('loginBtn').textContent = 'Logging in…';
+
+    fetch('/api/client/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    })
+      .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(res) {
+        if (!res.ok) {
+          errBox.textContent = res.data.error || 'Something went wrong. Please try again.';
+          errBox.style.display = 'block';
+          $('loginBtn').disabled = false;
+          $('loginBtn').textContent = 'Log In';
+          return;
+        }
+        $('welcomeMsg').textContent = 'Welcome back, ' + (res.data.fullName || '') + '!';
+        showState('stateSuccess');
+      })
+      .catch(function() {
+        errBox.textContent = 'Something went wrong. Please try again.';
+        errBox.style.display = 'block';
+        $('loginBtn').disabled = false;
+        $('loginBtn').textContent = 'Log In';
+      });
+  });
+
+  $('forgotLink').addEventListener('click', function(e) {
+    e.preventDefault();
+    $('forgotEmail').value = $('email').value.trim();
+    showState('stateForgot');
+  });
+
+  $('backToLoginLink').addEventListener('click', function(e) {
+    e.preventDefault();
+    showState('stateForm');
+  });
+
+  $('forgotBtn').addEventListener('click', function() {
+    var email = $('forgotEmail').value.trim();
+    var errBox = $('forgotError');
+    errBox.style.display = 'none';
+
+    if (!email) {
+      errBox.textContent = 'Please enter your email.';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    $('forgotBtn').disabled = true;
+    $('forgotBtn').textContent = 'Sending…';
+
+    fetch('/api/client/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    })
+      .then(function() {
+        showState('stateForgotSent');
+      })
+      .catch(function() {
+        errBox.textContent = 'Something went wrong. Please try again.';
+        errBox.style.display = 'block';
+        $('forgotBtn').disabled = false;
+        $('forgotBtn').textContent = 'Send Reset Link';
+      });
+  });
+
+  (function() {
+    var toggle = document.getElementById('themeToggle');
+    if (!toggle) return;
+    function current() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+    function reflect() {
+      var dark = current() === 'dark';
+      toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+    reflect();
+    toggle.addEventListener('click', function() {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('primo-theme', next); } catch (e) {}
+      reflect();
+    });
+  })();
+</script>
+</body>
+</html>
