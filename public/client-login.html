@@ -166,15 +166,17 @@
   <div class="card">
 
     <div class="state active" id="stateForm">
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="email" placeholder="jane@example.com" autocomplete="username">
-      </div>
-      <div class="field">
-        <label>Password</label>
-        <input type="password" id="password" placeholder="Your password" autocomplete="current-password">
-      </div>
-      <button class="primary" id="loginBtn">Log In</button>
+      <form id="loginForm" method="post">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="email" placeholder="jane@example.com" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Your password" autocomplete="current-password" required>
+        </div>
+        <button class="primary" id="loginBtn" type="submit">Log In</button>
+      </form>
       <div class="result-box err" id="formError" style="display:none;"></div>
       <p style="text-align:center;margin:14px 0 0;">
         <a href="#" id="forgotLink" style="color:var(--teal-text);font-size:13px;font-weight:600;text-decoration:none;">Forgot password?</a>
@@ -221,7 +223,11 @@
     });
   }
 
-  $('loginBtn').addEventListener('click', function() {
+  // A real <form> submitted via its 'submit' event (not just a button click handler) is what
+  // browsers' password managers reliably recognize as a login, triggering the native "Save
+  // password?" prompt after a successful response.
+  $('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
     var email = $('email').value.trim();
     var password = $('password').value;
     var errBox = $('formError');

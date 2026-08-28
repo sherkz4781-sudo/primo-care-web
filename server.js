@@ -98,6 +98,16 @@ async function findVerifiedRecord({ firstName, lastName, email, orderId }) {
   return rec;
 }
 
+// Ownership check for the /account dashboard's cancel/reschedule actions — the client is already
+// authenticated via their session, so this replaces name/email verification with a straight
+// Client ID match. Returns null (never revealing whether the Order ID exists at all) if it
+// belongs to someone else, same non-disclosure treatment as findVerifiedRecord.
+async function findOwnedOrder(orderId, clientId) {
+  const rec = await airtable.findByField('Order ID', orderId);
+  if (!rec || (rec.fields || {})['Client ID'] !== clientId) return null;
+  return rec;
+}
+
 // Same identity-verification pattern as findVerifiedRecord, but matched by Client ID and
 // returning EVERY property record under that client (a client can have multiple properties).
 // Identity is checked against the first matching record, since a Client ID always ties back to
@@ -571,13 +581,20 @@ async function sendConfirmationEmail({ to, subject, body, htmlBody }) {
   }
 }
 
-app.post('/api/cancel', async (req, res) => {
+// Cancel/reschedule moved here from a standalone identity-verified public page (no active
+// clients existed yet when it was retired, so there was nothing to migrate) — the client's
+// session already proves who they are, so ownership is just a Client ID match instead of
+// re-typing name/email/Order ID. Name/email for the confirmation email come from the record
+// itself (the authoritative values from when they booked), not the request body.
+app.post('/api/client/cancel', clientAuth, async (req, res) => {
   try {
-    const { firstName, lastName, email, orderId, note } = req.body || {};
-    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
-    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+    const { orderId, note } = req.body || {};
+    const rec = await findOwnedOrder(orderId, req.clientSession.clientId);
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find that booking.' });
 
     const f = rec.fields || {};
+    const firstName = f['First Name'] || '';
+    const email = f['Email'] || '';
     const originalBookedDisplay = f['Booked Date/Time'] || '';
     const feeNote = feeApplicabilityNote(f['Booked Start (ISO)']);
 
@@ -606,11 +623,11 @@ app.post('/api/cancel', async (req, res) => {
   }
 });
 
-app.post('/api/reschedule/find-times', async (req, res) => {
+app.post('/api/client/reschedule/find-times', clientAuth, async (req, res) => {
   try {
-    const { firstName, lastName, email, orderId, date } = req.body || {};
-    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
-    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+    const { orderId, date } = req.body || {};
+    const rec = await findOwnedOrder(orderId, req.clientSession.clientId);
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find that booking.' });
     if (!date) return res.status(400).json({ error: 'Missing date.' });
 
     const slots = await gcal.findAvailableSlots(date);
@@ -621,13 +638,16 @@ app.post('/api/reschedule/find-times', async (req, res) => {
   }
 });
 
-app.post('/api/reschedule/submit', async (req, res) => {
+app.post('/api/client/reschedule/submit', clientAuth, async (req, res) => {
   try {
-    const { firstName, lastName, email, orderId, slot, note } = req.body || {};
-    const rec = await findVerifiedRecord({ firstName, lastName, email, orderId });
-    if (!rec) return res.status(404).json({ error: 'We couldn\'t find a booking matching those details.' });
+    const { orderId, slot, note } = req.body || {};
+    const rec = await findOwnedOrder(orderId, req.clientSession.clientId);
+    if (!rec) return res.status(404).json({ error: 'We couldn\'t find that booking.' });
 
     const f = rec.fields || {};
+    const firstName = f['First Name'] || '';
+    const lastName = f['Last Name'] || '';
+    const email = f['Email'] || '';
     const freqName = f['Subscription'];
     const duration = f['Duration'];
     const isSubscription = !!(freqName && duration);
@@ -696,10 +716,6 @@ app.post('/api/reschedule/submit', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
-});
-
-app.get('/cancel-reschedule', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'cancel-reschedule.html'));
 });
 
 // ---------------------------------------------------------------------------
@@ -2127,11 +2143,11 @@ Pricing: Custom, based on the property's actual square footage — never a flat 
 
 Booking: New clients get a quote and book their first visit at /intake. Returning clients who already have a Client ID can book another visit at /book.
 
-Cancelling or rescheduling: Self-serve at /cancel-reschedule, using the Order ID or Client ID from their confirmation email. Changes made 48 hours or more before the scheduled visit are free; changes made less than 48 hours before incur a fee of 20% of the Total Contract Price.
+Cancelling or rescheduling: Log in at /account (created automatically from your first booking's confirmation email) and manage it right from your booking history there. Changes made 48 hours or more before the scheduled visit are free; changes made less than 48 hours before incur a fee of 20% of the Total Contract Price.
 
 Contact: Phone +63 917 625 3896, email desk@primocare.com.
 
-Your job: answer questions about services, the pricing model, booking, and policies briefly and warmly (2-4 sentences). Always direct people to the actual page (/intake, /book, or /cancel-reschedule) for anything actionable — you cannot generate a price quote, place a booking, or cancel/reschedule one yourself, so never attempt to. If asked something unrelated to Primo Care or cleaning services, politely say that's outside what you can help with here. Never invent a detail you don't know — if unsure, suggest they call or email instead of guessing.`;
+Your job: answer questions about services, the pricing model, booking, and policies briefly and warmly (2-4 sentences). Always direct people to the actual page (/intake, /book, or /account) for anything actionable — you cannot generate a price quote, place a booking, or cancel/reschedule one yourself, so never attempt to. If asked something unrelated to Primo Care or cleaning services, politely say that's outside what you can help with here. Never invent a detail you don't know — if unsure, suggest they call or email instead of guessing.`;
 
 // Simple in-memory per-IP rate limit. This calls a paid, external API, so an unbounded public
 // endpoint is a real cost-abuse risk — resets on server restart, which is fine at this scale.

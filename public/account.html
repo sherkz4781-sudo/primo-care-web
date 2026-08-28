@@ -28,12 +28,18 @@
     --ink: #1f2937;
     --muted: #6b7280;
     --border: #e2e8f0;
-    --bg: #ffffff;
-    --bg-page: #f7f9fa;
+    --bg: #e8ecf0;
+    --bg-page: #e8ecf0;
     --green: #166534; --green-bg: #ecfdf3;
     --amber: #92400e; --amber-bg: #fffbeb;
     --red: #991b1b; --red-bg: #fef2f2;
     --gray: #4b5563; --gray-bg: #f3f4f6;
+    /* Neumorphic elevation — every raised/pressed surface is cast in these two colors, on the
+       exact same background as its container. Color differentiation (teal/red/etc.) lives in
+       text and fill only, never in the shadow itself — real neumorphism reads as "one material,"
+       and per-accent shadow tints break that illusion. */
+    --neu-dark: rgba(163, 177, 194, 0.55);
+    --neu-light: rgba(255, 255, 255, 0.85);
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
@@ -43,13 +49,15 @@
     --teal-text: #52dbe0;
     --ink: #e9edee;
     --muted: #99a7aa;
-    --border: #243033;
-    --bg: #131b1e;
-    --bg-page: #0a1214;
+    --border: #2a3238;
+    --bg: #1b2024;
+    --bg-page: #1b2024;
     --green: #4ade80; --green-bg: #0f2a1a;
     --amber: #fbbf24; --amber-bg: #2b2109;
     --red: #f87171; --red-bg: #2b1212;
     --gray: #9ca3af; --gray-bg: #1c2226;
+    --neu-dark: rgba(0, 0, 0, 0.55);
+    --neu-light: rgba(255, 255, 255, 0.045);
   }
   * { box-sizing: border-box; }
   body {
@@ -63,15 +71,22 @@
   }
   .wrap { max-width: 720px; margin: 0 auto; padding: 24px 20px 60px; }
 
+  /* Reusable elevation recipes */
+  .neu-raised { box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light); }
+  .neu-raised-sm { box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light); }
+  .neu-pressed { box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light); }
+  .neu-pressed-sm { box-shadow: inset 2px 2px 4px var(--neu-dark), inset -2px -2px 4px var(--neu-light); }
+
   header.brand {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 22px 24px;
     background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-    border-radius: 14px;
+    border-radius: 20px;
     color: white;
     margin-bottom: 24px;
+    box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
     animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
   header.brand .logo {
@@ -96,11 +111,10 @@
 
   .card {
     background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 20px;
     padding: 20px 22px 22px;
     margin-bottom: 18px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
     animation: fade-up-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   .card h2 { font-family: var(--font-display); font-size: 16px; margin: 0 0 4px; }
@@ -109,40 +123,104 @@
   .empty-note { color: var(--muted); font-size: 13.5px; padding: 6px 0; }
 
   .prop-item, .order-item {
-    border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; margin-bottom: 10px;
+    background: var(--bg); border-radius: 16px; padding: 13px 15px; margin-bottom: 12px;
+    box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
   }
   .prop-item:last-child, .order-item:last-child { margin-bottom: 0; }
   .prop-addr { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
   .prop-meta, .order-meta { font-size: 12.5px; color: var(--muted); }
 
-  .prop-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .prop-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+
+  button { font-family: inherit; }
 
   .add-property-btn {
-    background: var(--bg); color: var(--teal-text); border: 1.5px dashed var(--teal);
-    border-radius: 9px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
-    width: 100%; margin-top: 12px; font-family: inherit;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    background: var(--bg); color: var(--teal-text); border: none;
+    border-radius: 14px; padding: 12px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
+    width: 100%; margin-top: 12px;
+    box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+    transition: box-shadow 0.15s ease;
   }
-  .add-property-btn:hover { background: var(--teal-light); transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+  .add-property-btn:hover { box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light); }
+  .add-property-btn:active { box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light); }
 
-  .rebook-btn {
-    background: none; border: 1.5px solid var(--teal); color: var(--teal-text);
-    border-radius: 7px; padding: 7px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer;
-    font-family: inherit; transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  .rebook-btn, .delete-btn, .manage-btn {
+    background: var(--bg); border: none; border-radius: 12px; padding: 8px 14px;
+    font-size: 12.5px; font-weight: 700; cursor: pointer;
+    box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+    transition: box-shadow 0.15s ease;
   }
-  .rebook-btn:hover { background: var(--teal-light); transform: translateY(-1px); box-shadow: 0 5px 12px rgba(0,0,0,0.08); }
-
-  .delete-btn {
-    background: none; border: 1.5px solid var(--border); color: var(--red);
-    border-radius: 7px; padding: 7px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer;
-    font-family: inherit; transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-  }
-  .delete-btn:hover { background: var(--red-bg); border-color: var(--red); transform: translateY(-1px); box-shadow: 0 5px 12px rgba(0,0,0,0.08); }
-  .delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .delete-btn:disabled:hover { transform: none; box-shadow: none; }
+  .rebook-btn:hover, .delete-btn:hover, .manage-btn:hover { box-shadow: 3px 3px 7px var(--neu-dark), -3px -3px 7px var(--neu-light); }
+  .rebook-btn:active, .delete-btn:active, .manage-btn:active { box-shadow: inset 2px 2px 4px var(--neu-dark), inset -2px -2px 4px var(--neu-light); }
+  .rebook-btn { color: var(--teal-text); }
+  .delete-btn { color: var(--red); }
+  .manage-btn { color: var(--ink); margin-top: 10px; }
+  .delete-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light); }
 
   .order-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 5px; }
   .order-id { font-size: 11px; color: var(--muted); font-family: monospace; }
+
+  .manage-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--neu-light); }
+  .manage-panel.hidden { display: none; }
+
+  .terms-box {
+    background: var(--bg); border-radius: 12px;
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+    padding: 10px 12px; margin-bottom: 12px; font-size: 12px; color: var(--ink);
+  }
+  .terms-check {
+    display: flex; align-items: flex-start; gap: 7px; margin-top: 8px;
+    font-size: 12px; font-weight: 500; cursor: pointer; color: var(--ink);
+  }
+  .terms-check input { margin-top: 2px; }
+
+  .choice-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .choice {
+    border-radius: 12px; padding: 7px 12px;
+    font-size: 12.5px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    background: var(--bg); user-select: none;
+    box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+    transition: box-shadow 0.15s ease, color 0.15s ease;
+  }
+  .choice input { margin: 0; }
+  .choice.active {
+    color: var(--teal-text); font-weight: 600;
+    box-shadow: inset 2px 2px 4px var(--neu-dark), inset -2px -2px 4px var(--neu-light);
+  }
+
+  .manage-panel textarea, .manage-panel input[type=date] {
+    width: 100%; padding: 9px 11px; border: none; border-radius: 10px;
+    font-size: 13px; color: var(--ink); background: var(--bg); font-family: inherit; resize: vertical;
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+  }
+  .manage-panel textarea:focus, .manage-panel input[type=date]:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+
+  .action-btn {
+    margin-top: 8px; background: var(--teal); color: #fff; border: none; border-radius: 12px;
+    padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+    transition: box-shadow 0.15s ease;
+  }
+  .action-btn:hover { box-shadow: 3px 3px 7px var(--neu-dark), -3px -3px 7px var(--neu-light); }
+  .action-btn:active { box-shadow: inset 2px 2px 4px rgba(0,0,0,0.3); }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .slot-btn {
+    display: inline-block; padding: 7px 12px; margin: 3px 6px 0 0; border-radius: 10px;
+    border: none; background: var(--bg); color: var(--teal-text);
+    font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+    box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px var(--neu-light);
+    transition: box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .slot-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .slot-btn.selected {
+    background: var(--teal); color: #fff;
+    box-shadow: inset 2px 2px 4px rgba(0,0,0,0.25);
+  }
+
+  .manage-result { margin-top: 10px; font-size: 12.5px; padding: 9px 11px; border-radius: 8px; }
+  .manage-result.ok { background: var(--green-bg); color: var(--green); display: block; }
+  .manage-result.err { background: var(--red-bg); color: var(--red); display: block; }
 
   .badge {
     display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
@@ -348,6 +426,14 @@
     window.location.href = '/intake?prefill=1';
   });
 
+  // Any booking that's still an active future visit can be cancelled/rescheduled — everything
+  // except the two terminal states. Deliberately a deny-list rather than an allow-list of
+  // "Scheduled"/"Ongoing": a booking that's already been rescheduled once is still just as
+  // manageable as a freshly-scheduled one, it shouldn't lose the option after its first change.
+  function isManageable(status) {
+    return status !== 'Completed' && status !== 'Cancelled';
+  }
+
   function loadOrders() {
     fetch('/api/client/orders')
       .then(function(r) { return r.json(); })
@@ -357,8 +443,9 @@
           $('ordersList').innerHTML = '<div class="empty-note">No orders yet.</div>';
           return;
         }
-        $('ordersList').innerHTML = orders.map(function(o) {
+        $('ordersList').innerHTML = orders.map(function(o, i) {
           var meta = [o.address, o.bookedDateTime || fmtDate(o.submittedAt)].filter(Boolean).join(' &middot; ');
+          var manageable = isManageable(o.status);
           return '<div class="order-item">' +
             '<div class="order-top">' +
               '<div><span class="order-id">' + esc(o.orderId) + '</span></div>' +
@@ -366,12 +453,171 @@
             '</div>' +
             '<div class="prop-addr" style="font-size:13.5px;">' + esc(o.service || 'Service') + '</div>' +
             '<div class="order-meta">' + meta + (o.total ? ' &middot; ' + fmtMoney(o.total) : '') + '</div>' +
+            (manageable ? manageBookingHtml(i) : '') +
           '</div>';
         }).join('');
+        orders.forEach(function(o, i) {
+          if (isManageable(o.status)) wireManagePanel(i, o.orderId);
+        });
       })
       .catch(function() {
         $('ordersList').innerHTML = '<div class="empty-note">Couldn\'t load your order history. Please refresh.</div>';
       });
+  }
+
+  function manageBookingHtml(i) {
+    return ''
+      + '<button class="manage-btn" id="manageBtn_' + i + '" type="button">Manage Booking</button>'
+      + '<div class="manage-panel hidden" id="managePanel_' + i + '">'
+      + '<div class="terms-box">'
+      + '<b>Cancellation &amp; Reschedule Policy</b>'
+      + '<p style="margin:6px 0 0;">Changes made <b>less than 48 hours</b> before your scheduled time incur a fee of <b>20% of the Total Contract Price</b>. Changes made <b>48 hours or more</b> in advance are free.</p>'
+      + '<label class="terms-check"><input type="checkbox" id="terms_' + i + '"><span>I agree to the Cancellation &amp; Reschedule Policy above.</span></label>'
+      + '</div>'
+      + '<div class="choice-row" id="actionChoices_' + i + '">'
+      + '<label class="choice"><input type="radio" name="action_' + i + '" value="cancel"> Cancel</label>'
+      + '<label class="choice"><input type="radio" name="action_' + i + '" value="reschedule"> Reschedule</label>'
+      + '</div>'
+      + '<div id="cancelBlock_' + i + '" class="hidden">'
+      + '<textarea id="note_' + i + '" placeholder="Reason / note (optional)"></textarea>'
+      + '<button class="action-btn" id="cancelBtn_' + i + '" type="button">Submit Cancellation</button>'
+      + '</div>'
+      + '<div id="rescheduleBlock_' + i + '" class="hidden">'
+      + '<input type="date" id="date_' + i + '">'
+      + '<button class="manage-btn" id="findTimesBtn_' + i + '" type="button" style="margin-top:8px;">Find Available Times</button>'
+      + '<div id="slotsWrap_' + i + '" style="margin-top:8px;"></div>'
+      + '<button class="action-btn hidden" id="submitRescheduleBtn_' + i + '" type="button">Submit Reschedule</button>'
+      + '</div>'
+      + '<div class="manage-result" id="manageResult_' + i + '" style="display:none;"></div>'
+      + '</div>';
+  }
+
+  function fmtSlotTime(iso) {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function wireManagePanel(i, orderId) {
+    var panel = $('managePanel_' + i);
+    $('manageBtn_' + i).addEventListener('click', function() {
+      panel.classList.toggle('hidden');
+    });
+
+    panel.querySelectorAll('.choice input').forEach(function(inp) {
+      inp.addEventListener('change', function() {
+        panel.querySelectorAll('input[name="' + inp.name + '"]').forEach(function(r) {
+          r.closest('.choice').classList.toggle('active', r.checked);
+        });
+        $('cancelBlock_' + i).classList.toggle('hidden', inp.value !== 'cancel');
+        $('rescheduleBlock_' + i).classList.toggle('hidden', inp.value !== 'reschedule');
+        $('manageResult_' + i).style.display = 'none';
+      });
+    });
+
+    function showResult(msg, ok) {
+      var box = $('manageResult_' + i);
+      box.className = 'manage-result ' + (ok ? 'ok' : 'err');
+      box.textContent = msg;
+      box.style.display = 'block';
+    }
+
+    $('cancelBtn_' + i).addEventListener('click', function() {
+      var btn = this;
+      if (!$('terms_' + i).checked) {
+        showResult('Please agree to the Cancellation & Reschedule Policy first.', false);
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Cancelling…';
+      fetch('/api/client/cancel', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: orderId, note: $('note_' + i).value.trim() })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) { showResult(data.error, false); btn.disabled = false; btn.textContent = 'Submit Cancellation'; return; }
+          showResult('Your booking has been cancelled.', true);
+          btn.disabled = true;
+          loadOrders();
+        })
+        .catch(function() {
+          showResult('Something went wrong. Please try again.', false);
+          btn.disabled = false;
+          btn.textContent = 'Submit Cancellation';
+        });
+    });
+
+    var pendingSlots = [];
+    var selectedIndex = -1;
+
+    $('findTimesBtn_' + i).addEventListener('click', function() {
+      var btn = this;
+      var wrap = $('slotsWrap_' + i);
+      wrap.innerHTML = '';
+      $('submitRescheduleBtn_' + i).classList.add('hidden');
+      pendingSlots = [];
+      selectedIndex = -1;
+
+      var dateVal = $('date_' + i).value;
+      if (!dateVal) { showResult('Pick a new date first.', false); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Looking up available times…';
+      fetch('/api/client/reschedule/find-times', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: orderId, date: dateVal })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = 'Find Available Times';
+          if (data.error) { showResult(data.error, false); return; }
+          var slots = data.slots || [];
+          if (!slots.length) { showResult('No open 30-minute slots that day during business hours (9am–5pm). Try another date.', false); return; }
+          pendingSlots = slots;
+          wrap.innerHTML = slots.map(function(s, si) {
+            return '<button type="button" class="slot-btn" data-si="' + si + '">' + fmtSlotTime(s.start) + '</button>';
+          }).join('');
+          wrap.querySelectorAll('.slot-btn').forEach(function(b, si) {
+            b.addEventListener('click', function() {
+              wrap.querySelectorAll('.slot-btn').forEach(function(x) { x.classList.remove('selected'); });
+              b.classList.add('selected');
+              selectedIndex = si;
+              $('submitRescheduleBtn_' + i).classList.remove('hidden');
+              $('manageResult_' + i).style.display = 'none';
+            });
+          });
+        })
+        .catch(function() {
+          btn.disabled = false;
+          btn.textContent = 'Find Available Times';
+          showResult('Something went wrong. Please try again.', false);
+        });
+    });
+
+    $('submitRescheduleBtn_' + i).addEventListener('click', function() {
+      var btn = this;
+      if (selectedIndex < 0) { showResult('Please pick a time slot above first.', false); return; }
+      if (!$('terms_' + i).checked) { showResult('Please agree to the Cancellation & Reschedule Policy first.', false); return; }
+
+      var slot = pendingSlots[selectedIndex];
+      btn.disabled = true;
+      btn.textContent = 'Rescheduling…';
+      fetch('/api/client/reschedule/submit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: orderId, slot: slot, note: $('note_' + i).value.trim() })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) { showResult(data.error, false); btn.disabled = false; btn.textContent = 'Submit Reschedule'; return; }
+          showResult('Rescheduled! ' + (data.isSubscription ? 'Your recurring ' + data.freqName + ' schedule now starts ' + data.startFormatted + '.' : 'Your new visit is booked for ' + data.startFormatted + '.'), true);
+          loadOrders();
+        })
+        .catch(function() {
+          showResult('Something went wrong. Please try again.', false);
+          btn.disabled = false;
+          btn.textContent = 'Submit Reschedule';
+        });
+    });
   }
 
   $('logoutBtn').addEventListener('click', function() {
