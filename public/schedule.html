@@ -66,19 +66,26 @@
   }
   .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
 
-  header.brand {
-    display: flex; align-items: center; gap: 12px; padding: 22px 24px;
-    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-    border-radius: 20px; color: white; margin-bottom: 22px;
-    box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  .topnav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 2px 0; margin-bottom: 22px;
     animation: drop-down-in 2.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
-  header.brand .logo {
-    width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.18);
-    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  .brand-mark {
+    display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px;
+    color: var(--teal-text); text-decoration: none;
   }
-  header.brand h1 { font-family: var(--font-display); font-weight: 700; margin: 0; font-size: 20px; }
-  header.brand p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+  .brand-mark .logo {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+
+  .page-heading { margin-bottom: 22px; }
+  .page-heading h1 { font-family: var(--font-display); font-weight: 700; margin: 0 0 4px; font-size: 20px; color: var(--ink); }
+  .page-heading p { margin: 0; font-size: 13px; color: var(--muted); }
   @keyframes drop-down-in {
     from { opacity: 0; transform: translateY(-50px); }
     to { opacity: 1; transform: translateY(0); }
@@ -87,13 +94,13 @@
     from { opacity: 0; transform: translateY(-26px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  header.brand h1, header.brand p {
+  .page-heading h1, .page-heading p {
     animation: text-drop-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  header.brand h1 { animation-delay: 0.8s; }
-  header.brand p { animation-delay: 1.3s; }
+  .page-heading h1 { animation-delay: 0.8s; }
+  .page-heading p { animation-delay: 1.3s; }
   @media (prefers-reduced-motion: reduce) {
-    header.brand, header.brand h1, header.brand p, .job-card, .cal-card { animation: none; opacity: 1; transform: none; }
+    .topnav, .page-heading h1, .page-heading p, .job-card, .cal-card { animation: none; opacity: 1; transform: none; }
   }
 
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -118,7 +125,7 @@
     .job-card { flex-direction: column; align-items: stretch; }
     .pay-controls { flex-direction: row; }
     .pay-controls select.method { flex: 1; }
-    header.brand { flex-direction: column; align-items: flex-start; }
+    .topnav { flex-direction: column; align-items: flex-start; gap: 12px; }
   }
   .job-card .info b { display: block; font-size: 15px; margin-bottom: 4px; }
   .job-card .info .line { font-size: 13px; color: var(--muted); margin-bottom: 2px; }
@@ -228,13 +235,13 @@
   }
   .hidden { display: none !important; }
 
-  header.brand .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
   button.logout-btn {
-    background: rgba(255,255,255,0.16); color: #fff; border: none; font-weight: 700;
-    font-size: 12px; padding: 8px 13px; border-radius: 8px; cursor: pointer; white-space: nowrap;
-    transition: background 0.18s ease;
+    background: var(--bg); color: var(--ink); border: none; font-weight: 700;
+    font-size: 12px; padding: 8px 13px; border-radius: 10px; cursor: pointer; white-space: nowrap;
+    box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+    transition: box-shadow 0.15s ease;
   }
-  button.logout-btn:hover { background: rgba(255,255,255,0.28); }
+  button.logout-btn:hover { box-shadow: 2px 2px 5px var(--neu-dark), -2px -2px 5px var(--neu-light); }
 
   .login-wrap { max-width: 360px; margin: 40px auto; }
   .login-card {
@@ -263,12 +270,13 @@
 
   .theme-toggle {
     width: 36px; height: 36px; border-radius: 50%; border: none;
-    background: rgba(255,255,255,0.18); color: #fff; cursor: pointer;
+    background: var(--bg); color: var(--teal-text); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: transform 0.25s ease, background 0.2s ease;
+    box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+    transition: box-shadow 0.15s ease;
     flex-shrink: 0;
   }
-  .theme-toggle:hover { background: rgba(255,255,255,0.3); transform: rotate(15deg); }
+  .theme-toggle:hover { box-shadow: 2px 2px 5px var(--neu-dark), -2px -2px 5px var(--neu-light); }
   .theme-toggle svg { width: 18px; height: 18px; }
   .theme-toggle .icon-moon { display: none; }
   :root[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
@@ -277,12 +285,10 @@
 </head>
 <body>
 <div class="wrap">
-  <header class="brand">
-    <div class="logo">&#10003;</div>
-    <div>
-      <h1>Primo Care &mdash; Client Schedule</h1>
-      <p>Mark completed jobs off the schedule, and mark payments once settled</p>
-    </div>
+  <header class="topnav">
+    <a class="brand-mark" href="/">
+      <span class="logo">&#10003;</span> Primo Care
+    </a>
     <div class="header-actions">
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -291,6 +297,11 @@
       <button class="logout-btn hidden" id="logoutBtn">Log Out</button>
     </div>
   </header>
+
+  <div class="page-heading">
+    <h1>Primo Care &mdash; Client Schedule</h1>
+    <p>Mark completed jobs off the schedule, and mark payments once settled</p>
+  </div>
 
   <div id="loginWrap" class="login-wrap hidden">
     <div class="login-card">
