@@ -205,10 +205,21 @@ app.post('/api/submit', async (req, res) => {
     const properties = Array.isArray(b.properties) ? b.properties : [];
     if (!properties.length) return res.status(400).json({ error: 'At least one property is required.' });
 
+    // Client ID resolution checks Submissions first (the common case — a returning booker),
+    // then falls back to Client Members (a prospect who signed up via /api/client/signup
+    // before ever booking already has a Client ID minted there with no Submissions row yet) —
+    // otherwise their first real booking would mint a second, different Client ID and silently
+    // orphan it from the account they already set up.
     let clientId;
     try {
       const existing = email ? await airtable.findClientIdByEmail(email) : null;
-      clientId = (existing && existing.fields && existing.fields['Client ID']) || genRefId('CLI');
+      const existingClientId = existing && existing.fields && existing.fields['Client ID'];
+      if (existingClientId) {
+        clientId = existingClientId;
+      } else {
+        const member = email ? await findClientMemberByEmail(email) : null;
+        clientId = (member && member.clientId) || genRefId('CLI');
+      }
     } catch (err) {
       console.error('Client ID lookup failed, minting a new one:', err.message);
       clientId = genRefId('CLI');
@@ -282,28 +293,33 @@ app.post('/api/submit', async (req, res) => {
     }
 
     // Client portal auto-enrollment — the first time a given email submits, create a pending
-    // (unverified, no password yet) Client Members record so the account already exists once
-    // the account-setup email/login flow ships. Matched by email, same key as the Client ID
-    // lookup above. Never re-created on later submissions, even if this client never finishes
-    // verifying — that's a "resend" concern for the setup-email phase, not this one. A failure
-    // here is logged but never fails the booking itself, same treatment as the referral-credit
-    // lookup above.
+    // (unverified, no password yet) Client Members record, and again on any later submission
+    // as long as it's still unverified (they booked once, never finished setting a password —
+    // this gives them a fresh code/link instead of leaving them stuck on a stale one). Matched
+    // by email, same key as the Client ID lookup above. A failure here is logged but never
+    // fails the booking itself, same treatment as the referral-credit lookup above.
+    let accountSetup = null;
     if (email) {
       try {
         const escaped = email.replace(/"/g, '\\"').toLowerCase();
         const existingMember = await airtable.listAllForTable(CLIENT_MEMBERS_TABLE, {
           formula: `LOWER({Email}) = "${escaped}"`
         });
-        if (!existingMember.length) {
-          await airtable.createRecordForTable(CLIENT_MEMBERS_TABLE, {
-            'Email': email,
-            'Client ID': clientId,
-            'Full Name': fullName,
-            'Verified': false,
-            'Account Created At': new Date().toISOString()
-          });
+        if (!existingMember.length || !existingMember[0].fields.Verified) {
+          if (!existingMember.length) {
+            await airtable.createRecordForTable(CLIENT_MEMBERS_TABLE, {
+              'Email': email,
+              'Client ID': clientId,
+              'Full Name': fullName,
+              'Verified': false,
+              'Account Created At': new Date().toISOString()
+            });
+          }
           const baseUrl = `${req.protocol}://${req.get('host')}`;
-          await sendAccountSetupEmail({ to: email, firstName: firstName || 'there', baseUrl });
+          const code = String(crypto.randomInt(100000, 1000000));
+          const token = signPurposeToken({ email, codeHash: hashOtpCode(code) }, OTP_TOKEN_TTL_MS, 'client-verify-otp');
+          await sendAccountSetupEmail({ to: email, firstName: firstName || 'there', baseUrl, code });
+          accountSetup = { token, email };
         }
       } catch (err) {
         console.error('Client Members auto-enrollment failed (booking still succeeded):', err.message);
@@ -329,7 +345,7 @@ app.post('/api/submit', async (req, res) => {
       }
     }
 
-    res.json({ clientId, properties: results });
+    res.json({ clientId, properties: results, accountSetup });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -942,6 +958,18 @@ function verifyPurposeToken(token, purpose) {
   return payload;
 }
 const ACCOUNT_SETUP_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours to click the email link
+const OTP_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes to enter the code in the /intake popup
+
+// signPurposeToken/verifySession sign a token but don't encrypt it — the payload is just
+// base64, readable by anyone holding the token (fine for the email-link flow, where the
+// payload is only an email address). The OTP code must NOT go in there in the clear, since the
+// token is handed straight back to the browser in the /api/submit response — a client-visible
+// plaintext code would let anyone skip checking their email entirely. Store this HMAC of the
+// code instead; recovering the code from the hash requires SESSION_SECRET, which the browser
+// never has, so a guess still has to go through the rate-limited server round-trip.
+function hashOtpCode(code) {
+  return crypto.createHmac('sha256', SESSION_SECRET).update(String(code)).digest('hex');
+}
 
 async function findClientMemberByEmail(email) {
   if (!email) return null;
@@ -955,18 +983,32 @@ async function findClientMemberByEmail(email) {
   return { recordId: rec.id, email: f['Email'] || '', clientId: f['Client ID'] || '', fullName: f['Full Name'] || '', passwordHash: f['Password Hash'] || '', verified: !!f['Verified'], hiddenProperties };
 }
 
-// Sends the "set up your account" email — called once, right after /api/submit creates the
-// pending Client Members record. Failure here is logged but never fails the booking itself,
-// same non-fatal treatment as the rest of that auto-enrollment step.
-async function sendAccountSetupEmail({ to, firstName, baseUrl }) {
+// Sends the "set up your account" email — called once per unverified enrollment, right after
+// /api/submit (or /api/client/signup) creates (or re-finds still-unverified) the pending Client
+// Members record. Carries both the instant 6-digit code (for the /intake or /client/login popup,
+// expires in ~15 min) and the original 24h setup link (for anyone who closes the tab before
+// entering the code — same link this function has always sent). Failure here is logged but
+// never fails the calling request, same non-fatal treatment as the rest of enrollment.
+// `context` swaps just the opening line: 'booking' (default) for someone who just submitted a
+// booking, 'signup' for a prospect who signed up with no booking at all.
+async function sendAccountSetupEmail({ to, firstName, baseUrl, code, context }) {
   const token = signPurposeToken({ email: to }, ACCOUNT_SETUP_TOKEN_TTL_MS, 'client-verify');
   const setupUrl = `${baseUrl}/create-account?token=${encodeURIComponent(token)}`;
   const subject = 'Set up your Primo Care account';
-  const body = `Hi ${firstName},\n\nThanks for booking with Primo Care! We've started an account for you so next time you can see your order history and book your properties again without filling out the form from scratch.\n\nSet up your password: ${setupUrl}\n\nThis link expires in 24 hours.\n\nBest,\nPrimo Care Team`;
+  const intro = context === 'signup'
+    ? "Thanks for your interest in Primo Care! We've started an account for you so you can see your order history and book properties without filling out the form from scratch."
+    : "Thanks for booking with Primo Care! We've started an account for you so next time you can see your order history and book your properties again without filling out the form from scratch.";
+  const codeLine = code ? `Your code: ${code} (enter it on the page you just saw — expires in 15 minutes)\n\n` : '';
+  const body = `Hi ${firstName},\n\n${intro}\n\n${codeLine}Or set up your password here: ${setupUrl}\n\nThe link expires in 24 hours.\n\nBest,\nPrimo Care Team`;
+  const codeBlock = code ? `<p style="text-align:center; margin:20px 0;">
+      <span style="display:inline-block; font-size:28px; font-weight:700; letter-spacing:6px; background:#f0fdfa; color:#0a5c64; padding:12px 24px; border-radius:8px;">${code}</span>
+      <br><span style="color:#6b7280;font-size:13px;">Enter this on the page you just saw — expires in 15 minutes.</span>
+    </p>` : '';
   const htmlBody = `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:600px;">
     <h2 style="color:#0a5c64;">Set up your account</h2>
     <p>Hi ${firstName},</p>
-    <p>Thanks for booking with Primo Care! We've started an account for you so next time you can see your order history and book your properties again without filling out the form from scratch.</p>
+    <p>${intro}</p>
+    ${codeBlock}
     <p style="text-align:center; margin:20px 0;">
       <a href="${setupUrl}" style="display:inline-block; background:#0e7c86; color:#fff; text-decoration:none; font-weight:700; padding:12px 28px; border-radius:8px;">Set Up Your Password</a>
     </p>
@@ -1035,6 +1077,18 @@ app.get('/api/client/verify-token', async (req, res) => {
   res.json({ email: payload.email, isReset: !!(member && member.verified) });
 });
 
+// Shared tail end of "finish setting up a client account" — marks the record Verified, stores
+// the password hash, and logs them straight in. Used by both the email-link route below and the
+// /intake popup's code-based route, since past that point (password + a proven-owned email) the
+// two flows do the exact same thing.
+async function finalizeClientAccount(res, member, password) {
+  await airtable.updateRecordForTable(CLIENT_MEMBERS_TABLE, member.recordId, {
+    'Password Hash': hashPassword(password),
+    'Verified': true
+  });
+  setClientSessionCookie(res, { u: member.email, r: 'Client', n: member.fullName, cid: member.clientId, exp: Date.now() + CLIENT_SESSION_TTL_MS });
+}
+
 // Sets the client's password for the first time and marks the account Verified — this single
 // step does double duty as both "verify this email" and "create your account", since the only
 // way to reach it is by clicking the link sent to that address.
@@ -1048,14 +1102,106 @@ app.post('/api/client/create-account', async (req, res) => {
     const member = await findClientMemberByEmail(payload.email);
     if (!member) return res.status(404).json({ error: 'Account not found.' });
 
-    await airtable.updateRecordForTable(CLIENT_MEMBERS_TABLE, member.recordId, {
-      'Password Hash': hashPassword(password),
-      'Verified': true
-    });
     // Log them straight in — they just proved they own the inbox and picked a password, no
     // reason to make them find the login page and re-enter it immediately after.
-    setClientSessionCookie(res, { u: member.email, r: 'Client', n: member.fullName, cid: member.clientId, exp: Date.now() + CLIENT_SESSION_TTL_MS });
+    await finalizeClientAccount(res, member, password);
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Same as /api/client/create-account above, but for the instant /intake popup: instead of
+// clicking a link, the client types back a 6-digit code that was emailed to them moments ago
+// alongside that link. Proves the same thing (they control the inbox) without leaving the
+// booking page. The code itself never leaves the server except in that email — it's not part
+// of the /api/submit response, only the token is.
+app.post('/api/client/verify-code', async (req, res) => {
+  try {
+    const { token, code, password } = req.body || {};
+    const payload = verifyPurposeToken(token, 'client-verify-otp');
+    if (!payload) return res.status(400).json({ error: 'This code has expired. Please request a new one.' });
+    if (!code || !safeEqual(hashOtpCode(String(code).trim()), payload.codeHash)) {
+      return res.status(400).json({ error: 'Incorrect code. Please check your email and try again.' });
+    }
+    if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+
+    const member = await findClientMemberByEmail(payload.email);
+    if (!member) return res.status(404).json({ error: 'Account not found.' });
+
+    await finalizeClientAccount(res, member, password);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Re-sends a fresh code + link for the /intake popup, in case the first email is slow to land
+// or the original code expired. A new code means a new token (the old one still verifies
+// against the old code, now wrong) — the popup must swap in the returned token before
+// submitting, or the resent code will never match. Always responds ok regardless of whether the
+// email matched an account — same non-disclosure pattern as /api/client/forgot-password — and
+// silently no-ops (no new token) for an already-verified account (nothing to set up, this isn't
+// a login/reset endpoint).
+app.post('/api/client/resend-setup-code', async (req, res) => {
+  let token = null;
+  try {
+    const email = ((req.body && req.body.email) || '').trim();
+    if (email) {
+      const member = await findClientMemberByEmail(email);
+      if (member && !member.verified) {
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const firstName = (member.fullName || 'there').split(' ')[0];
+        const code = String(crypto.randomInt(100000, 1000000));
+        token = signPurposeToken({ email: member.email, codeHash: hashOtpCode(code) }, OTP_TOKEN_TTL_MS, 'client-verify-otp');
+        await sendAccountSetupEmail({ to: member.email, firstName, baseUrl, code });
+      }
+    }
+  } catch (err) {
+    console.error('Resend setup code failed:', err.message);
+  }
+  res.json({ ok: true, token });
+});
+
+// Lets someone become a Client Member without ever booking — a prospect who's interested but
+// not ready to schedule yet. Mirrors /api/submit's auto-enrollment block (server.js:~290) but
+// stands alone with no Submissions record involved; mints its own Client ID (findClientIdByEmail
+// only ever looks at Submissions, so a first-time prospect has nothing there to reuse — but see
+// the Client ID resolution fix in /api/submit, which checks Client Members too, so this Client
+// ID gets reused correctly once they do book). Returns the exact same `accountSetup` shape
+// /api/submit does, so the frontend's existing code+password verification step needs no new
+// branching — only the entry point differs.
+app.post('/api/client/signup', async (req, res) => {
+  try {
+    const firstName = ((req.body && req.body.firstName) || '').trim();
+    const lastName = ((req.body && req.body.lastName) || '').trim();
+    const email = ((req.body && req.body.email) || '').trim();
+    if (!firstName || !lastName || !email) {
+      return res.status(400).json({ error: 'Name and email are required.' });
+    }
+
+    const existingMember = await findClientMemberByEmail(email);
+    if (existingMember && existingMember.verified) {
+      return res.json({ alreadyMember: true });
+    }
+
+    if (!existingMember) {
+      await airtable.createRecordForTable(CLIENT_MEMBERS_TABLE, {
+        'Email': email,
+        'Client ID': genRefId('CLI'),
+        'Full Name': `${firstName} ${lastName}`,
+        'Verified': false,
+        'Account Created At': new Date().toISOString()
+      });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const code = String(crypto.randomInt(100000, 1000000));
+    const token = signPurposeToken({ email, codeHash: hashOtpCode(code) }, OTP_TOKEN_TTL_MS, 'client-verify-otp');
+    await sendAccountSetupEmail({ to: email, firstName, baseUrl, code, context: 'signup' });
+    res.json({ accountSetup: { token, email } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -1888,9 +2034,10 @@ app.get('/dashboard', (req, res) => {
 // cheap, and this page is pulled up infrequently.
 app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
   try {
-    const [submissions, leads] = await Promise.all([
+    const [submissions, leads, verifiedMembers] = await Promise.all([
       airtable.listAllForTable(process.env.AIRTABLE_TABLE_NAME || 'Submissions'),
-      airtable.listAllForTable('Leads')
+      airtable.listAllForTable('Leads'),
+      airtable.listAllForTable(CLIENT_MEMBERS_TABLE, { formula: '{Verified}=TRUE()' })
     ]);
 
     const now = new Date();
@@ -1989,6 +2136,23 @@ app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
     });
     recentLeads.sort((a, b) => new Date(b.createdTime || 0) - new Date(a.createdTime || 0));
 
+    // Prospects — verified Client Members with zero bookings so far (signed up via
+    // /api/client/signup or an abandoned/never-followed-through auto-enrollment, but never
+    // actually submitted a job). Distinct from `leads` above, which are cold outreach-sourced
+    // contacts, not self-signed-up members.
+    const clientIdsWithBookings = new Set(submissions.map(r => r.fields['Client ID']).filter(Boolean));
+    const prospects = verifiedMembers
+      .filter(rec => !clientIdsWithBookings.has(rec.fields['Client ID']))
+      .map(rec => ({
+        name: rec.fields['Full Name'] || '',
+        email: rec.fields['Email'] || '',
+        accountCreatedAt: rec.fields['Account Created At'] || '',
+        followUp48hrSent: !!rec.fields['48hr Follow-Up Sent'],
+        followUp7DaySent: !!rec.fields['7-Day Follow-Up Sent']
+      }))
+      .sort((a, b) => new Date(b.accountCreatedAt || 0) - new Date(a.accountCreatedAt || 0));
+    const followUpsSentCount = prospects.filter(p => p.followUp48hrSent || p.followUp7DaySent).length;
+
     res.json({
       totalLeads: leads.length,
       leadsThisMonth,
@@ -2010,7 +2174,10 @@ app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
       serviceBreakdown,
       propertyTypeCount,
       upcomingList: upcomingList.slice(0, 6),
-      recentLeads: recentLeads.slice(0, 6)
+      recentLeads: recentLeads.slice(0, 6),
+      prospectsCount: prospects.length,
+      prospects: prospects.slice(0, 6),
+      followUpsSentCount
     });
   } catch (err) {
     console.error(err);

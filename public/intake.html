@@ -138,7 +138,7 @@
 
   label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
   .field { margin-bottom: 14px; }
-  input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=time], select, textarea {
+  input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=time], input[type=password], select, textarea {
     width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
     font-size: 14px; color: var(--ink); background: var(--bg); font-family: inherit;
   }
@@ -281,6 +281,23 @@
   .footer-note { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 20px; }
   .edit-link { text-align: center; margin-top: 10px; }
   .edit-link a { color: var(--teal-text); font-size: 13px; cursor: pointer; text-decoration: underline; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.5);
+    display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--bg); border-radius: 12px; padding: 22px 24px; max-width: 380px; width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25); text-align: left;
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 17px; color: var(--ink); }
+  .modal .modal-sub { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  .modal .field { margin-bottom: 12px; }
+  .modal-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 16px; }
+  .modal .modal-error { background: #fef2f2; color: #991b1b; padding: 8px 12px; border-radius: 7px; font-size: 12.5px; margin-bottom: 12px; }
+  .modal .resend-link { background: none; border: none; padding: 0; color: var(--teal-text); font-size: 12.5px; cursor: pointer; text-decoration: underline; }
+  .modal .resend-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -411,6 +428,29 @@
   </div>
 
   <div class="footer-note">Primo Care Cleaning Services &middot; <a href="/account" style="color:var(--teal-text);">Manage an existing booking</a></div>
+</div>
+
+<div class="modal-overlay hidden" id="accountSetupModal">
+  <div class="modal">
+    <h3>You're already a member!</h3>
+    <p class="modal-sub">We've sent a 6-digit code to <b id="accountSetupEmail"></b>. Enter it below with a password to set up your account and jump straight to your dashboard.</p>
+    <div id="accountSetupError"></div>
+    <form id="accountSetupForm">
+      <div class="field">
+        <label for="accountSetupCode">Code</label>
+        <input type="text" id="accountSetupCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+      </div>
+      <div class="field">
+        <label for="accountSetupPassword">Choose a Password</label>
+        <input type="password" id="accountSetupPassword" autocomplete="new-password" minlength="8" required>
+      </div>
+      <button type="button" class="resend-link" id="accountSetupResendBtn">Didn't get a code? Resend</button>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="accountSetupSkipBtn">Maybe later</button>
+        <button type="submit" class="primary" id="accountSetupSubmitBtn">Create Account</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <script>
@@ -1242,7 +1282,7 @@
       })
     }).then(function(data){
       if(data.error) throw new Error(data.error);
-      state.client = { prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, smsOptIn: smsOptIn, clientId: data.clientId };
+      state.client = { prefix: prefix, firstName: firstName, lastName: lastName, suffix: suffix, phone: phone, email: email, smsOptIn: smsOptIn, clientId: data.clientId, accountSetup: data.accountSetup || null };
       lockClientInfo();
       newProps.forEach(function(p, i){
         var r0 = data.properties[i];
@@ -1660,7 +1700,67 @@
       $('referralBox').classList.remove('hidden');
     }
     window.scrollTo({top:0, behavior:'smooth'});
+    if(state.client.accountSetup){
+      openAccountSetupModal();
+    }
   }
+
+  // ---- Account setup popup (instant, code-based alternative to the emailed link) ----
+  function openAccountSetupModal(){
+    $('accountSetupEmail').textContent = state.client.accountSetup.email;
+    $('accountSetupError').textContent = '';
+    $('accountSetupError').className = '';
+    $('accountSetupCode').value = '';
+    $('accountSetupPassword').value = '';
+    $('accountSetupModal').classList.remove('hidden');
+  }
+  function closeAccountSetupModal(){
+    $('accountSetupModal').classList.add('hidden');
+  }
+  $('accountSetupModal').addEventListener('click', function(e){
+    if(e.target === $('accountSetupModal')) closeAccountSetupModal();
+  });
+  $('accountSetupSkipBtn').addEventListener('click', closeAccountSetupModal);
+
+  $('accountSetupForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var code = $('accountSetupCode').value.trim();
+    var password = $('accountSetupPassword').value;
+    var btn = $('accountSetupSubmitBtn');
+    $('accountSetupError').textContent = '';
+    $('accountSetupError').className = '';
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+    fetchJsonWithRetry('/api/client/verify-code', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token: state.client.accountSetup.token, code: code, password: password })
+    }).then(function(data){
+      if(data.error) throw new Error(data.error);
+      window.location.href = '/account';
+    }).catch(function(err){
+      $('accountSetupError').textContent = err.message;
+      $('accountSetupError').className = 'modal-error';
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+    });
+  });
+
+  $('accountSetupResendBtn').addEventListener('click', function(){
+    var btn = $('accountSetupResendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    fetchJsonWithRetry('/api/client/resend-setup-code', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: state.client.accountSetup.email })
+    }).then(function(data){
+      if(data.token){ state.client.accountSetup.token = data.token; }
+      btn.textContent = 'Code Sent!';
+      setTimeout(function(){ btn.disabled = false; btn.textContent = "Didn't get a code? Resend"; }, 8000);
+    }).catch(function(){
+      btn.disabled = false;
+      btn.textContent = "Didn't get a code? Resend";
+    });
+  });
 
   $('copyReferralBtn').addEventListener('click', function(){
     var btn = this;

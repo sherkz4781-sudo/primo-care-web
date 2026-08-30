@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Primo Care - Client Login</title>
+<title>Primo Care - Sign Up / Log In</title>
 <script>
 (function(){
   try {
@@ -104,11 +104,20 @@
 
   label { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 5px; }
   .field { margin-bottom: 14px; }
-  input[type=email], input[type=password] {
+  input[type=email], input[type=password], input[type=text] {
     width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
     font-size: 14px; color: var(--ink); background: var(--bg); font-family: inherit;
   }
   input:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+
+  .tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab-row.hidden { display: none; }
+  .tab-btn {
+    flex: 1; text-align: center; padding: 11px; border-radius: 9px; border: 1.5px solid var(--border);
+    cursor: pointer; font-weight: 700; font-size: 14px; color: var(--muted); background: var(--bg);
+    font-family: inherit;
+  }
+  .tab-btn.active { border-color: var(--teal); background: var(--teal-light); color: var(--teal-text); }
 
   .primary {
     background: var(--teal); color: #fff; border: none; border-radius: 9px;
@@ -122,6 +131,10 @@
 
   .result-box { margin-top: 16px; font-size: 13.5px; padding: 12px 14px; border-radius: 8px; }
   .result-box.err { background: #fef2f2; color: #991b1b; }
+  .result-box.info { background: var(--teal-light); color: var(--teal-text); }
+  .secondary-link { display: block; text-align: center; margin-top: 12px; color: var(--teal-text); font-size: 13px; font-weight: 600; text-decoration: none; }
+  .resend-link { background: none; border: none; padding: 0; color: var(--teal-text); font-size: 12.5px; cursor: pointer; text-decoration: underline; font-family: inherit; }
+  .resend-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
 
   .state { display: none; }
   .state.active { display: block; }
@@ -155,7 +168,7 @@
     <div class="logo">&#10003;</div>
     <div>
       <h1>Primo Care</h1>
-      <p>Client Login</p>
+      <p>Sign Up / Log In</p>
     </div>
     <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -163,9 +176,15 @@
     </button>
   </header>
 
+  <div class="tab-row" id="tabRow">
+    <button type="button" class="tab-btn active" id="tabLogin">Log In</button>
+    <button type="button" class="tab-btn" id="tabSignup">Sign Up</button>
+  </div>
+
   <div class="card">
 
     <div class="state active" id="stateForm">
+      <div class="result-box info" id="formNotice" style="display:none;"></div>
       <form id="loginForm" method="post">
         <div class="field">
           <label>Email</label>
@@ -181,7 +200,52 @@
       <p style="text-align:center;margin:14px 0 0;">
         <a href="#" id="forgotLink" style="color:var(--teal-text);font-size:13px;font-weight:600;text-decoration:none;">Forgot password?</a>
       </p>
-      <p class="hint" style="font-size:11.5px;color:var(--muted);margin-top:10px;text-align:center;">Your account is created automatically the first time you book. Check your email for a "Set up your Primo Care account" link.</p>
+      <p class="hint" style="font-size:11.5px;color:var(--muted);margin-top:10px;text-align:center;">Not a member yet? Use the Sign Up tab above — no booking required.</p>
+    </div>
+
+    <div class="state" id="stateSignup">
+      <p style="font-size:13.5px;color:var(--muted);margin:0 0 14px;">Not ready to book yet? Sign up to get a Primo Care account now — you can request a quote any time.</p>
+      <form id="signupForm" method="post">
+        <div class="field">
+          <label>First Name</label>
+          <input type="text" id="signupFirstName" placeholder="Jane" autocomplete="given-name" required>
+        </div>
+        <div class="field">
+          <label>Last Name</label>
+          <input type="text" id="signupLastName" placeholder="Doe" autocomplete="family-name" required>
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="signupEmail" placeholder="jane@example.com" autocomplete="username" required>
+        </div>
+        <button class="primary" id="signupBtn" type="submit">Sign Up</button>
+      </form>
+      <div class="result-box err" id="signupError" style="display:none;"></div>
+    </div>
+
+    <div class="state" id="stateSignupVerify">
+      <p style="font-size:13.5px;color:var(--muted);margin:0 0 14px;">We've sent a 6-digit code to <b id="signupVerifyEmail"></b>. Enter it below with a password to finish signing up.</p>
+      <form id="signupVerifyForm" method="post">
+        <div class="field">
+          <label>Code</label>
+          <input type="text" id="signupCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+        </div>
+        <div class="field">
+          <label>Choose a Password</label>
+          <input type="password" id="signupPassword" autocomplete="new-password" minlength="8" required>
+        </div>
+        <button type="button" class="resend-link" id="signupResendBtn">Didn't get a code? Resend</button>
+        <button class="primary" id="signupVerifyBtn" type="submit" style="margin-top:14px;">Create Account</button>
+      </form>
+      <div class="result-box err" id="signupVerifyError" style="display:none;"></div>
+    </div>
+
+    <div class="state" id="stateSignupSuccess">
+      <div class="success-icon">&#10003;</div>
+      <p class="success-title">You're all set!</p>
+      <p class="success-body">Your Primo Care account is ready and you're now logged in.</p>
+      <a href="/intake?prefill=1" id="proceedToQuoteLink" class="primary" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:18px;">Proceed to Quotation</a>
+      <a href="/account" class="secondary-link">Go to My Account instead</a>
     </div>
 
     <div class="state" id="stateForgot">
@@ -217,11 +281,20 @@
 
 <script>
   function $(id) { return document.getElementById(id); }
+  var ALL_STATES = ['stateForm', 'stateForgot', 'stateForgotSent', 'stateSuccess', 'stateSignup', 'stateSignupVerify', 'stateSignupSuccess'];
+  var TAB_STATES = ['stateForm', 'stateSignup'];
   function showState(id) {
-    ['stateForm', 'stateForgot', 'stateForgotSent', 'stateSuccess'].forEach(function(s) {
+    ALL_STATES.forEach(function(s) {
       $(s).classList.toggle('active', s === id);
     });
+    $('tabRow').classList.toggle('hidden', TAB_STATES.indexOf(id) === -1);
+    $('tabLogin').classList.toggle('active', id === 'stateForm');
+    $('tabSignup').classList.toggle('active', id === 'stateSignup');
   }
+
+  // Signup is a two-step flow (name+email, then code+password) — this holds what's needed to
+  // carry between those two POSTs and into the final sessionStorage handoff to /intake.
+  var signupState = { firstName: '', lastName: '', email: '', token: '' };
 
   // A real <form> submitted via its 'submit' event (not just a button click handler) is what
   // browsers' password managers reliably recognize as a login, triggering the native "Save
@@ -267,6 +340,14 @@
       });
   });
 
+  $('tabLogin').addEventListener('click', function() {
+    $('formNotice').style.display = 'none';
+    showState('stateForm');
+  });
+  $('tabSignup').addEventListener('click', function() {
+    showState('stateSignup');
+  });
+
   $('forgotLink').addEventListener('click', function(e) {
     e.preventDefault();
     $('forgotEmail').value = $('email').value.trim();
@@ -305,6 +386,116 @@
         errBox.style.display = 'block';
         $('forgotBtn').disabled = false;
         $('forgotBtn').textContent = 'Send Reset Link';
+      });
+  });
+
+  $('signupForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var firstName = $('signupFirstName').value.trim();
+    var lastName = $('signupLastName').value.trim();
+    var email = $('signupEmail').value.trim();
+    var errBox = $('signupError');
+    errBox.style.display = 'none';
+
+    $('signupBtn').disabled = true;
+    $('signupBtn').textContent = 'Signing up…';
+
+    fetch('/api/client/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firstName: firstName, lastName: lastName, email: email })
+    })
+      .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(res) {
+        $('signupBtn').disabled = false;
+        $('signupBtn').textContent = 'Sign Up';
+        if (!res.ok) {
+          errBox.textContent = res.data.error || 'Something went wrong. Please try again.';
+          errBox.style.display = 'block';
+          return;
+        }
+        if (res.data.alreadyMember) {
+          $('email').value = email;
+          $('formNotice').textContent = 'Looks like you already have an account — log in below.';
+          $('formNotice').style.display = 'block';
+          showState('stateForm');
+          return;
+        }
+        signupState.firstName = firstName;
+        signupState.lastName = lastName;
+        signupState.email = email;
+        signupState.token = res.data.accountSetup.token;
+        $('signupVerifyEmail').textContent = email;
+        $('signupCode').value = '';
+        $('signupPassword').value = '';
+        $('signupVerifyError').style.display = 'none';
+        showState('stateSignupVerify');
+      })
+      .catch(function() {
+        $('signupBtn').disabled = false;
+        $('signupBtn').textContent = 'Sign Up';
+        errBox.textContent = 'Something went wrong. Please try again.';
+        errBox.style.display = 'block';
+      });
+  });
+
+  $('signupVerifyForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var code = $('signupCode').value.trim();
+    var password = $('signupPassword').value;
+    var errBox = $('signupVerifyError');
+    errBox.style.display = 'none';
+
+    $('signupVerifyBtn').disabled = true;
+    $('signupVerifyBtn').textContent = 'Creating…';
+
+    fetch('/api/client/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: signupState.token, code: code, password: password })
+    })
+      .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+      .then(function(res) {
+        if (!res.ok) {
+          errBox.textContent = res.data.error || 'Something went wrong. Please try again.';
+          errBox.style.display = 'block';
+          $('signupVerifyBtn').disabled = false;
+          $('signupVerifyBtn').textContent = 'Create Account';
+          return;
+        }
+        try {
+          sessionStorage.setItem('primo-account-handoff', JSON.stringify({
+            firstName: signupState.firstName, lastName: signupState.lastName, email: signupState.email
+          }));
+        } catch (err) {}
+        showState('stateSignupSuccess');
+      })
+      .catch(function() {
+        errBox.textContent = 'Something went wrong. Please try again.';
+        errBox.style.display = 'block';
+        $('signupVerifyBtn').disabled = false;
+        $('signupVerifyBtn').textContent = 'Create Account';
+      });
+  });
+
+  $('signupResendBtn').addEventListener('click', function() {
+    var btn = $('signupResendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    fetch('/api/client/resend-setup-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: signupState.email })
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.token) { signupState.token = data.token; }
+        btn.textContent = 'Code Sent!';
+        setTimeout(function() { btn.disabled = false; btn.textContent = "Didn't get a code? Resend"; }, 8000);
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.textContent = "Didn't get a code? Resend";
       });
   });
 

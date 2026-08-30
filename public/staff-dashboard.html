@@ -248,6 +248,7 @@
   .badge.ongoing { background: #fef3c7; color: #92400e; }
   .badge.sent { background: #dcfce7; color: #166534; }
   .badge.notsent { background: #fef2f2; color: #991b1b; }
+  .badge.prospect { background: var(--teal-light); color: var(--teal-text); }
 
   .empty { text-align: center; color: var(--muted); font-size: 13.5px; padding: 20px; }
 
@@ -372,6 +373,11 @@
         <div id="recentLeadsList"></div>
       </div>
     </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h2 class="section-title" style="margin-top:0;">Prospects &mdash; Not Yet Booked</h2>
+      <div id="prospectsList"></div>
+    </div>
   </div>
 </div>
 
@@ -471,6 +477,8 @@ function renderDashboard(d) {
   $('kpiGrid').innerHTML = [
     kpiCard('Total Leads', d.totalLeads, d.leadsThisMonth + ' this month'),
     kpiCard('Proposals Sent', d.proposalsSent, d.totalLeads ? Math.round(d.proposalsSent / d.totalLeads * 100) + '% of leads' : ''),
+    kpiCard('Prospects', d.prospectsCount, 'Signed up, not booked yet'),
+    kpiCard('Follow-Ups Sent', d.followUpsSentCount, d.prospectsCount ? 'of ' + d.prospectsCount + ' prospect' + (d.prospectsCount === 1 ? '' : 's') : ''),
     kpiCard('Upcoming Jobs', d.upcomingJobs, d.scheduledJobs + ' scheduled, ' + d.ongoingJobs + ' ongoing', 'teal'),
     kpiCard('Completed Jobs', d.completedJobs, ''),
     kpiCard('Revenue Collected', fmtCurrency(d.revenueCollected), d.paidCount + ' paid job' + (d.paidCount === 1 ? '' : 's'), 'green'),
@@ -522,6 +530,14 @@ function renderDashboard(d) {
       + '<div class="meta">' + escapeHtml(l.email) + '</div></div>'
       + '<span class="badge ' + (l.proposalSent ? 'sent' : 'notsent') + '">' + (l.proposalSent ? 'Proposal Sent' : 'Not Sent') + '</span></div>';
   }).join('') : '<div class="empty">No leads yet</div>';
+
+  $('prospectsList').innerHTML = (d.prospects || []).length ? d.prospects.map(function (p) {
+    var signedUp = p.accountCreatedAt ? new Date(p.accountCreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    var followUpNote = p.followUp7DaySent ? ' &middot; 7-day follow-up sent' : (p.followUp48hrSent ? ' &middot; 48hr follow-up sent' : '');
+    return '<div class="list-row"><div><div class="who">' + escapeHtml(p.name || 'Unnamed') + '</div>'
+      + '<div class="meta">' + escapeHtml(p.email) + (signedUp ? ' &middot; Signed up ' + signedUp : '') + followUpNote + '</div></div>'
+      + '<span class="badge prospect">Not Booked Yet</span></div>';
+  }).join('') : '<div class="empty">No prospects yet</div>';
 
   $('updatedLabel').textContent = 'Updated ' + new Date().toLocaleTimeString();
 }
