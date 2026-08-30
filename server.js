@@ -2151,7 +2151,37 @@ app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
         followUp7DaySent: !!rec.fields['7-Day Follow-Up Sent']
       }))
       .sort((a, b) => new Date(b.accountCreatedAt || 0) - new Date(a.accountCreatedAt || 0));
-    const followUpsSentCount = prospects.filter(p => p.followUp48hrSent || p.followUp7DaySent).length;
+    const followUp48hrSentCount = prospects.filter(p => p.followUp48hrSent).length;
+    const followUp7DaySentCount = prospects.filter(p => p.followUp7DaySent).length;
+
+    // Prospect conversion — a verified member whose *first-ever* booking happened meaningfully
+    // later (10+ min) than their signup came in through the standalone sign-up flow, not the
+    // traditional "auto-enrolled at first booking" path, where Account Created At and that
+    // booking's Submitted At are set within the same request and are effectively simultaneous.
+    // No new field needed — this falls straight out of comparing timestamps already on hand.
+    const CONVERSION_GAP_MS = 10 * 60 * 1000;
+    const earliestBookingByClientId = {};
+    submissions.forEach(r => {
+      const cid = r.fields['Client ID'];
+      const submittedAt = r.fields['Submitted At'];
+      if (!cid || !submittedAt) return;
+      if (!earliestBookingByClientId[cid] || new Date(submittedAt) < new Date(earliestBookingByClientId[cid])) {
+        earliestBookingByClientId[cid] = submittedAt;
+      }
+    });
+    const convertedProspects = verifiedMembers
+      .filter(rec => {
+        const firstBooking = earliestBookingByClientId[rec.fields['Client ID']];
+        const signedUp = rec.fields['Account Created At'];
+        return !!(firstBooking && signedUp && new Date(firstBooking) - new Date(signedUp) > CONVERSION_GAP_MS);
+      })
+      .map(rec => ({
+        name: rec.fields['Full Name'] || '',
+        email: rec.fields['Email'] || '',
+        accountCreatedAt: rec.fields['Account Created At'] || '',
+        convertedAt: earliestBookingByClientId[rec.fields['Client ID']]
+      }))
+      .sort((a, b) => new Date(b.convertedAt || 0) - new Date(a.convertedAt || 0));
 
     res.json({
       totalLeads: leads.length,
@@ -2177,7 +2207,10 @@ app.get('/api/staff/dashboard', dashboardAuth, async (req, res) => {
       recentLeads: recentLeads.slice(0, 6),
       prospectsCount: prospects.length,
       prospects: prospects.slice(0, 6),
-      followUpsSentCount
+      followUp48hrSentCount,
+      followUp7DaySentCount,
+      convertedProspectsCount: convertedProspects.length,
+      convertedProspects: convertedProspects.slice(0, 6)
     });
   } catch (err) {
     console.error(err);
