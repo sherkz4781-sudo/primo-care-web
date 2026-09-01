@@ -414,7 +414,7 @@
       <p id="thankYouMessage" style="margin:0 auto 26px;max-width:440px;color:var(--ink);font-size:17px;line-height:1.5;"></p>
       <div id="referralBox" class="hidden" style="background:#f7f9fa;border:1px dashed var(--border);border-radius:10px;padding:16px 18px;margin:0 auto 24px;max-width:440px;text-align:left;">
         <b style="color:var(--teal-text);">Know someone who needs a clean?</b>
-        <p style="margin:8px 0;font-size:13.5px;color:var(--ink);">Share your link &mdash; when they book with us and their first visit is completed, you get $10 off your next one.</p>
+        <p style="margin:8px 0;font-size:13.5px;color:var(--ink);">Share your link &mdash; when they book with us and their first visit is completed, you get 10% off your next one.</p>
         <div style="display:flex;gap:8px;">
           <input type="text" id="referralLink" readonly style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;background:var(--bg);color:var(--ink);">
           <button type="button" id="copyReferralBtn" style="padding:8px 14px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap;">Copy</button>
@@ -1518,7 +1518,7 @@
       rows += '<tr><td colspan="2" style="font-size:12px;color:var(--muted);">Subscription requested: ' + p.frequencies.join(', ') + ' for ' + p.subscriptionDuration + ' month' + (p.subscriptionDuration === 1 ? '' : 's') + '</td></tr>';
     }
     if(p.discountApplied){
-      rows += '<tr><td colspan="2" style="font-size:12.5px;color:var(--green);font-weight:600;">&#10003; $10 referral credit applied</td></tr>';
+      rows += '<tr><td colspan="2" style="font-size:12.5px;color:var(--green);font-weight:600;">&#10003; 10% referral credit applied</td></tr>';
     }
     rows += '<tr class="total"><td>Estimated total per visit</td><td style="text-align:right;">' + fmt(p.total) + '</td></tr>';
 

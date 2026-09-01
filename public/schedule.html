@@ -534,7 +534,7 @@ document.addEventListener('click', function (e) {
       }
       $('toastBox').innerHTML = '<div class="toast">' + escapeHtml(clientName) + ' marked completed' +
         (data.emailSent ? ' — billing statement emailed.' : ' — no email on file, statement not sent.') +
-        (data.referralCreditAwarded ? ' A $10 referral credit was just earned by whoever referred them.' : '') + '</div>';
+        (data.referralCreditAwarded ? ' A 10% referral credit was just earned by whoever referred them.' : '') + '</div>';
       card.remove();
       loadJobs();
     });

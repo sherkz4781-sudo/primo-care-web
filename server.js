@@ -225,7 +225,7 @@ app.post('/api/submit', async (req, res) => {
       clientId = genRefId('CLI');
     }
 
-    // Referral discount — if this submitting client has an unused $10 credit (earned by a
+    // Referral discount — if this submitting client has an unused 10%-off credit (earned by a
     // previous referral of theirs whose referred client's first job was completed — see
     // /api/staff/complete), apply it to the first property in this submission only. Computed
     // from the grand total here, not the per-sqft Rate Card, so the core pricing engine used by
@@ -248,7 +248,7 @@ app.post('/api/submit', async (req, res) => {
       let total = p.total;
       let discountApplied = false;
       if (availableCredit && !creditConsumed) {
-        total = Math.max(0, (p.total || 0) - 10);
+        total = Math.max(0, Math.round((p.total || 0) * 0.9 * 100) / 100);
         discountApplied = true;
         creditConsumed = true;
       }
@@ -1582,7 +1582,7 @@ app.post('/api/staff/complete', staffAuth, upload.single('photo'), async (req, r
 
     // Referral credit — if this client arrived via another client's referral link (see
     // 'Referred By (Client ID)', set at /api/submit time), and this is the FIRST job of theirs
-    // ever completed, award the referrer a $10 credit. Checked against every record under this
+    // ever completed, award the referrer a 10%-off credit. Checked against every record under this
     // client's Client ID (not just this one) so a multi-property client's second-ever completion
     // doesn't also trigger it.
     let referralCreditAwarded = false;
